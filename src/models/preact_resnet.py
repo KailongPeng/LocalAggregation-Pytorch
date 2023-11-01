@@ -12,6 +12,7 @@ import torch.nn.functional as F
 
 BATCH_NORM_MOMENTUM = 0.003
 
+
 def batch_norm(num_features):
     return nn.BatchNorm2d(num_features, momentum=BATCH_NORM_MOMENTUM)
 
