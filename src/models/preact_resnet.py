@@ -78,6 +78,7 @@ class PreActResNet(nn.Module):
         super(PreActResNet, self).__init__()
         self.in_planes = 64
 
+        # (input channel # = 3, output channel # = 64)
         self.conv1 = nn.Conv2d(input_channels, 64, kernel_size=7, stride=2, padding=3, bias=False)
         self.padding = torch.nn.ConstantPad2d((0, 1, 0, 1), 0.)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=0)
@@ -134,6 +135,7 @@ class PreActResNet(nn.Module):
         return out
 
 
+# defining 5 types of PreActResNet, with different number of layers: 18, 34, 50, 101, 152
 def PreActResNet18(num_classes=128):
     return PreActResNet(PreActBlock, [2, 2, 2, 2], num_classes)
 
