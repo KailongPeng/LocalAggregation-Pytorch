@@ -17,9 +17,8 @@ ls -alt /gpfs/milgram/data/imagenet | wc
     ls: 1319444 1319444 26677449
     ls -alt: 1319447 11875016 105844231   There are 1319447 images
 
-/gpfs/milgram/project/turk-browne/projects/localize/ImageNet/ILSVRC/Data/CLS-LOC/
-
-    train/: 1000 folders
+ls /gpfs/milgram/project/turk-browne/projects/localize/ImageNet/ILSVRC/Data/CLS-LOC/
+    train/: 1000 folders (1000 classes)
     test/: 10000 images
     val/: 50000 images
     
@@ -27,7 +26,8 @@ ls -alt /gpfs/milgram/data/imagenet | wc
         When I download the dataset, image ID info is not useful to us at that time.
         But I found this info to be useful. The class info is not there because this data is part of a competition.
             https://stackoverflow.com/questions/40744700/how-can-i-find-imagenet-data-labels
-        The labels of the 50k val images can be found here: https://github.com/PaddlePaddle/benchmark/blob/master/static_graph/image_classific[…]SVRC2012_devkit_t12/data/ILSVRC2012_validation_ground_truth.txt
+        The labels of the 50k val images can be found here: 
+            https://github.com/PaddlePaddle/benchmark/blob/master/static_graph/image_classification/pytorch/SENet/ImageData/ILSVRC2012_devkit_t12/data/ILSVRC2012_validation_ground_truth.txt
         However, I have not checked whether these labels are correct. I think you can simply check whether they are correct just by eyeballing whether the labels are correct or not. (edited)
         Do you need the test set category too? Since I have not found that just now. If you do need them, we can dig deeper to find it.
 """
