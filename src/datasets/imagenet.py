@@ -6,7 +6,11 @@ import os
 import torch.utils.data as data
 from torchvision import transforms, datasets
 
-IMAGENET_DIR = None
+testMode = True
+if testMode:
+    IMAGENET_DIR = '/opt/project/imagenet/'  # '/home/kp/Desktop/LocalAggregation-Pytorch/imagenet/'  # None
+else:
+    IMAGENET_DIR = None
 DIR_LIST = ['/data5/honglinc/Dataset/imagenet_raw',
             '/data5/chengxuz/Dataset/imagenet_raw',
             '/data5/chengxuz/imagenet_raw',
@@ -38,6 +42,7 @@ for path in DIR_LIST:
         break
 
 assert IMAGENET_DIR is not None
+
 
 class ImageNet(data.Dataset):
     def __init__(self, train=True, imagenet_dir=IMAGENET_DIR, image_transforms=None):

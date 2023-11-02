@@ -7,6 +7,8 @@ from src.utils.setup import process_config
 from src.utils.utils import load_json
 import os
 
+testMode = True
+
 
 def run(config_path, pre_checkpoint_dir):
     config = process_config(config_path)
@@ -25,11 +27,16 @@ def run(config_path, pre_checkpoint_dir):
         pass
 
 
-if __name__ == "__main__":
+if __name__ == "__main__" or testMode:
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('config', type=str, default='path to config file')
-    args = parser.parse_args()
+    if testMode:
+        parser.add_argument('config', type=str, nargs='?', default='/opt/project/config/imagenet_ir.json')
+        args = parser.parse_args("")
+    else:
+        parser.add_argument('config', type=str, default='path to config file')
+        args = parser.parse_args()
+
 
     config_json = load_json(args.config)
 
@@ -39,4 +46,3 @@ if __name__ == "__main__":
         pre_checkpoint_dir = os.path.join(config_json['pretrained_exp_dir'], 'checkpoints')
 
     run(args.config, pre_checkpoint_dir)
-
