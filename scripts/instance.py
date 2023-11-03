@@ -31,14 +31,19 @@ if __name__ == "__main__" or testMode:
     import argparse
     parser = argparse.ArgumentParser()
     if testMode:
-        parser.add_argument('config', type=str, nargs='?', default='/opt/project/config/imagenet_ir.json')
+        parser.add_argument('config', type=str, nargs='?',
+                            default='/opt/project/config/imagenet_ir.json')
+
         args = parser.parse_args("")
+        if os.path.exists('/opt/project/config/imagenet_ir.json'):
+            args.config = '/opt/project/config/imagenet_ir.json'
+        else:
+            args.config = '/home/kp/Desktop/LocalAggregation-Pytorch/config/imagenet_ir.json'
+        config_json = load_json(args.config)
     else:
         parser.add_argument('config', type=str, default='path to config file')
         args = parser.parse_args()
-
-
-    config_json = load_json(args.config)
+        config_json = load_json(args.config)
 
     pre_checkpoint_dir = None
     if config_json['pretrained_exp_dir'] is not None:

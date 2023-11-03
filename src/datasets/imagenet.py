@@ -8,7 +8,10 @@ from torchvision import transforms, datasets
 
 testMode = True
 if testMode:
-    IMAGENET_DIR = '/opt/project/imagenet/'  # '/home/kp/Desktop/LocalAggregation-Pytorch/imagenet/'  # None
+    if os.path.exists('/opt/project/imagenet/'):
+        IMAGENET_DIR = '/opt/project/imagenet/'  # '/home/kp/Desktop/LocalAggregation-Pytorch/imagenet/'  # None
+    else:
+        IMAGENET_DIR = '/home/kp/Desktop/LocalAggregation-Pytorch/imagenet/'
 else:
     IMAGENET_DIR = None
 DIR_LIST = ['/data5/honglinc/Dataset/imagenet_raw',
@@ -17,15 +20,22 @@ DIR_LIST = ['/data5/honglinc/Dataset/imagenet_raw',
             '/data/chengxuz/imagenet_raw']
 
 """
-ls -alt /gpfs/milgram/data/imagenet | wc
-    ls: 1319444 1319444 26677449
-    ls -alt: 1319447 11875016 105844231   There are 1319447 images
+cd /gpfs/milgram/data/imagenet/ ; find . -name "*.JPEG" | wc -l
+    1,297,600 JPEG images
+    cd /gpfs/milgram/data/imagenet/ ; find . -name "*.tar" | wc -l    
+    21844 tar files: meaning that there are 21844 classes (e.g. dog, cat, etc.)
 
 ls /gpfs/milgram/project/turk-browne/projects/localize/ImageNet/ILSVRC/Data/CLS-LOC/
-    train/: 1000 folders (1000 classes)
-    test/: 10000 images
-    val/: 50000 images
+    train/: 1,000 folders (1000 classes)
+    test/: 100,000 images
+    val/: 50,000 images
     
+    note
+        https://www.image-net.org/download.php
+        The most highly-used subset of ImageNet is the ImageNet Large Scale Visual Recognition Challenge (ILSVRC) 
+        2012-2017 image classification and localization dataset. This dataset spans 1000 object classes and contains 
+        1,281,167 training images, 50,000 validation images and 100,000 test images. This subset is available on Kaggle.
+
     note
         When I download the dataset, image ID info is not useful to us at that time.
         But I found this info to be useful. The class info is not there because this data is part of a competition.
