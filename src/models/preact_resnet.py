@@ -83,10 +83,10 @@ class PreActResNet(nn.Module):
         self.padding = torch.nn.ConstantPad2d((0, 1, 0, 1), 0.)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=0)
 
-        self.layer1 = self._make_layer(block, 64, num_blocks[0], stride=1)
-        self.layer2 = self._make_layer(block, 128, num_blocks[1], stride=2)
-        self.layer3 = self._make_layer(block, 256, num_blocks[2], stride=2)
-        self.layer4 = self._make_layer(block, 512, num_blocks[3], stride=2)
+        self.layer1 = self._make_layer(block, 64, num_blocks[0], stride=1)  # conv2_x
+        self.layer2 = self._make_layer(block, 128, num_blocks[1], stride=2)  # conv3_x
+        self.layer3 = self._make_layer(block, 256, num_blocks[2], stride=2)  # conv4_x
+        self.layer4 = self._make_layer(block, 512, num_blocks[3], stride=2)  # conv5_x
         self.bn = batch_norm(512)
         self.relu = nn.ReLU(inplace=True)
 

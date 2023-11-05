@@ -339,7 +339,7 @@ class ImageNetAgent(BaseAgent):
         else:
             raise NotImplementedError
 
-        model = nn.DataParallel(model)
+        model = nn.DataParallel(model)  # load ImageNet dataset：takes a long time
         model = model.to(self.device)
         cudnn.benchmark = True
 
@@ -362,6 +362,8 @@ class ImageNetAgent(BaseAgent):
                                      weight_decay=self.config.optim_params.weight_decay)
 
     def train_one_epoch(self):
+        Kailong = True
+
         num_batches = self.train_len // self.config.optim_params.batch_size
         tqdm_batch = tqdm(total=num_batches,
                           desc="[Epoch {}, lr {}]".format(self.current_epoch, self.optim.param_groups[0]['lr']))
@@ -378,6 +380,10 @@ class ImageNetAgent(BaseAgent):
 
             # do a forward pass
             outputs = self.model(images)
+            if Kailong:
+                # get the weights of the model
+                weights_previous = self.model.module.linear.weight.data
+                # weights_previous.shape = torch.Size([128, 512])
 
             # compute the loss
             loss, new_data_memory = self.loss_fn(indices, outputs, self.parallel_helper_idxs)
@@ -425,6 +431,13 @@ class ImageNetAgent(BaseAgent):
 
             self.current_iteration += 1
             tqdm_batch.update()
+
+            if Kailong:
+                # get the weights of the model
+                weights_current = self.model.module.linear.weight.data
+
+                # compute the difference between the weights
+                weights_difference = weights_current - weights_previous
 
         self.current_loss = epoch_loss.avg
         tqdm_batch.close()
