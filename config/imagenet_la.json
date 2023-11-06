@@ -1,5 +1,6 @@
 {
-    "exp_base": "/home/kp/Desktop/LocalAggregation-Pytorch/mnt/fs6/honglinc/experiments_data",
+    "exp_base": "/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/mnt/fs6/honglinc/experiments_data",
+    "note1": "exp_base = /home/kp/Desktop/LocalAggregation-Pytorch/mnt/fs6/honglinc/experiments_data",
     "debug":true,
     "exp_name": "imagenet_la",
     "exp_id": "res18_LA",
@@ -29,6 +30,7 @@
     },
     "optim_params": {
         "batch_size": 16,
+        "note3": "batch_size = 128",
         "learning_rate": 0.03,
         "lr_decay_schedule": [160, 190],
         "lr_decay_rate": 0.1,
@@ -39,6 +41,7 @@
     "num_epochs": 200,
     "validate": true,
     "copy_checkpoint_freq": null,
-    "instance_exp_dir": "/home/kp/Desktop/LocalAggregation-Pytorch/mnt/fs6/honglinc/experiments_data/experiments/imagenet_ir/res18_IR",
+    "instance_exp_dir": "/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/mnt/fs6/honglinc/experiments_data/experiments/imagenet_ir/res18_IR",
+    "note2": "instance_exp_dir = /home/kp/Desktop/LocalAggregation-Pytorch/mnt/fs6/honglinc/experiments_data/experiments/imagenet_ir/res18_IR",
     "pretrained_exp_dir": null
 }
