@@ -1,6 +1,7 @@
 # from comet_ml import Experiment
 # experiment = Experiment(api_key="l4wUtHmBfo1SqjrOHLsLtU0zN", project_name='general', workspace="honglin-chen")
-
+import sys
+sys.path.append('/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch')
 from copy import deepcopy
 from src.agents.agents import *
 from src.utils.setup import process_config
