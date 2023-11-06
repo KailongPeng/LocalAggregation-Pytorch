@@ -448,6 +448,9 @@ class ImageNetAgent(BaseAgent):
                 # print shape of weights_difference
                 print(f'weights_difference.shape = {weights_difference.shape}')
 
+                # print __dir__
+                print(f"self.model.module.__dir__()={self.model.module.__dir__()}")
+
                 # save the activation of the last layer
                 activation_lastLayer = self.model.features_lastLayer
                 print(f'activation_lastLayer.shape = {activation_lastLayer.shape}')

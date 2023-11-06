@@ -76,6 +76,8 @@ class PreActBottleneck(nn.Module):
 class PreActResNet(nn.Module):
     def __init__(self, block, num_blocks, num_classes=128, input_channels=3):
         super(PreActResNet, self).__init__()
+        self.features_secondLastLayer = None
+        self.features_lastLayer = None
         self.in_planes = 64
 
         # (input channel # = 3, output channel # = 64)
