@@ -1,6 +1,6 @@
 {
     "exp_base": "/home/kp/Desktop/LocalAggregation-Pytorch/mnt/fs6/honglinc/experiments_data",
-    "debug": false,
+    "debug": true,
     "exp_name": "imagenet_ir",
     "exp_id": "res18_IR",
     "agent": "ImageNetAgent",
@@ -31,7 +31,8 @@
         "loss": "InstanceDiscriminationLossModule"
     },
     "optim_params": {
-        "batch_size": 128,
+        "batch_size": 16,
+        "note1": "batch_size = 128",
         "learning_rate": 0.03,
         "lr_decay_schedule": null,
         "momentum": 0.9,
