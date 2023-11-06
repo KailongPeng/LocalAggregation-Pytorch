@@ -61,7 +61,7 @@ assert IMAGENET_DIR is not None
 class ImageNet(data.Dataset):
     def __init__(self, train=True, imagenet_dir=IMAGENET_DIR, image_transforms=None):
         super().__init__()
-        split_dir = 'train' if train else 'val'
+        split_dir = 'train' if train else 'validation'
         self.imagenet_dir = os.path.join(imagenet_dir, split_dir)
         self.dataset = datasets.ImageFolder(self.imagenet_dir, image_transforms)
 
