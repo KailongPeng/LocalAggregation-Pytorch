@@ -38,7 +38,7 @@ if __name__ == "__main__" or testMode:
         args = parser.parse_args("")
         if os.path.exists('/opt/project/config/imagenet_la.json'):
             args.config = '/opt/project/config/imagenet_la.json'
-        elif os.path.exists('/home/kp/Desktop/LocalAggregation-Pytorch/config/imagenet_la.json')
+        elif os.path.exists('/home/kp/Desktop/LocalAggregation-Pytorch/config/imagenet_la.json'):
             args.config = '/home/kp/Desktop/LocalAggregation-Pytorch/config/imagenet_la.json'
         elif os.path.exists('/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_la.json'):
             args.config = '/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_la.json'
