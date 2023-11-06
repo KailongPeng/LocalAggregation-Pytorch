@@ -3,7 +3,7 @@
 #SBATCH --job-name=LA
 #SBATCH --ntasks=1 --nodes=1
 #SBATCH --time=6:00:00
-#SBATCH --output=logs/%A_%a.out
+#SBATCH --output=logs/%J.out  # %A_%a.out
 #SBATCH --mem=100g
 #SBATCH --gpus 1
 
