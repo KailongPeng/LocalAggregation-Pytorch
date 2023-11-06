@@ -29,8 +29,8 @@
         "loss": "LocalAggregationLossModule"
     },
     "optim_params": {
-        "batch_size": 16,
-        "note3": "batch_size = 128",
+        "batch_size": 128,
+        "note_batch_size": "batch_size: 16",
         "learning_rate": 0.03,
         "lr_decay_schedule": [160, 190],
         "lr_decay_rate": 0.1,
@@ -38,7 +38,7 @@
         "weight_decay": 1e-4,
         "validate_freq": 1
     },
-    "num_epochs": 1,
+    "num_epochs": 2,
     "note_num_epochs": "num_epochs = 200",
     "validate": true,
     "copy_checkpoint_freq": null,
