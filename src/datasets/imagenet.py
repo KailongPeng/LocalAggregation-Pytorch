@@ -10,8 +10,10 @@ testMode = True
 if testMode:
     if os.path.exists('/opt/project/imagenet/'):
         IMAGENET_DIR = '/opt/project/imagenet/'  # '/home/kp/Desktop/LocalAggregation-Pytorch/imagenet/'  # None
-    else:
+    elif os.path.exists('/home/kp/Desktop/LocalAggregation-Pytorch/imagenet/'):
         IMAGENET_DIR = '/home/kp/Desktop/LocalAggregation-Pytorch/imagenet/'
+    elif os.path.exists("/gpfs/milgram/project/turk-browne/projects/localize/ImageNet/ILSVRC/Data/CLS-LOC/"):
+        IMAGENET_DIR = "/gpfs/milgram/project/turk-browne/projects/localize/ImageNet/ILSVRC/Data/CLS-LOC/"
 else:
     IMAGENET_DIR = None
 DIR_LIST = ['/data5/honglinc/Dataset/imagenet_raw',
@@ -57,7 +59,7 @@ assert IMAGENET_DIR is not None
 class ImageNet(data.Dataset):
     def __init__(self, train=True, imagenet_dir=IMAGENET_DIR, image_transforms=None):
         super().__init__()
-        split_dir = 'train' if train else 'validation'
+        split_dir = 'train' if train else 'val'
         self.imagenet_dir = os.path.join(imagenet_dir, split_dir)
         self.dataset = datasets.ImageFolder(self.imagenet_dir, image_transforms)
 
