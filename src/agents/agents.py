@@ -383,6 +383,8 @@ class ImageNetAgent(BaseAgent):
             if Kailong:
                 # get the weights of the model
                 weights_previous = self.model.module.linear.weight.data.clone().to(self.device)
+                # print shape of weights_previous
+                print(f'weights_previous.shape = {weights_previous.shape}')
                 # self.model.module.linear.weight.data.shape = torch.Size([128, 512])  (#output channel, #input channel)
                 # weights_previous.shape = torch.Size([128, 512])
 
@@ -435,17 +437,24 @@ class ImageNetAgent(BaseAgent):
 
             if Kailong:
                 # get the weights of the model
-                weights_current = self.model.module.linear.weight.data.clone
+                weights_current = self.model.module.linear.weight.data.clone()
+                # print shape of weights_current
+                print(f'weights_current.shape = {weights_current.shape}')
 
                 # compute the difference between the weights
                 weights_difference = weights_current - weights_previous
                 weights_previous = weights_current.clone()
 
+                # print shape of weights_difference
+                print(f'weights_difference.shape = {weights_difference.shape}')
+
                 # save the activation of the last layer
                 activation_lastLayer = self.model.features_lastLayer
+                print(f'activation_lastLayer.shape = {activation_lastLayer.shape}')
 
                 # save the activation of the second last layer
                 activation_secondLastLayer = self.model.features_secondLastLayer  # self.model.module.layer4[1].relu2
+                print(f'activation_secondLastLayer.shape = {activation_secondLastLayer.shape}')
 
                 # create a folder to save the weights_difference
                 weights_difference_folder = './weights_difference/'

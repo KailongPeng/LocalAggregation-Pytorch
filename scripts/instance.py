@@ -9,7 +9,7 @@ from src.utils.utils import load_json
 import os
 
 testMode = True
-
+localUbuntu = True
 
 def run(config_path, pre_checkpoint_dir):
     config = process_config(config_path)
@@ -36,6 +36,7 @@ if __name__ == "__main__" or testMode:
                             default='/opt/project/config/imagenet_la.json')
 
         args = parser.parse_args("")
+
         if os.path.exists('/opt/project/config/imagenet_la.json'):
             args.config = '/opt/project/config/imagenet_la.json'
         elif os.path.exists('/home/kp/Desktop/LocalAggregation-Pytorch/config/imagenet_la.json'):
@@ -44,6 +45,9 @@ if __name__ == "__main__" or testMode:
             args.config = '/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_la.json'
         else:
             raise Exception("config file not found")
+
+        if localUbuntu:
+            args.config = '/home/kp/Desktop/LocalAggregation-Pytorch/config/imagenet_la_localUbuntu.json'
         config_json = load_json(args.config)
     else:
         parser.add_argument('config', type=str, default='path to config file')
