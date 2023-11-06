@@ -32,13 +32,13 @@ if __name__ == "__main__" or testMode:
     parser = argparse.ArgumentParser()
     if testMode:
         parser.add_argument('config', type=str, nargs='?',
-                            default='/opt/project/config/imagenet_ir.json')
+                            default='/opt/project/config/imagenet_la.json')
 
         args = parser.parse_args("")
-        if os.path.exists('/opt/project/config/imagenet_ir.json'):
-            args.config = '/opt/project/config/imagenet_ir.json'
+        if os.path.exists('/opt/project/config/imagenet_la.json'):
+            args.config = '/opt/project/config/imagenet_la.json'
         else:
-            args.config = '/home/kp/Desktop/LocalAggregation-Pytorch/config/imagenet_ir.json'
+            args.config = '/home/kp/Desktop/LocalAggregation-Pytorch/config/imagenet_la.json'
         config_json = load_json(args.config)
     else:
         parser.add_argument('config', type=str, default='path to config file')

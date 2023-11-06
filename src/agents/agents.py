@@ -382,7 +382,8 @@ class ImageNetAgent(BaseAgent):
             outputs = self.model(images)
             if Kailong:
                 # get the weights of the model
-                weights_previous = self.model.module.linear.weight.data
+                weights_previous = self.model.module.linear.weight.data.clone().to(device)
+                # self.model.module.linear.weight.data.shape = torch.Size([128, 512])  (#output channel, #input channel)
                 # weights_previous.shape = torch.Size([128, 512])
 
             # compute the loss
@@ -434,10 +435,28 @@ class ImageNetAgent(BaseAgent):
 
             if Kailong:
                 # get the weights of the model
-                weights_current = self.model.module.linear.weight.data
+                weights_current = self.model.module.linear.weight.data.clone
 
                 # compute the difference between the weights
                 weights_difference = weights_current - weights_previous
+                weights_previous = weights_current.clone()
+
+                # save the activation of the last layer
+                activation_lastLayer = self.model.features_lastLayer
+
+                # save the activation of the second last layer
+                activation_secondLastLayer = self.model.features_secondLastLayer  # self.model.module.layer4[1].relu2
+
+                # create a folder to save the weights_difference
+                weights_difference_folder = './weights_difference/'
+                if not os.path.exists(weights_difference_folder):
+                    os.makedirs(weights_difference_folder)
+                torch.save(weights_difference,
+                           f'{weights_difference_folder}/weights_difference_epoch{self.current_epoch}.pth.tar')
+                torch.save(activation_lastLayer,
+                           f'{weights_difference_folder}/activation_lastLayer_epoch{self.current_epoch}.pth.tar')
+                torch.save(activation_secondLastLayer,
+                           f'{weights_difference_folder}/activation_secondLastLayer_epoch{self.current_epoch}.pth.tar')
 
         self.current_loss = epoch_loss.avg
         tqdm_batch.close()

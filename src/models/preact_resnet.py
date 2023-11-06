@@ -11,7 +11,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 BATCH_NORM_MOMENTUM = 0.003
-
+Kailong = True
 
 def batch_norm(num_features):
     return nn.BatchNorm2d(num_features, momentum=BATCH_NORM_MOMENTUM)
@@ -131,7 +131,11 @@ class PreActResNet(nn.Module):
         # follows the TF implementation to replace avgpool with mean
         # Ref: https://github.com/neuroailab/LocalAggregation
         out = torch.mean(out, dim=(2, 3))
+        if Kailong:
+            self.features_secondLastLayer = out.detach().cpu().numpy()
         out = self.linear(out)
+        if Kailong:
+            self.features_lastLayer = out.detach().cpu().numpy()
         return out
 
 

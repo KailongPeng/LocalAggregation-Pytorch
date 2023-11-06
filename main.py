@@ -4,6 +4,7 @@ to debug: open scripts/instance.py and click on debug
 note the interpreter is using docker container: kailongpeng/my_conda_image:v2
     and the interpreter path is /root/miniconda/envs/py36/bin/python
 """
+
 """
 to run the code in dual boot Ubuntu20.04 with docker:
 docker run -it kailongpeng/my_conda_image:v2

@@ -16,11 +16,13 @@ from termcolor import colored
 from src.utils.tensor import repeat_1d_tensor, l2_normalize
 
 DEFAULT_KMEANS_SEED = 1234
-
+testMode = True
 class LocalAggregationLossModule(torch.nn.Module):
 
     def __init__(self, memory_bank_broadcast, cluster_label_broadcast, k=4096, t=0.07, m=0.5):
         super(LocalAggregationLossModule, self).__init__()
+        if testMode:
+            k = 8
         self.k, self.t, self.m = k, t, m
 
         self.indices = None
