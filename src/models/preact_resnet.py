@@ -135,7 +135,7 @@ class PreActResNet(nn.Module):
         out = torch.mean(out, dim=(2, 3))
         if Kailong:
             self.features_secondLastLayer = out.detach().cpu().numpy()
-        out = self.linear(out)
+        out = self.linear(out)  # out.shape = torch.Size([9, 128])
         if Kailong:
             self.features_lastLayer = out.detach().cpu().numpy()
         return out
