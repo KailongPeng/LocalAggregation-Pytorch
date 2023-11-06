@@ -14,7 +14,9 @@ cd /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/
 conda activate py36
 python --version
 python -u /gpfs/milgram/pi/turk-browne/projects/sandbox/sandbox/docker/hello.py
-CUDA_VISIBLE_DEVICES=0 python -u /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/scripts/instance.py
+
+cd /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch
+CUDA_VISIBLE_DEVICES=0 python -u ./scripts/instance.py  # /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch
 
 nvidia-smi
 
