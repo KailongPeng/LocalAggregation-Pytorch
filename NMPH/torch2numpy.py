@@ -9,12 +9,12 @@ for epoch in range(0, 1):
         activation_lastLayer = torch.load(
             f'{directory_torch_path}/activation_lastLayer_epoch{epoch}_batch_i{batch_i}.pth.tar')
         np.save(f'{directory_path}/activation_lastLayer_epoch{epoch}_batch_i{batch_i}.pth.tar',
-                activation_lastLayer.detach().numpy())
+                np.asarray(activation_lastLayer))
         activation_secondLastLayer = torch.load(
             f'{directory_torch_path}/activation_secondLastLayer_epoch{epoch}_batch_i{batch_i}.pth.tar')
         np.save(f'{directory_path}/activation_secondLastLayer_epoch{epoch}_batch_i{batch_i}.pth.tar',
-                activation_secondLastLayer.detach().numpy())
+                np.asarray(activation_secondLastLayer))
         weight_change = torch.load(
             f'{directory_torch_path}/weights_difference_epoch{epoch}_batch_i{batch_i}.pth.tar')  # .detach().numpy()
         np.save(f'{directory_path}/weights_difference_epoch{epoch}_batch_i{batch_i}.pth.tar',
-                weight_change.detach().numpy())
+                np.asarray(weight_change))
