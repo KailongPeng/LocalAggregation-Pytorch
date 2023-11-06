@@ -63,6 +63,8 @@ class ImageNet(data.Dataset):
 
     def __getitem__(self, index):
         image_data = list(self.dataset.__getitem__(index))
+        # image_data[0].shape = torch.Size([3, 224, 224])
+        # image_data[1] = 0
         # important to return the index!
         data = [index] + image_data
         return tuple(data)

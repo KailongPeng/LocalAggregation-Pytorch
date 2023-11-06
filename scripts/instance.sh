@@ -9,15 +9,17 @@
 
 set -e
 nvidia-smi
-cd /gpfs/milgram/project/turk-browne/projects/sandbox/sandbox/MNIST
+cd /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/
 . /gpfs/milgram/apps/hpc.rhel7/software/Python/Anaconda3/etc/profile.d/conda.sh
 conda activate py36
-
 python --version
 python -u /gpfs/milgram/pi/turk-browne/projects/sandbox/sandbox/docker/hello.py
-
-CUDA_VISIBLE_DEVICES=0 python -u ./scripts/instance.py
+CUDA_VISIBLE_DEVICES=0 python -u /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/scripts/instance.py
 
 nvidia-smi
 
 echo "done"
+
+
+# cd /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch
+# sbatch ./scripts/instance.sh
