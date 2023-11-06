@@ -449,28 +449,33 @@ class ImageNetAgent(BaseAgent):
                 print(f'weights_difference.shape = {weights_difference.shape}')
 
                 # print __dir__
-                print(f"self.model.module.__dir__()={self.model.module.__dir__()}")
+                # print(f"self.model.module.__dir__()={self.model.module.__dir__()}")
                 # self.__dir__()
                 #   ['config', 'logger', 'train_dataset', 'val_dataset', 'train_ordered_labels', 'train_loader', 'train_len', 'val_loader', 'val_len', 'is_cuda', 'cuda', 'manual_seed', 'multigpu', 'device', 'gpu_devices', 'model', 'optim', 'current_epoch', 'current_iteration', 'current_val_iteration', 'current_loss', 'current_val_metric', 'best_val_metric', 'iter_with_no_improv', 'summary_writer', 'memory_bank', 'cluster_labels', 'loss_fn', 'km', 'parallel_helper_idxs', 'val_acc', 'train_loss', 'train_extra', 'first_iteration_kmeans', '__module__', '__init__', '_init_memory_bank', 'load_memory_bank', '_load_memory_bank', 'get_memory_bank', '_get_memory_bank', '_get_loss_func', '_init_cluster_labels', '_init_loss_function', '_load_image_transforms', '_load_datasets', '_create_model', '_set_models_to_eval', '_set_models_to_train', '_create_optimizer', 'train_one_epoch', 'validate', 'load_checkpoint', 'copy_checkpoint', 'save_checkpoint', '__doc__', '_set_seed', '_choose_device', '_create_dataloader', 'run', 'train', 'backup', 'finalise', 'cleanup', '__dict__', '__weakref__', '__repr__', '__hash__', '__str__', '__getattribute__', '__setattr__', '__delattr__', '__lt__', '__le__', '__eq__', '__ne__', '__gt__', '__ge__', '__new__', '__reduce_ex__', '__reduce__', '__subclasshook__', '__init_subclass__', '__format__', '__sizeof__', '__dir__', '__class__']
 
                 # save the activation of the last layer
                 activation_lastLayer = self.model.module.features_lastLayer
-                print(f'activation_lastLayer.shape = {activation_lastLayer.shape}')  # activation_lastLayer.shape = (9, 128)
+                print(
+                    f'activation_lastLayer.shape = {activation_lastLayer.shape}')  # activation_lastLayer.shape = (9, 128)
 
                 # save the activation of the second last layer
                 activation_secondLastLayer = self.model.module.features_secondLastLayer  # self.model.module.layer4[1].relu2
-                print(f'activation_secondLastLayer.shape = {activation_secondLastLayer.shape}')  # activation_secondLastLayer.shape = (9, 512)
+                print(
+                    f'activation_secondLastLayer.shape = {activation_secondLastLayer.shape}')  # activation_secondLastLayer.shape = (9, 512)
 
                 # create a folder to save the weights_difference
                 weights_difference_folder = './weights_difference/'
                 if not os.path.exists(weights_difference_folder):
                     os.makedirs(weights_difference_folder)
                 torch.save(weights_difference,
-                           f'{weights_difference_folder}/weights_difference_epoch{self.current_epoch}.pth.tar')
+                           f'{weights_difference_folder}/weights_difference_epoch{self.current_epoch}_batch_i{batch_i}.pth.tar')
                 torch.save(activation_lastLayer,
-                           f'{weights_difference_folder}/activation_lastLayer_epoch{self.current_epoch}.pth.tar')
+                           f'{weights_difference_folder}/activation_lastLayer_epoch{self.current_epoch}_batch_i{batch_i}.pth.tar')
                 torch.save(activation_secondLastLayer,
-                           f'{weights_difference_folder}/activation_secondLastLayer_epoch{self.current_epoch}.pth.tar')
+                           f'{weights_difference_folder}/activation_secondLastLayer_epoch{self.current_epoch}_batch_i{batch_i}.pth.tar')
+                print(colored(
+                    f'weights_difference saved to {weights_difference_folder}weights_difference_epoch{self.current_epoch}_batch_i{batch_i}.pth.tar',
+                    'red'))
 
         self.current_loss = epoch_loss.avg
         tqdm_batch.close()
@@ -609,6 +614,7 @@ class ImageNetFineTuneAgent(BaseAgent):
     @param config: DotMap
                    configuration settings
     """
+
     def __init__(self, config):
         super(ImageNetFineTuneAgent, self).__init__(config)
 
@@ -645,13 +651,13 @@ class ImageNetFineTuneAgent(BaseAgent):
         train_transforms = transforms.Compose([
             # these are borrowed from
             # https://github.com/zhirongw/lemniscate.pytorch/blob/master/main.py
-            transforms.RandomResizedCrop(image_size, scale=(0.2,1.)),
+            transforms.RandomResizedCrop(image_size, scale=(0.2, 1.)),
             transforms.RandomGrayscale(p=0.2),
             transforms.ColorJitter(0.4, 0.4, 0.4, 0.4),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                std=[0.229, 0.224, 0.225]),
+                                 std=[0.229, 0.224, 0.225]),
         ])
 
         if self.config.data_params.ten_crop:
@@ -668,7 +674,7 @@ class ImageNetFineTuneAgent(BaseAgent):
                 transforms.CenterCrop(image_size),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                    std=[0.229, 0.224, 0.225]),
+                                     std=[0.229, 0.224, 0.225]),
             ])
         return train_transforms, test_transforms
 
@@ -684,7 +690,7 @@ class ImageNetFineTuneAgent(BaseAgent):
 
     def _create_model(self):
         assert self.config.data_params.image_size == 224
-        model = nn.Linear(512*7*7, 1000)
+        model = nn.Linear(512 * 7 * 7, 1000)
         model = model.to(self.device)
         if self.multigpu:
             model = nn.DataParallel(model)
@@ -711,7 +717,6 @@ class ImageNetFineTuneAgent(BaseAgent):
         epoch_loss = AverageMeter()
 
         for batch_i, (_, images, labels) in enumerate(self.train_loader):
-
             batch_size = images.size(0)
 
             # cast elements to CUDA
