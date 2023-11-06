@@ -9,7 +9,7 @@ from src.utils.utils import load_json
 import os
 
 testMode = True
-localUbuntu = True
+localUbuntu = False
 
 def run(config_path, pre_checkpoint_dir):
     config = process_config(config_path)
