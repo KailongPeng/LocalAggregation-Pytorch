@@ -464,7 +464,7 @@ class ImageNetAgent(BaseAgent):
                     f'activation_secondLastLayer.shape = {activation_secondLastLayer.shape}')  # activation_secondLastLayer.shape = (9, 512)
 
                 # create a folder to save the weights_difference
-                weights_difference_folder = './weights_difference/'
+                weights_difference_folder = '/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/weights_difference/'
                 if not os.path.exists(weights_difference_folder):
                     os.makedirs(weights_difference_folder)
                 torch.save(weights_difference,
