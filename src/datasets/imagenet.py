@@ -33,6 +33,7 @@ ls /gpfs/milgram/project/turk-browne/projects/localize/ImageNet/ILSVRC/Data/CLS-
     train/: 1,000 folders (1000 classes)
     test/: 100,000 images
     val/: 50,000 images
+    note: create a temporary folder called ./validation/ for debugging, can be safely removed : (how did I created this folder? mkdir validation ; cp -r  train/n031* validation/)
     
     note
         https://www.image-net.org/download.php

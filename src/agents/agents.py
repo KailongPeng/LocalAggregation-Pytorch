@@ -382,7 +382,7 @@ class ImageNetAgent(BaseAgent):
             outputs = self.model(images)
             if Kailong:
                 # get the weights of the model
-                weights_previous = self.model.module.linear.weight.data.clone().to(device)
+                weights_previous = self.model.module.linear.weight.data.clone().to(self.device)
                 # self.model.module.linear.weight.data.shape = torch.Size([128, 512])  (#output channel, #input channel)
                 # weights_previous.shape = torch.Size([128, 512])
 

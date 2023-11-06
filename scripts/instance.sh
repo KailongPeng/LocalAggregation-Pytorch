@@ -24,4 +24,4 @@ echo "done"
 
 
 # cd /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch
-# sbatch ./scripts/instance.sh  # 25547786
+# sbatch ./scripts/instance.sh  # 25547786 25547831
