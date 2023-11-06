@@ -1,7 +1,8 @@
 import torch
 import numpy as np
+from tqdm import tqdm
 for epoch in range(0, 1):
-    for batch_i in range(0, 20):
+    for batch_i in tqdm(range(0, 20)):
         directory_torch_path = '/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/weights_difference/'
         directory_path = '/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/weights_difference/numpy/'
         # load activations and weights

@@ -1,25 +1,46 @@
+from __future__ import print_function
+import argparse
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+from torchvision import datasets, transforms
+from torch.optim.lr_scheduler import StepLR
+import random
+import os
+import numpy as np
+from tqdm import tqdm
+testMode = True
+
+
 def dataPrepare():
     fc1_activations = []
     fc2_activations = []
     fc2_partial_weights = []
     weight_changes = []
 
-    for epoch in range(1, 2):
-        for batch_idx in range(saveInterval - 1, trainBatchNum + 1, saveInterval):
-            directory_path = './features_weights'  # Replace with your desired path
-            os.makedirs(directory_path, exist_ok=True)
+    for epoch in range(0, 1):
+        for batch_i in range(0, 20):
+            directory_path = '/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/weights_difference/numpy/'
+            # torch.save(weights_difference,
+            #            f'{weights_difference_folder}/weights_difference_epoch{self.current_epoch}_batch_i{batch_i}.pth.tar')
+            # torch.save(activation_lastLayer,
+            #            f'{weights_difference_folder}/activation_lastLayer_epoch{self.current_epoch}_batch_i{batch_i}.pth.tar')
+            # torch.save(activation_secondLastLayer,
+            #            f'{weights_difference_folder}/activation_secondLastLayer_epoch{self.current_epoch}_batch_i{batch_i}.pth.tar')
 
             # load activations and weights
-            fc1_activation = torch.load(f'{directory_path}/fc1_activations_epoch{epoch}_batch_idx{batch_idx}.pth')
-            fc2_activation = torch.load(f'{directory_path}/fc2_activations_epoch{epoch}_batch_idx{batch_idx}.pth')
-            # fc2_partial_weight = torch.load(f'{directory_path}/fc2_partial_weights_batch_idx{batch_idx}.pth')
-            weight_change = torch.load(
-                f'{directory_path}/weight_change_epoch{epoch}_batch_idx{batch_idx}.pth').detach().numpy()
+            activation_lastLayer = np.load(
+                f'{directory_path}/activation_lastLayer_epoch{epoch}_batch_i{batch_i}.pth.tar')
+            activation_secondLastLayer = np.load(
+                f'{directory_path}/activation_secondLastLayer_epoch{epoch}_batch_i{batch_i}.pth.tar')
+            weight_change = np.load(
+                f'{directory_path}/weights_difference_epoch{epoch}_batch_i{batch_i}.pth.tar')  # .detach().numpy()
 
-            fc1_activations.append(fc1_activation)
-            fc2_activations.append(fc2_activation)
+            fc1_activations.append(activation_secondLastLayer[:, 11])  # (128 batch#, 512)
+            fc2_activations.append(activation_lastLayer[:, 10])  # (128 batch#, 128)
             # fc2_partial_weights.append(fc2_partial_weight)
-            weight_changes.append(weight_change)
+            weight_changes.append(weight_change[10, :][:, 11]) # (128 channel#, 512 channel#)
     fc1_activations = np.asarray(fc1_activations)
     fc2_activations = np.asarray(fc2_activations)
     # fc2_partial_weights = np.asarray(fc2_partial_weights)
@@ -42,12 +63,12 @@ def dataPrepare():
 
     for fc1_feature in range(10):
         for fc2_feature in range(5):
-            fc1_activation = fc1_activations[:, :, fc1_feature]
-            fc2_activation = fc2_activations[:, :, fc2_feature]
+            activation_lastLayer = fc1_activations[:, :, fc1_feature]
+            activation_secondLastLayer = fc2_activations[:, :, fc2_feature]
             weight_change = weight_changes[:, fc2_feature, fc1_feature]
             weight_changes_flatten.append(weight_change)
             # Calculate the co-activation
-            co_activation = np.multiply(fc1_activation, fc2_activation)
+            co_activation = np.multiply(activation_lastLayer, activation_secondLastLayer)
             print(f"co_activation.shape={co_activation.shape}")
             co_activation = np.mean(co_activation, axis=1)
             print(f"np.mean(co_activation, axis=1).shape={co_activation.shape}")
