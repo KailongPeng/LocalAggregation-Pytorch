@@ -38,7 +38,8 @@
         "weight_decay": 1e-4,
         "validate_freq": 1
     },
-    "num_epochs": 200,
+    "num_epochs": 1,
+    "note_num_epochs": "num_epochs = 200",
     "validate": true,
     "copy_checkpoint_freq": null,
     "instance_exp_dir": "/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/mnt/fs6/honglinc/experiments_data/experiments/imagenet_ir/res18_IR",
