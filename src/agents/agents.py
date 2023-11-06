@@ -882,5 +882,3 @@ class ImageNetFineTuneAgent(BaseAgent):
                 filename=filename, folder=self.config.checkpoint_dir,
                 copyname='checkpoint_epoch{}.pth.tar'.format(self.current_epoch),
             )
-
-
