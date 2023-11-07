@@ -1,18 +1,10 @@
 from __future__ import print_function
-# import argparse
-# import torch
-# import torch.nn as nn
-# import torch.nn.functional as F
-# import torch.optim as optim
-# from torchvision import datasets, transforms
-# from torch.optim.lr_scheduler import StepLR
-# import random
 import os
 import random
 from glob import glob
 import numpy as np
 from tqdm import tqdm
-testMode = True
+testMode = False
 
 
 def dataPrepare():
@@ -35,10 +27,10 @@ def dataPrepare():
             epochBatchNum.append(len(files))
             totalBatchNum += len(files)
         else:
-            epochBatchNum.append(len(files))
-            totalBatchNum += len(files)
+            epochBatchNum.append(len(files)-1)
+            totalBatchNum += len(files)-1  # minus 1 since the final batch usually has a different size, e.g. for batch size=128, the final batch only has 15 images
 
-    fc1_activations = np.zeros((totalBatchNum, 128, len(selected_channel_penultimate_layer)))
+    fc1_activations = np.zeros((totalBatchNum, 128, len(selected_channel_penultimate_layer)))  # [#batch, batch size, #selected units]
     fc2_activations = np.zeros((totalBatchNum, 128, len(selected_channel_last_layer)))
     weight_changes = np.zeros((totalBatchNum, len(selected_channel_last_layer), len(selected_channel_penultimate_layer)))
 
@@ -80,38 +72,37 @@ def dataPrepare():
     pairIDs = []
     for curr_fc1_feature in range(len(selected_channel_penultimate_layer)):  # 512*128 = 65536 pairs
         for curr_fc2_feature in range(len(selected_channel_last_layer)):
-            activation_lastLayer = fc1_activations[:, :, curr_fc1_feature]
+            activation_lastLayer = fc1_activations[:, :, curr_fc1_feature]  # [#batch, batch size， channel#]
             activation_secondLastLayer = fc2_activations[:, :, curr_fc2_feature]
             weight_change = weight_changes[:, curr_fc2_feature, curr_fc1_feature]
             weight_changes_flatten.append(weight_change)  # each batch has a single weight change
             # Calculate the co-activation
             co_activation = np.multiply(activation_lastLayer, activation_secondLastLayer)
-            print(f"co_activation.shape={co_activation.shape}")
+            # print(f"co_activation.shape={co_activation.shape}")
             # each batch has a single weight change but multiple co-activations, average across the batch to obtain a batch specific co-activation
             co_activation = np.mean(co_activation, axis=1)
-            print(f"np.mean(co_activation, axis=1).shape={co_activation.shape}")
+            # print(f"np.mean(co_activation, axis=1).shape={co_activation.shape}")
             co_activations_flatten.append(co_activation)
             pairIDs.append([selected_channel_penultimate_layer[curr_fc1_feature], selected_channel_last_layer[curr_fc2_feature]])
-
-            # Calculate the co-activation change
-            # co_activation_change = np.multiply(fc1_activation, weight_change)
-            # Calculate the co-activation change difference
-            # co_activation_change_difference = np.multiply(fc1_activation, fc2_partial_weight_difference)
-
-            # Save the co-activation and co-activation change
-            # directory_path = '/content/features_weights'
     return co_activations_flatten, weight_changes_flatten, pairIDs
 
 
 co_activations_flatten_, weight_changes_flatten_, pairIDs_ = dataPrepare()
+np.save('/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/temp/co_activations_flatten_.npy',
+        co_activations_flatten_)  # shape = [pair#, batch#]
+np.save('/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/temp/weight_changes_flatten_.npy',
+        weight_changes_flatten_)  # shape = [pair#, batch#]
+np.save('/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/temp/pairIDs_.npy',
+        pairIDs_)  # shape = [pair#, [ID1, ID2]]
+
 
 
 def run_NMPH(co_activations_flatten, weight_changes_flatten, pairIDs, rows=None, cols=None):
     import matplotlib.pyplot as plt
     if rows is None:
-        rows = np.sqrt(len(co_activations_flatten)).astype(int)
+        rows = int(np.ceil(np.sqrt(len(co_activations_flatten_)-1)))
     if cols is None:
-        cols = np.sqrt(len(co_activations_flatten)).astype(int)+1
+        cols = int(np.sqrt(len(co_activations_flatten)))
 
     fig, axs = plt.subplots(rows, cols, figsize=(15, 15))  # Create a subplot matrix
 
@@ -128,12 +119,18 @@ def run_NMPH(co_activations_flatten, weight_changes_flatten, pairIDs, rows=None,
         ax.scatter(x__, y__, s=10)  # 's' controls the size of the points
 
         # Add labels and a title to each subplot
-        ax.set_xlabel('Co-Activations')
-        ax.set_ylabel('Weight Changes')
-        ax.set_title(f'pairID={pairID}')
+        # ax.set_xlabel('Co-Activations')
+        # ax.set_ylabel('Weight Changes')
+        ax.set_title(f'pairID:{pairID}')
+
+        # Hide x and y axis ticks and tick labels
+        ax.set_xticks([])
+        ax.set_yticks([])
 
     plt.tight_layout()  # Adjust subplot layout for better visualization
+    plt.subplots_adjust(wspace=0, hspace=0)
     plt.show()
 
 
 run_NMPH(co_activations_flatten_, weight_changes_flatten_, pairIDs_)
+
