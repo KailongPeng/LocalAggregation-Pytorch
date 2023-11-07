@@ -17,22 +17,18 @@ CUDA_VISIBLE_DEVICES=0 python scripts/instance.py ./config/imagenet_ir.json
 """
 
 import os
-import sys
-import time
 
 import numpy as np
-# import pandas as pd
 
 print(f"conda env={os.environ['CONDA_DEFAULT_ENV']}")
 print(f"numpy version = {np.__version__}")
-# print(f"pandas version = {pd.__version__}")
 
 from utils import save_obj, load_obj, mkdir, getjobID_num, kp_and, kp_or, kp_rename, kp_copy, kp_run, kp_remove
-from utils import wait, check, checkEndwithDone, checkDone, check_jobIDs, check_jobArray, waitForEnd, \
-    jobID_running_myjobs
-from utils import readtxt, writetxt, deleteChineseCharactor, get_subjects, init
-from utils import getMonDate, checkDate, save_nib
-from utils import get_ROIMethod, bar, get_ROIList
+# from utils import wait, check, checkEndwithDone, checkDone, check_jobIDs, check_jobArray, waitForEnd, \
+#     jobID_running_myjobs
+# from utils import readtxt, writetxt, deleteChineseCharactor, get_subjects, init
+# from utils import getMonDate, checkDate, save_nib
+# from utils import get_ROIMethod, bar, get_ROIList
 
 
 def run_LA():
@@ -43,7 +39,7 @@ def run_LA():
 def run_NMPH():
     def torch2numpy():
         os.chdir('/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch')
-        kp_run("sbatch ./NMPH/torch2numpy.sh")
+        kp_run("sbatch ./NMPH/torch2numpy.sh")  # 25547997
 
     os.chdir('/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch')
     kp_run("sbatch ./NMPH/NMPH.sh")

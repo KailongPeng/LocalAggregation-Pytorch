@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH -p psych_day  # psych_gpu  # psych_day,psych_gpu,psych_scavenge,psych_week， psych_scavenge
-#SBATCH --job-name=LA
+#SBATCH --job-name=torch2numpy
 #SBATCH --ntasks=1 --nodes=1
 #SBATCH --time=6:00:00
 #SBATCH --output=logs/%J.out  # %A_%a.out
