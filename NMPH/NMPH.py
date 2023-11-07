@@ -106,24 +106,34 @@ def dataPrepare():
 co_activations_flatten_, weight_changes_flatten_, pairIDs_ = dataPrepare()
 
 
-def run_NMPH(co_activations_flatten, weight_changes_flatten, pairIDs):
-    # plot co_activations_flatten_ as x axis and weight_changes_flatten_ as y axis as scatter plot
+def run_NMPH(co_activations_flatten, weight_changes_flatten, pairIDs, rows=None, cols=None):
     import matplotlib.pyplot as plt
-    # Create a scatter plot
+    if rows is None:
+        rows = np.sqrt(len(co_activations_flatten)).astype(int)
+    if cols is None:
+        cols = np.sqrt(len(co_activations_flatten)).astype(int)+1
+
+    fig, axs = plt.subplots(rows, cols, figsize=(15, 15))  # Create a subplot matrix
+
     for i in range(len(co_activations_flatten)):
         x__ = co_activations_flatten[i]
         y__ = weight_changes_flatten[i]
         pairID = pairIDs[i]
-        plt.scatter(x__, y__, s=10)  # 's' controls the size of the points
 
-        # Add labels and a title
-        plt.xlabel('Co-Activations')
-        plt.ylabel('Weight Changes')
-        plt.title(f'pairID={pairID}')
+        row = i // cols
+        col = i % cols
 
-        # Show the plot
-        plt.show()
+        ax = axs[row, col]  # Select the appropriate subplot
 
+        ax.scatter(x__, y__, s=10)  # 's' controls the size of the points
+
+        # Add labels and a title to each subplot
+        ax.set_xlabel('Co-Activations')
+        ax.set_ylabel('Weight Changes')
+        ax.set_title(f'pairID={pairID}')
+
+    plt.tight_layout()  # Adjust subplot layout for better visualization
+    plt.show()
 
 
 run_NMPH(co_activations_flatten_, weight_changes_flatten_, pairIDs_)
