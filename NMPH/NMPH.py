@@ -100,7 +100,7 @@ co_activations_flatten_, weight_changes_flatten_, pairIDs_ = dataPrepare()
 def run_NMPH(co_activations_flatten, weight_changes_flatten, pairIDs, rows=None, cols=None):
     import matplotlib.pyplot as plt
     if rows is None:
-        rows = int(np.ceil(np.sqrt(len(co_activations_flatten_)-1)))
+        rows = int(np.ceil(np.sqrt(len(co_activations_flatten_))))
     if cols is None:
         cols = int(np.sqrt(len(co_activations_flatten)))
 
