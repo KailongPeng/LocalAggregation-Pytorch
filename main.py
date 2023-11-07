@@ -36,14 +36,15 @@ from utils import get_ROIMethod, bar, get_ROIList
 
 
 def run_LA():
-    # cd /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch
     os.chdir('/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch')
-    # sbatch ./scripts/instance.sh  # 25547786 25547831 25547832 25547836 25547837 25547933 25547938 25547941 25547946
-    kp_run("sbatch ./scripts/instance.sh")
+    kp_run("sbatch ./scripts/instance.sh") # 25547786 25547831 25547832 25547836 25547837 25547933 25547938 25547941 25547946
 
 
 def run_NMPH():
+    def torch2numpy():
+        os.chdir('/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch')
+        kp_run("sbatch ./NMPH/torch2numpy.sh")
+
     os.chdir('/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch')
-    # sbatch ./scripts/instance.sh  # 25547786 25547831 25547832 25547836 25547837 25547933 25547938 25547941 25547946
     kp_run("sbatch ./NMPH/NMPH.sh")
 
