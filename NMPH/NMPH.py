@@ -4,7 +4,7 @@ import random
 from glob import glob
 import numpy as np
 from tqdm import tqdm
-testMode = False
+testMode = True
 
 
 def dataPrepare():
@@ -16,18 +16,19 @@ def dataPrepare():
     selected_channel_last_layer = random.sample(range(0, 128), 5)
 
     totalBatchNum = 0
-    epochBatchNum = []
+    epochBatchNum = {}
+    startFromEpoch = 0
     totalEpochNum = 1
 
     directory_path = '/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/weights_difference/numpy/'
-    for epoch in range(0, totalEpochNum):
+    for epoch in range(startFromEpoch, totalEpochNum):
         files = glob(f'{directory_path}/activation_lastLayer_epoch{epoch}_batch_i*.pth.tar.npy')
         if testMode:
             files = files[:50]
-            epochBatchNum.append(len(files))
+            epochBatchNum[epoch] = len(files)
             totalBatchNum += len(files)
         else:
-            epochBatchNum.append(len(files)-1)
+            epochBatchNum[epoch] = len(files)-1
             totalBatchNum += len(files)-1  # minus 1 since the final batch usually has a different size, e.g. for batch size=128, the final batch only has 15 images
 
     fc1_activations = np.zeros((totalBatchNum, 128, len(selected_channel_penultimate_layer)))  # [#batch, batch size, #selected units]
@@ -35,7 +36,7 @@ def dataPrepare():
     weight_changes = np.zeros((totalBatchNum, len(selected_channel_last_layer), len(selected_channel_penultimate_layer)))
 
     currBatchNum = 0
-    for epoch in range(0, totalEpochNum):
+    for epoch in range(startFromEpoch, totalEpochNum):
         for batch_i in tqdm(range(0, epochBatchNum[epoch])):
             # torch.save(weights_difference,
             #            f'{weights_difference_folder}/weights_difference_epoch{self.current_epoch}_batch_i{batch_i}.pth.tar')
@@ -88,13 +89,12 @@ def dataPrepare():
 
 
 co_activations_flatten_, weight_changes_flatten_, pairIDs_ = dataPrepare()
-np.save('/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/temp/co_activations_flatten_.npy',
-        co_activations_flatten_)  # shape = [pair#, batch#]
-np.save('/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/temp/weight_changes_flatten_.npy',
-        weight_changes_flatten_)  # shape = [pair#, batch#]
-np.save('/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/temp/pairIDs_.npy',
-        pairIDs_)  # shape = [pair#, [ID1, ID2]]
-
+# np.save('/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/temp/co_activations_flatten_.npy',
+#         co_activations_flatten_)  # shape = [pair#, batch#]
+# np.save('/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/temp/weight_changes_flatten_.npy',
+#         weight_changes_flatten_)  # shape = [pair#, batch#]
+# np.save('/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/temp/pairIDs_.npy',
+#         pairIDs_)  # shape = [pair#, [ID1, ID2]]
 
 
 def run_NMPH(co_activations_flatten, weight_changes_flatten, pairIDs, rows=None, cols=None):

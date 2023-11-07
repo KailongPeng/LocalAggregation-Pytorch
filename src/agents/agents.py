@@ -464,14 +464,14 @@ class ImageNetAgent(BaseAgent):
                     f'activation_secondLastLayer.shape = {activation_secondLastLayer.shape}')  # activation_secondLastLayer.shape = (9, 512)
 
                 # create a folder to save the weights_difference
-                weights_difference_folder = '/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/weights_difference/'
+                weights_difference_folder = '/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/weights_difference/numpy/'
                 if not os.path.exists(weights_difference_folder):
                     os.makedirs(weights_difference_folder)
-                torch.save(weights_difference,
+                torch.save(np.asarray(weights_difference),
                            f'{weights_difference_folder}/weights_difference_epoch{self.current_epoch}_batch_i{batch_i}.pth.tar')
-                torch.save(activation_lastLayer,
+                torch.save(np.asarray(activation_lastLayer),
                            f'{weights_difference_folder}/activation_lastLayer_epoch{self.current_epoch}_batch_i{batch_i}.pth.tar')
-                torch.save(activation_secondLastLayer,
+                torch.save(np.asarray(activation_secondLastLayer),
                            f'{weights_difference_folder}/activation_secondLastLayer_epoch{self.current_epoch}_batch_i{batch_i}.pth.tar')
                 print(colored(
                     f'weights_difference saved to {weights_difference_folder}weights_difference_epoch{self.current_epoch}_batch_i{batch_i}.pth.tar',
