@@ -1,6 +1,7 @@
 # from comet_ml import Experiment
 # experiment = Experiment(api_key="l4wUtHmBfo1SqjrOHLsLtU0zN", project_name='general', workspace="honglin-chen")
 import sys
+
 sys.path.append('/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch')
 from copy import deepcopy
 from src.agents.agents import *
@@ -10,6 +11,7 @@ import os
 
 testMode = True
 localUbuntu = False
+
 
 def run(config_path, pre_checkpoint_dir):
     config = process_config(config_path)
@@ -30,6 +32,7 @@ def run(config_path, pre_checkpoint_dir):
 
 if __name__ == "__main__" or testMode:
     import argparse
+
     parser = argparse.ArgumentParser()
     if testMode:
         parser.add_argument('config', type=str, nargs='?',
@@ -41,7 +44,8 @@ if __name__ == "__main__" or testMode:
             args.config = '/opt/project/config/imagenet_la.json'
         elif os.path.exists('/home/kp/Desktop/LocalAggregation-Pytorch/config/imagenet_la.json'):
             args.config = '/home/kp/Desktop/LocalAggregation-Pytorch/config/imagenet_la.json'
-        elif os.path.exists('/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_la.json'):
+        elif os.path.exists(
+                '/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_la.json'):
             args.config = '/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_la.json'
         else:
             raise Exception("config file not found")
