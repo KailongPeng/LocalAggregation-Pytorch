@@ -60,7 +60,7 @@ if __name__ == "__main__" or testMode:
         parser.add_argument('config', type=str, default='path to config file')
         args = parser.parse_args()
         config_json = load_json(args.config)
-
+    print(f"config_json={config_json}")
     pre_checkpoint_dir = None
     if config_json['pretrained_exp_dir'] is not None:
         print("NOTE: found pretrained model...continue training")

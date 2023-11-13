@@ -1,5 +1,5 @@
 {
-    "exp_base": "/home/kp/Desktop/LocalAggregation-Pytorch/mnt/fs6/honglinc/experiments_data",
+    "exp_base": "/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/mnt/fs6/honglinc/experiments_data",
     "debug": true,
     "exp_name": "imagenet_ir",
     "exp_id": "res18_IR",
