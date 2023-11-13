@@ -37,8 +37,10 @@ if __name__ == "__main__" or testMode:
     if testMode:
         parser.add_argument('config', type=str, nargs='?',
                             default='/opt/project/config/imagenet_la.json')
-
-        args = parser.parse_args("")
+        if localUbuntu:
+            args = parser.parse_args("")
+        else:
+            args = parser.parse_args()
 
         if os.path.exists('/opt/project/config/imagenet_la.json'):
             args.config = '/opt/project/config/imagenet_la.json'
@@ -53,6 +55,7 @@ if __name__ == "__main__" or testMode:
         if localUbuntu:
             args.config = '/home/kp/Desktop/LocalAggregation-Pytorch/config/imagenet_la_localUbuntu.json'
         config_json = load_json(args.config)
+        print(f"config_json={config_json}")
     else:
         parser.add_argument('config', type=str, default='path to config file')
         args = parser.parse_args()

@@ -31,9 +31,16 @@ from utils import save_obj, load_obj, mkdir, getjobID_num, kp_and, kp_or, kp_ren
 # from utils import get_ROIMethod, bar, get_ROIList
 
 
+def prepareImageNet_data():
+    """train
+    validation_reorganized
+    src/datasets/prepare_ILSVR2012.py"""
+
+
 def run_LA():
     os.chdir('/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch')
-    kp_run("sbatch ./scripts/instance.sh") # 25547786 25547831 25547832 25547836 25547837 25547933 25547938 25547941 25547946
+    kp_run("sbatch ./scripts/instance.sh /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/"
+               "config/imagenet_la.json") # 25547786 25547831 25547832 25547836 25547837 25547933 25547938 25547941 25547946
 
 
 def run_NMPH():
@@ -48,7 +55,8 @@ def run_NMPH():
 def wholeSet():
     def run_LA():
         os.chdir('/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch')
-        kp_run("sbatch ./scripts/instance.sh")
+        kp_run("sbatch ./scripts/instance.sh /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/"
+               "config/imagenet_la.json")
 
 
     def run_crossEntropy():

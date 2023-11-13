@@ -16,7 +16,7 @@ python --version
 python -u /gpfs/milgram/pi/turk-browne/projects/sandbox/sandbox/docker/hello.py
 
 cd /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch
-CUDA_VISIBLE_DEVICES=0 python -u ./scripts/instance.py  "/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_la.json" # /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch
+CUDA_VISIBLE_DEVICES=0 python -u ./scripts/instance.py  "${1}"
 
 nvidia-smi
 

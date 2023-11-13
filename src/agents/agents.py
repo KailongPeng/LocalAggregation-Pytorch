@@ -331,7 +331,7 @@ class ImageNetAgent(BaseAgent):
         assert self.config.data_params.image_size == 224
 
         if self.config.model_params.resnet_version.startswith('preact-'):
-            model = PreActResNet18(num_classes=self.config.model_params.out_dim)
+            model = PreActResNet18(num_classes=self.config.model_params.out_dim, config=self.config)
         elif self.config.model_params.resnet_version.startswith('resnet'):
             resnet_class = getattr(models, self.config.model_params.resnet_version)
             model = resnet_class(pretrained=False,
