@@ -1,6 +1,6 @@
 {
     "exp_base": "/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/mnt/fs6/honglinc/experiments_data",
-    "note1": "exp_base = /home/kp/Desktop/LocalAggregation-Pytorch/mnt/fs6/honglinc/experiments_data",
+    "note_exp_base": "exp_base = /home/kp/Desktop/LocalAggregation-Pytorch/mnt/fs6/honglinc/experiments_data",
     "debug":true,
     "exp_name": "imagenet_la",
     "exp_id": "res18_LA",
@@ -43,6 +43,6 @@
     "validate": true,
     "copy_checkpoint_freq": null,
     "instance_exp_dir": "/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/mnt/fs6/honglinc/experiments_data/experiments/imagenet_ir/res18_IR",
-    "note2": "instance_exp_dir = /home/kp/Desktop/LocalAggregation-Pytorch/mnt/fs6/honglinc/experiments_data/experiments/imagenet_ir/res18_IR",
+    "note_instance_exp_dir": "instance_exp_dir = /home/kp/Desktop/LocalAggregation-Pytorch/mnt/fs6/honglinc/experiments_data/experiments/imagenet_ir/res18_IR",
     "pretrained_exp_dir": null
 }

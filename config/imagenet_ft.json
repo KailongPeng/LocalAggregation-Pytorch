@@ -1,6 +1,6 @@
 {
-    "exp_base": "/home/kp/Desktop/LocalAggregation-Pytorch/mnt/fs6/honglinc/experiments_data",
-    "debug": false,
+    "exp_base": "/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/mnt/fs6/honglinc/experiments_data",
+    "debug": true,
     "exp_name": "imagenet_ft",
     "exp_id": "res18_trans",
     "agent": "ImageNetFineTuneAgent",
@@ -26,9 +26,11 @@
         "weight_decay": 1e-4,
         "validate_freq": 1
     },
-    "num_epochs": 90,
+    "num_epochs": 2,
+    "note_num_epochs": "num_epochs = 90",
     "validate": true,
     "copy_checkpoint_freq": null,
-    "trained_agent_exp_dir": "/home/kp/Desktop/LocalAggregation-Pytorch/mnt/fs6/honglinc/experiments_data/experiments/imagenet_la/res18_LA",
+    "trained_agent_exp_dir": "/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/mnt/fs6/honglinc/experiments_data/experiments/imagenet_la/res18_LA",
+    "note_trained_agent_exp_dir": "trained_agent_exp_dir=/home/kp/Desktop/LocalAggregation-Pytorch/mnt/fs6/honglinc/experiments_data/experiments/imagenet_la/res18_LA",
     "continue_exp_dir": null
 }

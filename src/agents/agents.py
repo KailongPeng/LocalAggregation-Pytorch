@@ -728,20 +728,21 @@ class ImageNetFineTuneAgent(BaseAgent):
                 embeddings = embeddings.view(batch_size, -1)
 
             logits = self.model(embeddings)
-            loss = self.criterion(logits, labels)
+            loss = self.criterion(logits, labels)  # self.criterion = nn.CrossEntropyLoss().to(self.device)  # Compute the loss using CrossEntropyLoss
 
             self.optim.zero_grad()
-            loss.backward()
-            self.optim.step()
+            loss.backward()  # Backpropagate the gradients
+            self.optim.step()  # Update the model parameters using the optimizer
 
-            epoch_loss.update(loss.item(), batch_size)
-            tqdm_batch.set_postfix({"Loss": epoch_loss.avg})
+            # Update metrics and monitoring
+            epoch_loss.update(loss.item(), batch_size)  # Update the average loss
+            tqdm_batch.set_postfix({"Loss": epoch_loss.avg})  # Update the progress bar
 
             self.summary_writer.add_scalars("epoch/loss", {'loss': epoch_loss.val},
-                                            self.current_iteration)
-            self.train_loss.append(epoch_loss.val)
-            self.current_iteration += 1
-            tqdm_batch.update()
+                                            self.current_iteration)  # Write the loss to TensorBoard
+            self.train_loss.append(epoch_loss.val)  # Save the loss
+            self.current_iteration += 1  # Update the iteration count
+            tqdm_batch.update()  # Update the progress bar
 
         self.current_loss = epoch_loss.avg
         tqdm_batch.close()
