@@ -1,4 +1,5 @@
 # regroup val set
+import json
 import os
 import shutil
 import xml.etree.ElementTree as ET
@@ -62,4 +63,42 @@ for curr_val_img in tqdm(os.listdir("/gpfs/milgram/project/turk-browne/projects/
 
 # "/gpfs/milgram/project/turk-browne/projects/localize/ImageNet/ILSVRC/Annotations/CLS-LOC/val/ILSVRC2012_val_00000001.xml"
 # sample 128 classes from the 1000 classes
+
+
+
+def moveTo_128():
+    # the full folder /gpfs/milgram/project/turk-browne/projects/localize/ImageNet/ILSVRC/Data/CLS-LOC/train is splitted into
+    # /gpfs/milgram/project/turk-browne/projects/localize/ImageNet/ILSVRC/Data/CLS-LOC/train and /gpfs/milgram/project/turk-browne/projects/localize/ImageNet/ILSVRC/Data/CLS-LOC/train_128, one has 1000-128=872 classes and the other has 128 classes.
+    # the full folder /gpfs/milgram/project/turk-browne/projects/localize/ImageNet/ILSVRC/Data/CLS-LOC/validation_reorganized is splitted into
+    # /gpfs/milgram/project/turk-browne/projects/localize/ImageNet/ILSVRC/Data/CLS-LOC/validation_reorganized and /gpfs/milgram/project/turk-browne/projects/localize/ImageNet/ILSVRC/Data/CLS-LOC/val_128, one has 1000-128=872 classes and the other has 128 classes.
+
+    def load_imagenet_class_index(__json_file_path, __num_classes):
+        with open(__json_file_path, 'r') as f:
+            imagenet_class_index = json.load(f)
+
+        class_labels = [imagenet_class_index[str(i)][0] for i in range(__num_classes)]
+        return class_labels
+
+    # Example usage:
+    json_file_path = ('/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/'
+                      'src/datasets/imagenet_class_index.json')
+    num_classes = 128
+
+    class_labels = load_imagenet_class_index(json_file_path, num_classes)
+
+    for class_label in tqdm(class_labels):
+        # move folder f"/gpfs/milgram/project/turk-browne/projects/localize/ImageNet/ILSVRC/Data/CLS-LOC/validation_reorganized/{class_label}/" to f"/gpfs/milgram/project/turk-browne/projects/localize/ImageNet/ILSVRC/Data/CLS-LOC/val_128"
+        shutil.move(
+            f"/gpfs/milgram/project/turk-browne/projects/localize/ImageNet/ILSVRC/Data/CLS-LOC/validation_reorganized/{class_label}/",
+            f"/gpfs/milgram/project/turk-browne/projects/localize/ImageNet/ILSVRC/Data/CLS-LOC/val_128/{class_label}/")
+
+        # move folder f"/gpfs/milgram/project/turk-browne/projects/localize/ImageNet/ILSVRC/Data/CLS-LOC/train/{class_label}/" to f"/gpfs/milgram/project/turk-browne/projects/localize/ImageNet/ILSVRC/Data/CLS-LOC/train_128"
+        shutil.move(
+            f"/gpfs/milgram/project/turk-browne/projects/localize/ImageNet/ILSVRC/Data/CLS-LOC/train/{class_label}/",
+            f"/gpfs/milgram/project/turk-browne/projects/localize/ImageNet/ILSVRC/Data/CLS-LOC/train_128/{class_label}/")
+
+
+
+
+
 

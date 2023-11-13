@@ -66,7 +66,7 @@ assert IMAGENET_DIR is not None
 class ImageNet(data.Dataset):
     def __init__(self, train=True, imagenet_dir=IMAGENET_DIR, image_transforms=None, allowed_subfolders_num=None):
         super().__init__()
-        split_dir = 'train' if train else 'validation_reorganized'
+        split_dir = 'train_128' if train else 'val_128'
         self.imagenet_dir = os.path.join(imagenet_dir, split_dir)
 
         # Create the ImageFolder dataset with the filtered subfolders

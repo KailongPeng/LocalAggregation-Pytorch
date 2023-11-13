@@ -68,6 +68,7 @@ def wholeSet():
     def run_LA_layerNorm():
         os.chdir('/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch')
         kp_run("sbatch ./scripts/instance.sh /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_la_layerNorm.json")
+        # 25553694
 
 
     def run_crossEntropy_layerNorm():
