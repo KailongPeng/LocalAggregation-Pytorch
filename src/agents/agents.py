@@ -315,7 +315,7 @@ class ImageNetAgent(BaseAgent):
         # build training dataset
         train_dataset = ImageNet(train=True, image_transforms=train_transforms, allowed_subfolders_num=128)
         # build validation set
-        val_dataset = ImageNet(train=False, image_transforms=test_transforms)
+        val_dataset = ImageNet(train=False, image_transforms=test_transforms, allowed_subfolders_num=128)
 
         # save some stuff to config
         self.config.data_params.n_channels = 3

@@ -45,28 +45,30 @@ def run_NMPH():
     kp_run("sbatch ./NMPH/NMPH.sh")
 
 
-def run_LA():
-    pass
+def wholeSet():
+    def run_LA():
+        os.chdir('/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch')
+        kp_run("sbatch ./scripts/instance.sh")
 
 
-def run_crossEntropy():
-    pass
+    def run_crossEntropy():
+        pass
 
 
-def run_IR():
-    pass
+    def run_IR():
+        pass
 
 
-def run_LA_layerNorm():
-    pass
+    def run_LA_layerNorm():
+        pass
 
 
-def run_crossEntropy_layerNorm():
-    pass
+    def run_crossEntropy_layerNorm():
+        pass
 
 
-def run_IR_layerNorm():
-    pass
+    def run_IR_layerNorm():
+        pass
 
 
 def testNMPH_curveFitting():
@@ -83,6 +85,7 @@ def testNMPH_curveFitting():
 #
 #     class_labels = [imagenet_class_index[str(i)][0] for i in range(__num_classes)]
 #     return class_labels
+#
 # # Example usage:
 # json_file_path = ('/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/'
 #                   'src/datasets/imagenet_class_index.json')
