@@ -70,32 +70,32 @@ class ImageNet(data.Dataset):
         self.imagenet_dir = os.path.join(imagenet_dir, split_dir)
 
         # Create the ImageFolder dataset with the filtered subfolders
-        dataset = datasets.ImageFolder(self.imagenet_dir, transform=image_transforms)
-        self.classes = dataset.classes
+        self.dataset = datasets.ImageFolder(self.imagenet_dir, transform=image_transforms)
+        self.classes = self.dataset.classes
         # select the indices of all other folders
         # idx = [i for i in range(len(dataset)) if dataset.imgs[i][1] < allowed_subfolders_num]
 
-        def load_imagenet_class_index(__json_file_path, __num_classes):
-            with open(__json_file_path, 'r') as f:
-                imagenet_class_index = json.load(f)
-
-            class_labels = [imagenet_class_index[str(i)][0] for i in range(__num_classes)]
-            return class_labels
-
-        # Example usage:
-        json_file_path = ('/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/'
-                          'src/datasets/imagenet_class_index.json')
-        num_classes = allowed_subfolders_num
-
-        class_labels = load_imagenet_class_index(json_file_path, num_classes)
-
-        idx = [i for i in range(len(dataset)) if dataset.classes[dataset.imgs[i][1]] in class_labels]
-        self.classes = class_labels
-        # build the appropriate subset
-
-        from torch.utils.data import Subset
-        self.dataset = Subset(dataset,
-                              idx)  # https://stackoverflow.com/questions/66979537/filter-class-subfolder-with-pytorch-imagefolder
+        # def load_imagenet_class_index(__json_file_path, __num_classes):
+        #     with open(__json_file_path, 'r') as f:
+        #         imagenet_class_index = json.load(f)
+        #
+        #     class_labels = [imagenet_class_index[str(i)][0] for i in range(__num_classes)]
+        #     return class_labels
+        #
+        # # Example usage:
+        # json_file_path = ('/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/'
+        #                   'src/datasets/imagenet_class_index.json')
+        # num_classes = allowed_subfolders_num
+        #
+        # class_labels = load_imagenet_class_index(json_file_path, num_classes)
+        #
+        # idx = [i for i in range(len(dataset)) if dataset.classes[dataset.imgs[i][1]] in class_labels]
+        # self.classes = class_labels
+        # # build the appropriate subset
+        #
+        # from torch.utils.data import Subset
+        # self.dataset = Subset(dataset,
+        #                       idx)  # https://stackoverflow.com/questions/66979537/filter-class-subfolder-with-pytorch-imagefolder
         # print(f"len(self.dataset)={len(self.dataset)}")
 
     def __getitem__(self, index):
@@ -107,7 +107,6 @@ class ImageNet(data.Dataset):
 
     def __len__(self):
         return len(self.dataset)
-
 
 # import os
 # from torchvision.datasets import VisionDataset
