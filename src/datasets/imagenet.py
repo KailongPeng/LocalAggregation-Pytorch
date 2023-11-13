@@ -31,6 +31,7 @@ cd /gpfs/milgram/data/imagenet/ ; find . -name "*.JPEG" | wc -l
 
 ls /gpfs/milgram/project/turk-browne/projects/localize/ImageNet/ILSVRC/Data/CLS-LOC/
     train/: 1,000 folders (1000 classes)
+        Training data is contained in 1000 folders, one folder per class (each folder should contain 1,300 JPEG images). 
     test/: 100,000 images
     val/: 50,000 images
     note: create a temporary folder called ./validation/ for debugging, can be safely removed : (how did I created this folder? mkdir validation ; cp -r  train/n031* validation/)
@@ -49,6 +50,8 @@ ls /gpfs/milgram/project/turk-browne/projects/localize/ImageNet/ILSVRC/Data/CLS-
             https://github.com/PaddlePaddle/benchmark/blob/master/static_graph/image_classification/pytorch/SENet/ImageData/ILSVRC2012_devkit_t12/data/ILSVRC2012_validation_ground_truth.txt
         However, I have not checked whether these labels are correct. I think you can simply check whether they are correct just by eyeballing whether the labels are correct or not. (edited)
         Do you need the test set category too? Since I have not found that just now. If you do need them, we can dig deeper to find it.
+        
+        in this preact-resnet18, the out_dim is set to be 128, which is the number of classes I need in the imagenet dataset.        
 """
 
 for path in DIR_LIST:

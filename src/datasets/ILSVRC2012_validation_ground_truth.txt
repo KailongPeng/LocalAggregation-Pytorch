@@ -1,0 +1,2 @@
+validation label can be found here:
+e.g. /gpfs/milgram/project/turk-browne/projects/localize/ImageNet/ILSVRC/Annotations/CLS-LOC/val/ILSVRC2012_val_00000001.xml
