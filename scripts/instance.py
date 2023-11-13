@@ -9,7 +9,7 @@ from src.utils.setup import process_config
 from src.utils.utils import load_json
 import os
 
-testMode = True
+testMode = False
 localUbuntu = False
 
 

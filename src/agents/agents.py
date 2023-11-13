@@ -211,7 +211,7 @@ class BaseAgent(object):
 class ImageNetAgent(BaseAgent):
     def __init__(self, config):
         super(ImageNetAgent, self).__init__(config)
-
+        self.config = config
         self._init_memory_bank()
         self._init_cluster_labels()
 

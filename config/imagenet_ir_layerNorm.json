@@ -44,5 +44,5 @@
     "copy_checkpoint_freq": null,
     "pretrained_exp_dir": null,
     "layer_norm": true,
-    "exp_name_kailong": "imagenet_la_layer_norm"
+    "exp_name_kailong": "imagenet_ir_layer_norm"
 }

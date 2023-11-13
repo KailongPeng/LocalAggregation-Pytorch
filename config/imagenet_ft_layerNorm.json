@@ -34,5 +34,5 @@
     "note_trained_agent_exp_dir": "trained_agent_exp_dir=/home/kp/Desktop/LocalAggregation-Pytorch/mnt/fs6/honglinc/experiments_data/experiments/imagenet_la/res18_LA",
     "continue_exp_dir": null,
     "layer_norm": true,
-    "exp_name_kailong": "imagenet_la_layer_norm"
+    "exp_name_kailong": "imagenet_ft_layer_norm"
 }
