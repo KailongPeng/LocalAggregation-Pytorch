@@ -468,11 +468,11 @@ class ImageNetAgent(BaseAgent):
                 if not os.path.exists(weights_difference_folder):
                     os.makedirs(weights_difference_folder)
                 np.save(f'{weights_difference_folder}/weights_difference_epoch{self.current_epoch}_batch_i{batch_i}.npy',
-                        np.asarray(weights_difference))
+                        weights_difference.cpu().numpy())
                 np.save(f'{weights_difference_folder}/activation_lastLayer_epoch{self.current_epoch}_batch_i{batch_i}.npy',
-                        np.asarray(activation_lastLayer))
+                        activation_lastLayer.cpu().numpy())
                 np.save(f'{weights_difference_folder}/activation_secondLastLayer_epoch{self.current_epoch}_batch_i{batch_i}.npy',
-                        np.asarray(activation_secondLastLayer))
+                        activation_secondLastLayer.cpu().numpy())
                 print(colored(
                     f'weights_difference saved to {weights_difference_folder}weights_difference_epoch{self.current_epoch}_batch_i{batch_i}.pth.tar',
                     'red'))

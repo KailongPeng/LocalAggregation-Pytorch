@@ -54,29 +54,28 @@ def run_NMPH():
 
 def wholeSet():
     def run_LA():
-        pass
+        kp_run("sbatch ./scripts/instance.sh /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_la.json")
 
 
     def run_crossEntropy():
-        pass
+        kp_run("sbatch ./scripts/instance.sh /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_ft.json")
 
 
     def run_IR():
-        pass
+        kp_run("sbatch ./scripts/instance.sh /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_ir.json")
 
 
     def run_LA_layerNorm():
-        os.chdir('/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch')
         kp_run("sbatch ./scripts/instance.sh /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_la_layerNorm.json")
-        # 25553694 25553721
+        # 25553694 25553721 25553722
 
 
     def run_crossEntropy_layerNorm():
-        pass
+        kp_run("sbatch ./scripts/instance.sh /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_ft_layerNorm.json")
 
 
     def run_IR_layerNorm():
-        pass
+        kp_run("sbatch ./scripts/instance.sh /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_ir_layerNorm.json")
 
 
 def testNMPH_curveFitting():
