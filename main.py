@@ -54,9 +54,7 @@ def run_NMPH():
 
 def wholeSet():
     def run_LA():
-        os.chdir('/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch')
-        kp_run("sbatch ./scripts/instance.sh /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/"
-               "config/imagenet_la.json")
+        pass
 
 
     def run_crossEntropy():
@@ -68,7 +66,8 @@ def wholeSet():
 
 
     def run_LA_layerNorm():
-        pass
+        os.chdir('/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch')
+        kp_run("sbatch ./scripts/instance.sh /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_la_layerNorm.json")
 
 
     def run_crossEntropy_layerNorm():
