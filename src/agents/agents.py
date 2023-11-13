@@ -470,9 +470,9 @@ class ImageNetAgent(BaseAgent):
                 np.save(f'{weights_difference_folder}/weights_difference_epoch{self.current_epoch}_batch_i{batch_i}.npy',
                         weights_difference.cpu().numpy())
                 np.save(f'{weights_difference_folder}/activation_lastLayer_epoch{self.current_epoch}_batch_i{batch_i}.npy',
-                        activation_lastLayer.cpu().numpy())
+                        np.asarray(activation_lastLayer))
                 np.save(f'{weights_difference_folder}/activation_secondLastLayer_epoch{self.current_epoch}_batch_i{batch_i}.npy',
-                        activation_secondLastLayer.cpu().numpy())
+                        np.asarray(activation_secondLastLayer))
                 print(colored(
                     f'weights_difference saved to {weights_difference_folder}weights_difference_epoch{self.current_epoch}_batch_i{batch_i}.pth.tar',
                     'red'))
