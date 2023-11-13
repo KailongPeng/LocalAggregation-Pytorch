@@ -63,11 +63,21 @@ assert IMAGENET_DIR is not None
 
 
 class ImageNet(data.Dataset):
-    def __init__(self, train=True, imagenet_dir=IMAGENET_DIR, image_transforms=None):
+    def __init__(self, train=True, imagenet_dir=IMAGENET_DIR, image_transforms=None, allowed_subfolders_num=None):
         super().__init__()
         split_dir = 'train' if train else 'validation'
         self.imagenet_dir = os.path.join(imagenet_dir, split_dir)
-        self.dataset = datasets.ImageFolder(self.imagenet_dir, image_transforms)
+
+        # Create the ImageFolder dataset with the filtered subfolders
+        dataset = datasets.ImageFolder(self.imagenet_dir, transform=image_transforms)
+
+        # select the indices of all other folders
+        idx = [i for i in range(len(dataset)) if dataset.imgs[i][1] < allowed_subfolders_num]
+        # build the appropriate subset
+
+        from torch.utils.data import Subset
+        self.dataset = Subset(dataset, idx)  # https://stackoverflow.com/questions/66979537/filter-class-subfolder-with-pytorch-imagefolder
+        # print(f"len(self.dataset)={len(self.dataset)}")
 
     def __getitem__(self, index):
         image_data = list(self.dataset.__getitem__(index))

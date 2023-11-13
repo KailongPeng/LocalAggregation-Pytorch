@@ -44,3 +44,25 @@ def run_NMPH():
     os.chdir('/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch')
     kp_run("sbatch ./NMPH/NMPH.sh")
 
+# When loading self.imagenet_dir, how to make sure that this function only loads the specified subfolder name like n01440764 in a text file but not any other subfolder as image classes?
+# example text file where the n0... stands for subfolder name: {"0": ["n01440764", "tench"], "1": ["n01443537", "goldfish"], "2": ["n01484850", "great_white_shark"], "3": ["n01491361", "tiger_shark"]}
+
+
+# def load_imagenet_class_index(__json_file_path, __num_classes):
+#     with open(__json_file_path, 'r') as f:
+#         imagenet_class_index = json.load(f)
+#
+#     class_labels = [imagenet_class_index[str(i)][0] for i in range(__num_classes)]
+#     return class_labels
+# # Example usage:
+# json_file_path = ('/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/'
+#                   'src/datasets/imagenet_class_index.json')
+# num_classes = allowed_subfolders_num
+#
+# class_labels = load_imagenet_class_index(json_file_path, num_classes)
+#
+# # Filter subfolders based on the allowed_subfolders list
+# if allowed_subfolders_num:
+#     subfolders = [folder for folder in os.listdir(self.imagenet_dir) if folder in class_labels]
+# else:
+#     subfolders = None

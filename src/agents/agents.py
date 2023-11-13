@@ -313,7 +313,7 @@ class ImageNetAgent(BaseAgent):
     def _load_datasets(self):
         train_transforms, test_transforms = self._load_image_transforms()
         # build training dataset
-        train_dataset = ImageNet(train=True, image_transforms=train_transforms)
+        train_dataset = ImageNet(train=True, image_transforms=train_transforms, allowed_subfolders_num=128)
         # build validation set
         val_dataset = ImageNet(train=False, image_transforms=test_transforms)
 
