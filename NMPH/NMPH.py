@@ -8,6 +8,8 @@ from scipy.optimize import curve_fit
 from scipy.stats import pearsonr
 import random
 
+import matplotlib.pyplot as plt
+from matplotlib.cm import get_cmap
 
 testMode = False
 testBatchNum = 50
@@ -19,22 +21,16 @@ else:
 print(f"jobID={jobID}")
 if jobID == 1:
     exp_name = "imagenet_la"
-    # directory_path = '/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/imagenet_la/weights_difference/numpy/'
 elif jobID == 2:
     exp_name = "imagenet_ft"
-    # directory_path = '/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/imagenet_ft/weights_difference/numpy/'
 elif jobID == 3:
     exp_name = "imagenet_ir"
-    # directory_path = '/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/imagenet_ir/weights_difference/numpy/'
 elif jobID == 4:
     exp_name = "imagenet_la_layer_norm"
-    # directory_path = '/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/imagenet_la_layerNorm/weights_difference/numpy/'
 elif jobID == 5:
     exp_name = "imagenet_ft_layer_norm"
-    # directory_path = '/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/imagenet_ft_layerNorm/weights_difference/numpy/'
 elif jobID == 6:
     exp_name = "imagenet_ir_layer_norm"
-    # directory_path = '/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/imagenet_ir_layerNorm/weights_difference/numpy/'
 else:
     raise Exception("jobID not found")
 
@@ -138,12 +134,14 @@ co_activations_flatten_, weight_changes_flatten_, pairIDs_ = dataPrepare()
 if not os.path.exists(f'{directory_path}/temp'):
     os.mkdir(f'{directory_path}/temp')
 
-np.save(f'{directory_path}/temp/co_activations_flatten_.npy',
-        co_activations_flatten_)  # shape = [pair#, batch#]
-np.save(f'{directory_path}/temp/weight_changes_flatten_.npy',
-        weight_changes_flatten_)  # shape = [pair#, batch#]
-np.save(f'{directory_path}/pairIDs_.npy',
-        pairIDs_)  # shape = [pair#, [ID1, ID2]]
+if not testMode:
+    np.save(f'{directory_path}/temp/co_activations_flatten_.npy',
+            co_activations_flatten_)  # shape = [pair#, batch#]
+    np.save(f'{directory_path}/temp/weight_changes_flatten_.npy',
+            weight_changes_flatten_)  # shape = [pair#, batch#]
+    np.save(f'{directory_path}/temp/pairIDs_.npy',
+            pairIDs_)  # shape = [pair#, [ID1, ID2]]
+
 
 # co_activations_flatten_ = np.load(f'{directory_path}/temp/co_activations_flatten_.npy',
 #                                   allow_pickle=True)  # shape = [pair#, batch#]
@@ -154,8 +152,8 @@ np.save(f'{directory_path}/pairIDs_.npy',
 
 
 def cubic_fit_correlation_with_params(x, y, n_splits=10, random_state=42, return_subset=True):
-    def cubic_function(x, a, b, c, d):
-        return a * x**3 + b * x**2 + c * x + d
+    def cubic_function(_x, a, b, c, d):
+        return a * _x ** 3 + b * _x ** 2 + c * _x + d
 
     # Function to compute correlation coefficient
     def compute_correlation(observed, predicted):
@@ -209,36 +207,42 @@ def cubic_fit_correlation_with_params(x, y, n_splits=10, random_state=42, return
 
 def run_NMPH(co_activations_flatten, weight_changes_flatten, pairIDs, rows=None, cols=None, plotFig=False):
     if plotFig:
-        import matplotlib.pyplot as plt
-        from matplotlib.cm import get_cmap
         if rows is None:
-            rows = int(np.ceil(np.sqrt(len(co_activations_flatten_))))
+            rows = int(np.ceil(np.sqrt(len(co_activations_flatten))))
         if cols is None:
             cols = int(np.sqrt(len(co_activations_flatten)))
 
         fig, axs = plt.subplots(rows, cols, figsize=(15, 15))  # Create a subplot matrix
         cmap = get_cmap('viridis')  # Choose a colormap (you can change 'viridis' to your preferred one)
+    else:
+        axs = None
+        cmap = None
 
     mean_correlation_coefficients = []
-
+    # recorded_data = []  # Store recorded data for visualization
+    mean_parameters = []
+    x_partials = []
+    y_partials = []
     for i in tqdm(range(len(co_activations_flatten))):
         if testMode:
             x__ = co_activations_flatten[i][:testBatchNum]
-            print(f"x__={x__}")
             y__ = weight_changes_flatten[i][:testBatchNum]
-            print(f"y__={y__}")
             pairID = pairIDs[i]
-            print(f"pairID={pairID}")
         else:
             x__ = co_activations_flatten[i]
             y__ = weight_changes_flatten[i]
             pairID = pairIDs[i]
-        mean_correlation_coefficient, mean_parameter, x_partial, y_partial = cubic_fit_correlation_with_params(x__, y__,
-                                                                                       n_splits=10,
-                                                                                       random_state=42,
-                                                                                       return_subset=True
-                                                                                       )
+        mean_correlation_coefficient, mean_parameter, x_partial, y_partial = cubic_fit_correlation_with_params(
+            x__, y__,
+            n_splits=10,
+            random_state=42,
+            return_subset=True
+        )
         mean_correlation_coefficients.append(mean_correlation_coefficient)
+        mean_parameters.append(mean_parameter)
+        x_partials.append(x_partial)
+        y_partials.append(y_partial)
+
         if plotFig:
             row = i // cols
             col = i % cols
@@ -257,19 +261,67 @@ def run_NMPH(co_activations_flatten, weight_changes_flatten, pairIDs, rows=None,
             # Hide x and y-axis ticks and tick labels
             ax.set_xticks([])
             ax.set_yticks([])
+
     if plotFig:
         plt.tight_layout()  # Adjust subplot layout for better visualization
         plt.subplots_adjust(wspace=0, hspace=0)
         plt.show()
-    return mean_correlation_coefficients
+
+    mean_correlation_coefficients = np.array(mean_correlation_coefficients)
+    p_value = np.nanmean(mean_correlation_coefficients < 0)
+    print(f"{exp_name} p value = {p_value}")
+
+    # Return mean_correlation_coefficients along with recorded_data
+    return mean_correlation_coefficients, np.array(mean_parameters), np.array(x_partials), np.array(y_partials)
 
 
-mean_correlation_coefficients_ = run_NMPH(co_activations_flatten_, weight_changes_flatten_, pairIDs_)
+if testMode:
+    mean_correlation_coefficients_, mean_parameters_, x_partials_, y_partials_ = run_NMPH(
+        co_activations_flatten_[:4], weight_changes_flatten_[:4], pairIDs_[:4])
+else:
+    mean_correlation_coefficients_, mean_parameters_, x_partials_, y_partials_ = run_NMPH(
+        co_activations_flatten_, weight_changes_flatten_, pairIDs_)
 
-mean_correlation_coefficients_ = np.array(mean_correlation_coefficients_)
-np.save(f'{directory_path}/temp/mean_correlation_coefficients_.npy', mean_correlation_coefficients_)
-p_value = np.nanmean(mean_correlation_coefficients_ < 0)
-print(f"{exp_name} p value = {p_value}")
+
+if not testMode:
+    np.save(f'{directory_path}/temp/mean_correlation_coefficients_.npy', mean_correlation_coefficients_)
+    np.save(f'{directory_path}/temp/mean_parameters_.npy', mean_parameters_)
+    np.save(f'{directory_path}/temp/x_partials_.npy', x_partials_)
+    np.save(f'{directory_path}/temp/y_partials_.npy', y_partials_)
+
+
+x_partials_ = x_partials_.flatten()
+y_partials_ = y_partials_.flatten()
+mean_parameters_avg = np.mean(mean_parameters_, axis=0)
+
+
+def plot_scatter_and_cubic(x_partials, y_partials, mean_parameters):
+    def cubic_function(_x, a, b, c, d):
+        print(f"a={a}, b={b}, c={c}, d={d}")
+        return a * _x ** 3 + b * _x ** 2 + c * _x + d
+    # Scatter plot
+    plt.scatter(x_partials, y_partials, label='Data Points', color='green', marker='o', s=30)
+
+    # Fit cubic curve using curve_fit
+    # popt, _ = curve_fit(cubic_function, x_partials_, y_partials_)
+
+    # Generate points for the fitted cubic curve
+    x_fit = np.linspace(min(x_partials), max(x_partials), 100)
+    y_fit = cubic_function(x_fit, *mean_parameters)
+
+    # Plot the fitted cubic curve
+    plt.plot(x_fit, y_fit, label='Fitted Cubic Curve', color='red')
+
+    # Add labels and a legend
+    plt.xlabel('X Partials')
+    plt.ylabel('Y Partials')
+    plt.legend()
+
+    # Show the plot
+    plt.show()
+
+
+# plot_scatter_and_cubic(x_partials_, y_partials_, mean_parameters_avg)
 
 
 # # Example usage
@@ -277,4 +329,4 @@ print(f"{exp_name} p value = {p_value}")
 # y__ = np.array([1.71735883e-06, -1.57840550e-05, 3.84114683e-05, 4.14438546e-05, 1.91703439e-05, 4.61861491e-05, 3.67611647e-05, 1.37425959e-05, -5.71087003e-06, -2.46353447e-05, -1.38916075e-05, 7.54334033e-05, 7.71433115e-05, 4.81046736e-05, 2.15470791e-05, -2.89455056e-06, -1.20028853e-05, -2.79136002e-05, 1.59293413e-05, -6.66454434e-06, -2.77347863e-05, -4.52324748e-05, -2.76193023e-05, -4.45954502e-05, -1.90772116e-05, -3.65227461e-05, -2.76044011e-05, -1.98855996e-05, -1.44354999e-05, -3.10726464e-05, 1.36781484e-04, 1.21731311e-04, 1.04047358e-04, 7.56606460e-05])
 # mean_correlation_coefficients, mean_params = cubic_fit_correlation(x__, y__)
 # print(f"The averaged correlation coefficients for the 10 folds are: {mean_correlation_coefficients}")
-#
+
