@@ -1,12 +1,13 @@
 from __future__ import print_function
 import os
-import random
 from glob import glob
 import numpy as np
 from tqdm import tqdm
 import sys
 from scipy.optimize import curve_fit
 from scipy.stats import pearsonr
+import random
+
 
 testMode = False
 testBatchNum = 50
@@ -152,7 +153,7 @@ np.save(f'{directory_path}/pairIDs_.npy',
 #                    allow_pickle=True)  # shape = [pair#, [ID1, ID2]]
 
 
-def cubic_fit_correlation_with_params(x, y, n_splits=10, random_state=42):
+def cubic_fit_correlation_with_params(x, y, n_splits=10, random_state=42, return_subset=True):
     def cubic_function(x, a, b, c, d):
         return a * x**3 + b * x**2 + c * x + d
 
@@ -196,9 +197,14 @@ def cubic_fit_correlation_with_params(x, y, n_splits=10, random_state=42):
     # Average correlation coefficients and parameters across folds
     mean_correlation = np.mean(correlation_coefficients)
     mean_params = np.mean(fitted_params, axis=0)
-    print(f"mean_correlation={mean_correlation}")
-    print(f"mean_params={mean_params}")
-    return mean_correlation, mean_params
+
+    if return_subset:
+        # Randomly choose 9% of the data for future visualization
+        subset_size = 10  # int(0.09 * len(x))
+        subset_indices = random.sample(range(len(x)), subset_size)
+        return mean_correlation, mean_params, x[subset_indices], y[subset_indices]
+    else:
+        return mean_correlation, mean_params
 
 
 def run_NMPH(co_activations_flatten, weight_changes_flatten, pairIDs, rows=None, cols=None, plotFig=False):
@@ -214,6 +220,7 @@ def run_NMPH(co_activations_flatten, weight_changes_flatten, pairIDs, rows=None,
         cmap = get_cmap('viridis')  # Choose a colormap (you can change 'viridis' to your preferred one)
 
     mean_correlation_coefficients = []
+
     for i in tqdm(range(len(co_activations_flatten))):
         if testMode:
             x__ = co_activations_flatten[i][:testBatchNum]
@@ -226,7 +233,11 @@ def run_NMPH(co_activations_flatten, weight_changes_flatten, pairIDs, rows=None,
             x__ = co_activations_flatten[i]
             y__ = weight_changes_flatten[i]
             pairID = pairIDs[i]
-        mean_correlation_coefficient, mean_params_ = cubic_fit_correlation_with_params(x__, y__, n_splits=10, random_state=42)
+        mean_correlation_coefficient, mean_parameter, x_partial, y_partial = cubic_fit_correlation_with_params(x__, y__,
+                                                                                       n_splits=10,
+                                                                                       random_state=42,
+                                                                                       return_subset=True
+                                                                                       )
         mean_correlation_coefficients.append(mean_correlation_coefficient)
         if plotFig:
             row = i // cols
