@@ -48,13 +48,24 @@ class PreActBlock(nn.Module):
         self.relu2 = nn.ReLU(inplace=True)
 
     def forward(self, x):
+
         print(f"before norm x.shape={x.shape}")
-        out = self.relu1(self.norm1(x))
+        x = x.permute(0, 2, 3, 1)
+        print(f"permute before norm x.shape={x.shape}")
+        x = self.norm1(x)
+        x = x.permute(0, 3, 1, 2)
+
+        out = self.relu1(x)
         shortcut = self.shortcut(out) if hasattr(self, 'shortcut') else x
 
         out = self.conv1(out)
         print(f"before norm out.shape={out.shape}")
-        out = self.conv2(self.relu2(self.norm2(out)))
+
+        out = out.permute(0, 2, 3, 1)
+        out = self.norm2(out)
+        out = out.permute(0, 3, 1, 2)
+
+        out = self.conv2(self.relu2(out))
         out += shortcut
         return out
 
