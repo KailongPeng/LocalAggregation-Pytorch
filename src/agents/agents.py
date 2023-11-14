@@ -621,22 +621,21 @@ class ImageNetFineTuneAgent(BaseAgent):
 
         if self.config.model_params.resnet_version == 'preact-resnet18':
             # model = PreActResNet18()
-            model = PreActResNet18(num_classes=self.config.model_params.out_dim, config=self.config)
+            self.model = PreActResNet18(num_classes=self.config.model_params.out_dim, config=self.config)
         else:
             raise NotImplementedError
 
-        model = model.cuda()
+        self.model = self.model.cuda()
         if self.multigpu:
-            model = nn.DataParallel(model)
+            self.model = nn.DataParallel(self.model)
 
         load_pretrained_model = False
         if load_pretrained_model:
             filename = os.path.join(self.config.trained_agent_exp_dir, 'checkpoints', 'model_best.pth.tar')
             checkpoint = torch.load(filename, map_location='cpu')
             model_state_dict = checkpoint['model_state_dict']
-            model.load_state_dict(model_state_dict)
+            self.model.load_state_dict(model_state_dict)
 
-        self.model = model
         # self.resnet = nn.Sequential(*list(self.resnet.module.children())[:-1])
         # self.resnet = nn.Sequential(*list(self.resnet.children())[:-1])
 
@@ -706,7 +705,7 @@ class ImageNetFineTuneAgent(BaseAgent):
         # model = nn.DataParallel(self.resnet)  # parallel GPU utilization
         # model = model.to(self.device)
         # cudnn.benchmark = True
-        self.model = self.model
+        pass
 
     def _set_models_to_eval(self):
         self.model = self.model.eval()
@@ -852,14 +851,15 @@ class ImageNetFineTuneAgent(BaseAgent):
                 images = images.to(self.device)
                 labels = labels.to(self.device)
 
-                embeddings = self.resnet(images)
-
-                if self.config.data_params.ten_crop:
-                    embeddings = embeddings.view(batch_size, ncrops, -1).mean(1)
-                else:
-                    embeddings = embeddings.view(batch_size, -1)
-
-                logits = self.model(embeddings)
+                # embeddings = self.resnet(images)
+                #
+                # if self.config.data_params.ten_crop:
+                #     embeddings = embeddings.view(batch_size, ncrops, -1).mean(1)
+                # else:
+                #     embeddings = embeddings.view(batch_size, -1)
+                #
+                # logits = self.model(embeddings)
+                logits = self.model(images)
                 acc = self.accuracy(logits, labels)[0]
                 top1.update(acc.item(), batch_size)
 
@@ -903,7 +903,7 @@ class ImageNetFineTuneAgent(BaseAgent):
                 self.model.load_state_dict(model_state_dict)
 
                 resnet_state_dict = checkpoint['resnet_state_dict']
-                self.resnet.load_state_dict(resnet_state_dict)
+                self.model.load_state_dict(resnet_state_dict)
 
             if load_optim:
                 optim_state_dict = checkpoint['optim_state_dict']
@@ -925,7 +925,7 @@ class ImageNetFineTuneAgent(BaseAgent):
 
     def save_checkpoint(self, filename="checkpoint.pth.tar"):
         out_dict = {
-            'resnet_state_dict': self.resnet.state_dict(),
+            'resnet_state_dict': self.model.state_dict(),
             'model_state_dict': self.model.state_dict(),
             'optim_state_dict': self.optim.state_dict(),
             'epoch': self.current_epoch,
