@@ -50,10 +50,13 @@ class PreActBlock(nn.Module):
         self.relu2 = nn.ReLU(inplace=True)
 
     def forward(self, x):
+        print(f"50: x.shape={x.shape}")
         out = self.relu1(self.norm1(x))
+        print(f"52: x.shape={x.shape}")
         shortcut = self.shortcut(out) if hasattr(self, 'shortcut') else x
 
         out = self.conv1(out)
+        print(f"56: x.shape={x.shape}")
         out = self.conv2(self.relu2(self.norm2(out)))
         out += shortcut
         return out
