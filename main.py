@@ -98,12 +98,13 @@ def wholeSet():
     def run_NMPH():
         os.chdir('/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch')
         kp_run("sbatch --array=1-6 ./NMPH/NMPH.sh")
-        # 25554100
-        # 25554106
+        # 25554106: 25554106_3 25554106_6 is dead
         # imagenet_la p value = 0.039703369140625
         # imagenet_ft p value = 0.07373046875
         # imagenet_la_layer_norm p value = 0.035400390625
         # imagenet_ft_layer_norm p value = 0.084716796875
+
+        # 25554278
 
 
 def testNMPH_curveFitting():

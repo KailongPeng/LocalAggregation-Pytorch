@@ -31,7 +31,7 @@
         "loss": "InstanceDiscriminationLossModule"
     },
     "optim_params": {
-        "batch_size": 16,
+        "batch_size": 128,
         "note1": "batch_size = 128",
         "learning_rate": 0.03,
         "lr_decay_schedule": null,
