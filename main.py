@@ -99,6 +99,11 @@ def wholeSet():
         os.chdir('/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch')
         kp_run("sbatch --array=1-6 ./NMPH/NMPH.sh")
         # 25554100
+        # 25554106
+        # imagenet_la p value = 0.039703369140625
+        # imagenet_ft p value = 0.07373046875
+        # imagenet_la_layer_norm p value = 0.035400390625
+        # imagenet_ft_layer_norm p value = 0.084716796875
 
 
 def testNMPH_curveFitting():

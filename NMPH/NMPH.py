@@ -152,7 +152,7 @@ np.save(f'{directory_path}/pairIDs_.npy',
 #                    allow_pickle=True)  # shape = [pair#, [ID1, ID2]]
 
 
-def cubic_fit_correlation(x, y, n_splits=10, random_state=42):
+def cubic_fit_correlation_with_params(x, y, n_splits=10, random_state=42):
     def cubic_function(x, a, b, c, d):
         return a * x**3 + b * x**2 + c * x + d
 
@@ -167,8 +167,9 @@ def cubic_fit_correlation(x, y, n_splits=10, random_state=42):
     indices = np.arange(len(x))
     np.random.shuffle(indices)
 
-    # Initialize array to store correlation coefficients
+    # Initialize arrays to store correlation coefficients and parameters
     correlation_coefficients = []
+    fitted_params = []
 
     for curr_split in range(n_splits):
         # Split data into training and testing sets
@@ -189,7 +190,15 @@ def cubic_fit_correlation(x, y, n_splits=10, random_state=42):
         correlation_coefficient = compute_correlation(y_test, y_pred)
         correlation_coefficients.append(correlation_coefficient)
 
-    return np.mean(correlation_coefficients)
+        # Store fitted parameters
+        fitted_params.append(params)
+
+    # Average correlation coefficients and parameters across folds
+    mean_correlation = np.mean(correlation_coefficients)
+    mean_params = np.mean(fitted_params, axis=0)
+    print(f"mean_correlation={mean_correlation}")
+    print(f"mean_params={mean_params}")
+    return mean_correlation, mean_params
 
 
 def run_NMPH(co_activations_flatten, weight_changes_flatten, pairIDs, rows=None, cols=None, plotFig=False):
@@ -217,7 +226,7 @@ def run_NMPH(co_activations_flatten, weight_changes_flatten, pairIDs, rows=None,
             x__ = co_activations_flatten[i]
             y__ = weight_changes_flatten[i]
             pairID = pairIDs[i]
-        mean_correlation_coefficient = cubic_fit_correlation(x__, y__, n_splits=10, random_state=42)
+        mean_correlation_coefficient, mean_params_ = cubic_fit_correlation_with_params(x__, y__, n_splits=10, random_state=42)
         mean_correlation_coefficients.append(mean_correlation_coefficient)
         if plotFig:
             row = i // cols
@@ -255,6 +264,6 @@ print(f"{exp_name} p value = {p_value}")
 # # Example usage
 # x__ = np.array([-0.01337063, -0.01693626, -0.03028395, -0.03174323, -0.04779751, -0.05754384, -0.06399068, -0.07061033, -0.09292604, -0.08798023, -0.095779, -0.08514577, -0.09195771, -0.09968637, -0.08177572, -0.08894159, -0.09934128, -0.08480207, -0.08318947, -0.09024453, -0.08300266, -0.10122141, -0.10633385, -0.10665936, -0.10781459, -0.1259854, -0.13187735, -0.13555743, -0.140931, -0.14450621, -0.1364753, -0.15242977, -0.14012327, -0.10739904])
 # y__ = np.array([1.71735883e-06, -1.57840550e-05, 3.84114683e-05, 4.14438546e-05, 1.91703439e-05, 4.61861491e-05, 3.67611647e-05, 1.37425959e-05, -5.71087003e-06, -2.46353447e-05, -1.38916075e-05, 7.54334033e-05, 7.71433115e-05, 4.81046736e-05, 2.15470791e-05, -2.89455056e-06, -1.20028853e-05, -2.79136002e-05, 1.59293413e-05, -6.66454434e-06, -2.77347863e-05, -4.52324748e-05, -2.76193023e-05, -4.45954502e-05, -1.90772116e-05, -3.65227461e-05, -2.76044011e-05, -1.98855996e-05, -1.44354999e-05, -3.10726464e-05, 1.36781484e-04, 1.21731311e-04, 1.04047358e-04, 7.56606460e-05])
-# mean_correlation_coefficients = constrained_cubic_fit_correlation(x__, y__)
+# mean_correlation_coefficients, mean_params = cubic_fit_correlation(x__, y__)
 # print(f"The averaged correlation coefficients for the 10 folds are: {mean_correlation_coefficients}")
 #
