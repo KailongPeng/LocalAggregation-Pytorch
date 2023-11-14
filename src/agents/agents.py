@@ -702,11 +702,11 @@ class ImageNetFineTuneAgent(BaseAgent):
     #         model = nn.DataParallel(model)
     #     self.model = model
 
-    # def _create_model(self):
-    #     model = nn.DataParallel(self.resnet)  # parallel GPU utilization
-    #     model = model.to(self.device)
-    #     cudnn.benchmark = True
-    #     self.model = model
+    def _create_model(self):
+        # model = nn.DataParallel(self.resnet)  # parallel GPU utilization
+        # model = model.to(self.device)
+        # cudnn.benchmark = True
+        self.model = self.model
 
     def _set_models_to_eval(self):
         self.model = self.model.eval()
