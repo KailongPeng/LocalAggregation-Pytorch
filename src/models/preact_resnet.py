@@ -30,7 +30,8 @@ class PreActBlock(nn.Module):
 
     def __init__(self, in_planes, planes, stride=1, enable_shortcut=False, config=None):
         super(PreActBlock, self).__init__()
-        if config.layer_norm:
+        self.config = config
+        if self.config.layer_norm:
             self.norm1 = layer_norm((in_planes,))
         else:
             self.norm1 = batch_norm(in_planes)
@@ -40,7 +41,7 @@ class PreActBlock(nn.Module):
                 nn.Conv2d(in_planes, self.expansion * planes, kernel_size=1, stride=stride, bias=False)
             )
         self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
-        if config.layer_norm:
+        if self.config.layer_norm:
             self.norm2 = layer_norm((planes,))
         else:
             self.norm2 = batch_norm(planes)
