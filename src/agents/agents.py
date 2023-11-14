@@ -784,12 +784,12 @@ class ImageNetFineTuneAgent(BaseAgent):
                 #   ['config', 'logger', 'train_dataset', 'val_dataset', 'train_ordered_labels', 'train_loader', 'train_len', 'val_loader', 'val_len', 'is_cuda', 'cuda', 'manual_seed', 'multigpu', 'device', 'gpu_devices', 'model', 'optim', 'current_epoch', 'current_iteration', 'current_val_iteration', 'current_loss', 'current_val_metric', 'best_val_metric', 'iter_with_no_improv', 'summary_writer', 'memory_bank', 'cluster_labels', 'loss_fn', 'km', 'parallel_helper_idxs', 'val_acc', 'train_loss', 'train_extra', 'first_iteration_kmeans', '__module__', '__init__', '_init_memory_bank', 'load_memory_bank', '_load_memory_bank', 'get_memory_bank', '_get_memory_bank', '_get_loss_func', '_init_cluster_labels', '_init_loss_function', '_load_image_transforms', '_load_datasets', '_create_model', '_set_models_to_eval', '_set_models_to_train', '_create_optimizer', 'train_one_epoch', 'validate', 'load_checkpoint', 'copy_checkpoint', 'save_checkpoint', '__doc__', '_set_seed', '_choose_device', '_create_dataloader', 'run', 'train', 'backup', 'finalise', 'cleanup', '__dict__', '__weakref__', '__repr__', '__hash__', '__str__', '__getattribute__', '__setattr__', '__delattr__', '__lt__', '__le__', '__eq__', '__ne__', '__gt__', '__ge__', '__new__', '__reduce_ex__', '__reduce__', '__subclasshook__', '__init_subclass__', '__format__', '__sizeof__', '__dir__', '__class__']
 
                 # save the activation of the last layer
-                activation_lastLayer = self.model.module.features_lastLayer
+                activation_lastLayer = self.model.features_lastLayer
                 print(
                     f'activation_lastLayer.shape = {activation_lastLayer.shape}')  # activation_lastLayer.shape = (9, 128)
 
                 # save the activation of the second last layer
-                activation_secondLastLayer = self.model.module.features_secondLastLayer  # self.model.module.layer4[1].relu2
+                activation_secondLastLayer = self.model.features_secondLastLayer  # self.model.module.layer4[1].relu2
                 print(
                     f'activation_secondLastLayer.shape = {activation_secondLastLayer.shape}')  # activation_secondLastLayer.shape = (9, 512)
 
