@@ -152,7 +152,6 @@ class PreActResNet(nn.Module):
         out = self.layer3(out)
         out = self.layer4(out)
 
-
         out = self.norm(out)
         out = self.relu(out)
 
@@ -186,7 +185,6 @@ def PreActResNet101(num_classes=128, config=None):
 
 def PreActResNet152(num_classes=128, config=None):
     return PreActResNet(PreActBottleneck, [3, 8, 36, 3], num_classes, config=config)
-
 
 
 import os
@@ -394,6 +392,7 @@ class BaseAgent(object):
         """
         if self.multigpu:
             del os.environ['CUDA_VISIBLE_DEVICES']
+
 
 class ImageNetFineTuneAgent(BaseAgent):
     """
@@ -679,6 +678,7 @@ class ImageNetFineTuneAgent(BaseAgent):
                 filename=filename, folder=self.config.checkpoint_dir,
                 copyname='checkpoint_epoch{}.pth.tar'.format(self.current_epoch),
             )
+
 
 from src.utils.setup import process_config
 
