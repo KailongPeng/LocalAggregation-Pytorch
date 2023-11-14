@@ -636,7 +636,7 @@ class ImageNetFineTuneAgent(BaseAgent):
             model_state_dict = checkpoint['model_state_dict']
             model.load_state_dict(model_state_dict)
 
-        self.resnet = model
+        self.model = model
         # self.resnet = nn.Sequential(*list(self.resnet.module.children())[:-1])
         # self.resnet = nn.Sequential(*list(self.resnet.children())[:-1])
 
@@ -702,11 +702,11 @@ class ImageNetFineTuneAgent(BaseAgent):
     #         model = nn.DataParallel(model)
     #     self.model = model
 
-    def _create_model(self):
-        model = nn.DataParallel(self.resnet)  # parallel GPU utilization
-        model = model.to(self.device)
-        cudnn.benchmark = True
-        self.model = model
+    # def _create_model(self):
+    #     model = nn.DataParallel(self.resnet)  # parallel GPU utilization
+    #     model = model.to(self.device)
+    #     cudnn.benchmark = True
+    #     self.model = model
 
     def _set_models_to_eval(self):
         self.model = self.model.eval()
