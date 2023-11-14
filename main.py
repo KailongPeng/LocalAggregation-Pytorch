@@ -92,7 +92,12 @@ def wholeSet():
     # 25553770 25553771 25553772 25553773 25553774 25553775
     # 25553788 25553789 25553790 25553791 25553792 25553793
     # 25553795 25553796 25553797 25553798 25553799 25553800
+    # 25553828 25553829 25553830 25553831 25553832 25553833
     """
+
+    def run_NMPH():
+        os.chdir('/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch')
+        kp_run("sbatch --array=1-4 ./NMPH/NMPH.sh")
 
 
 def testNMPH_curveFitting():
