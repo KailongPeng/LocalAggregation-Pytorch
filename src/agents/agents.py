@@ -638,10 +638,10 @@ class ImageNetFineTuneAgent(BaseAgent):
         self.resnet = model
         self.resnet = nn.Sequential(*list(self.resnet.module.children())[:-1])
 
-        # freeze all of these parameters
-        self.resnet = self.resnet.eval()
-        for param in self.resnet.parameters():
-            param.requires_grad = False
+        # # freeze all of these parameters
+        # self.resnet = self.resnet.eval()
+        # for param in self.resnet.parameters():
+        #     param.requires_grad = False
 
         self.val_acc = []
         self.train_loss = []
