@@ -97,7 +97,7 @@ def wholeSet():
 
     def run_NMPH():
         os.chdir('/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch')
-        kp_run("sbatch --array=1-4 ./NMPH/NMPH.sh")
+        kp_run("sbatch --array=1-6 ./NMPH/NMPH.sh")
 
 
 def testNMPH_curveFitting():
