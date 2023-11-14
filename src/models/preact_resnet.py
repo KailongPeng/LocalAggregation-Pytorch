@@ -49,7 +49,6 @@ class PreActBlock(nn.Module):
 
     def forward(self, x):
 
-        print(f"before norm x.shape={x.shape}")
         x = x.permute(0, 2, 3, 1)
         print(f"permute before norm x.shape={x.shape}")
         x = self.norm1(x)
@@ -59,9 +58,9 @@ class PreActBlock(nn.Module):
         shortcut = self.shortcut(out) if hasattr(self, 'shortcut') else x
 
         out = self.conv1(out)
-        print(f"before norm out.shape={out.shape}")
 
         out = out.permute(0, 2, 3, 1)
+        print(f"permute before norm out.shape={out.shape}")
         out = self.norm2(out)
         out = out.permute(0, 3, 1, 2)
 
