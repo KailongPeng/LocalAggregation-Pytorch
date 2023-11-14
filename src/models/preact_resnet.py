@@ -40,15 +40,20 @@ class PreActBlock(nn.Module):
                 nn.Conv2d(in_planes, self.expansion * planes, kernel_size=1, stride=stride, bias=False)
             )
         self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
-        self.norm2 = batch_norm(planes)
+        if config.layer_norm:
+            self.norm2 = layer_norm((planes,))
+        else:
+            self.norm2 = batch_norm(planes)
         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=1, padding=1, bias=False)
         self.relu2 = nn.ReLU(inplace=True)
 
     def forward(self, x):
+        print(f"before norm x.shape={x.shape}")
         out = self.relu1(self.norm1(x))
         shortcut = self.shortcut(out) if hasattr(self, 'shortcut') else x
 
         out = self.conv1(out)
+        print(f"before norm out.shape={out.shape}")
         out = self.conv2(self.relu2(self.norm2(out)))
         out += shortcut
         return out
