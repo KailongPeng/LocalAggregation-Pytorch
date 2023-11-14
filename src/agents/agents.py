@@ -636,9 +636,10 @@ class ImageNetFineTuneAgent(BaseAgent):
             model.load_state_dict(model_state_dict)
 
         self.resnet = model
-        self.resnet = nn.Sequential(*list(self.resnet.module.children())[:-1])
+        # self.resnet = nn.Sequential(*list(self.resnet.module.children())[:-1])
+        # self.resnet = nn.Sequential(*list(self.resnet.children())[:-1])
 
-        # # freeze all of these parameters
+        # # freeze all of these parameters and only learn the last layer
         # self.resnet = self.resnet.eval()
         # for param in self.resnet.parameters():
         #     param.requires_grad = False
