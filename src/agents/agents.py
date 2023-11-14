@@ -628,10 +628,12 @@ class ImageNetFineTuneAgent(BaseAgent):
         model = model.cuda()
         if self.multigpu:
             model = nn.DataParallel(model)
-        filename = os.path.join(self.config.trained_agent_exp_dir, 'checkpoints', 'model_best.pth.tar')
-        checkpoint = torch.load(filename, map_location='cpu')
-        model_state_dict = checkpoint['model_state_dict']
-        model.load_state_dict(model_state_dict)
+        load_pretrained_model = False
+        if load_pretrained_model:
+            filename = os.path.join(self.config.trained_agent_exp_dir, 'checkpoints', 'model_best.pth.tar')
+            checkpoint = torch.load(filename, map_location='cpu')
+            model_state_dict = checkpoint['model_state_dict']
+            model.load_state_dict(model_state_dict)
 
         self.resnet = model
         self.resnet = nn.Sequential(*list(self.resnet.module.children())[:-1])
