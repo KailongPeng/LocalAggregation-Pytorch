@@ -26,13 +26,13 @@ elif jobID == 3:
     exp_name = "imagenet_ir"
     # directory_path = '/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/imagenet_ir/weights_difference/numpy/'
 elif jobID == 4:
-    exp_name = "imagenet_la_layerNorm"
+    exp_name = "imagenet_la_layer_norm"
     # directory_path = '/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/imagenet_la_layerNorm/weights_difference/numpy/'
 elif jobID == 5:
-    exp_name = "imagenet_ft_layerNorm"
+    exp_name = "imagenet_ft_layer_norm"
     # directory_path = '/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/imagenet_ft_layerNorm/weights_difference/numpy/'
 elif jobID == 6:
-    exp_name = "imagenet_ir_layerNorm"
+    exp_name = "imagenet_ir_layer_norm"
     # directory_path = '/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/imagenet_ir_layerNorm/weights_difference/numpy/'
 else:
     raise Exception("jobID not found")
@@ -57,6 +57,7 @@ def dataPrepare():
 
     # directory_path = '/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/weights_difference/numpy/'
     for epoch in range(startFromEpoch, totalEpochNum):
+        print(f'{directory_path}/activation_lastLayer_epoch{epoch}_batch_i*.npy')
         files = glob(f'{directory_path}/activation_lastLayer_epoch{epoch}_batch_i*.npy')
         if testMode:
             files = files[:testBatchNum]
@@ -66,7 +67,7 @@ def dataPrepare():
             epochBatchNum[epoch] = len(files) - 1
             totalBatchNum += len(
                 files) - 1  # minus 1 since the final batch usually has a different size, e.g. for batch size=128, the final batch only has 15 images
-
+    print(f"totalBatchNum={totalBatchNum}")
     fc1_activations = np.zeros(
         (totalBatchNum, 128, len(selected_channel_penultimate_layer)))  # [#batch, batch size, #selected units]
     fc2_activations = np.zeros(
