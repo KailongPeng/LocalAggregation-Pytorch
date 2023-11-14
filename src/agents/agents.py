@@ -734,7 +734,7 @@ class ImageNetFineTuneAgent(BaseAgent):
 
             if Kailong:
                 # get the weights of the model
-                weights_previous = self.model.module.linear.weight.data.clone().to(self.device)
+                weights_previous = self.model.linear.weight.data.clone().to(self.device)
                 # print shape of weights_previous
                 print(f'weights_previous.shape = {weights_previous.shape}')
                 # self.model.module.linear.weight.data.shape = torch.Size([128, 512])  (#output channel, #input channel)
@@ -767,7 +767,7 @@ class ImageNetFineTuneAgent(BaseAgent):
 
             if Kailong:
                 # get the weights of the model
-                weights_current = self.model.module.linear.weight.data.clone()
+                weights_current = self.model.linear.weight.data.clone()
                 # print shape of weights_current
                 print(f'weights_current.shape = {weights_current.shape}')
 
