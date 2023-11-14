@@ -637,7 +637,7 @@ class ImageNetFineTuneAgent(BaseAgent):
 
         self.resnet = model
         # self.resnet = nn.Sequential(*list(self.resnet.module.children())[:-1])
-        # self.resnet = nn.Sequential(*list(self.resnet.children())[:-1])
+        self.resnet = nn.Sequential(*list(self.resnet.children())[:-1])
 
         # # freeze all of these parameters and only learn the last layer
         # self.resnet = self.resnet.eval()
@@ -695,7 +695,7 @@ class ImageNetFineTuneAgent(BaseAgent):
 
     def _create_model(self):
         assert self.config.data_params.image_size == 224
-        model = nn.Linear(512 * 7 * 7, 1000)
+        model = nn.Linear(512 * 7 * 7, 128)
         model = model.to(self.device)
         if self.multigpu:
             model = nn.DataParallel(model)
