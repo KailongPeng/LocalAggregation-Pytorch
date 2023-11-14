@@ -80,10 +80,10 @@ def wholeSet():
 
     """
     sbatch ./scripts/instance.sh /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_la.json  # 
-    sbatch ./scripts/instance.sh /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_ft.json  # 25553776  25553778  running but no weight and activation saved
+    sbatch ./scripts/instance.sh /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_ft.json  # 25553835 25553837  25553840 25553841
     sbatch ./scripts/instance.sh /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_ir.json  # 
     sbatch ./scripts/instance.sh /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_la_layerNorm.json  #  ? 25553773 25553779 25553782  25553786
-    sbatch ./scripts/instance.sh /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_ft_layerNorm.json  #  25553780 25553783 25553787
+    sbatch ./scripts/instance.sh /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_ft_layerNorm.json  #  25553836
     sbatch ./scripts/instance.sh /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_ir_layerNorm.json  #  25553781 
     
     
@@ -92,7 +92,7 @@ def wholeSet():
     # 25553770 25553771 25553772 25553773 25553774 25553775
     # 25553788 25553789 25553790 25553791 25553792 25553793
     # 25553795 25553796 25553797 25553798 25553799 25553800
-    # 25553828 25553829 25553830 25553831 25553832 25553833
+    # 25553828done 25553846done 25553830done 25553831done 25553847done 25553833done
     """
 
     def run_NMPH():

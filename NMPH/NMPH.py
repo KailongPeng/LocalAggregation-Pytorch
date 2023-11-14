@@ -4,9 +4,30 @@ import random
 from glob import glob
 import numpy as np
 from tqdm import tqdm
+import sys
 
 testMode = True
 testBatchNum = 50
+if testMode:
+    jobID = 2
+else:
+    jobID = int(float(sys.argv[1]))
+
+print(f"jobID={jobID}")
+if jobID == 1:
+    directory_path = '/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/imagenet_la/weights_difference/numpy/'
+elif jobID == 2:
+    directory_path = '/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/imagenet_ft/weights_difference/numpy/'
+elif jobID == 3:
+    directory_path = '/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/imagenet_ir/weights_difference/numpy/'
+elif jobID == 4:
+    directory_path = '/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/imagenet_la_layerNorm/weights_difference/numpy/'
+elif jobID == 5:
+    directory_path = '/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/imagenet_ft_layerNorm/weights_difference/numpy/'
+elif jobID == 6:
+    directory_path = '/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/imagenet_ir_layerNorm/weights_difference/numpy/'
+else:
+    raise Exception("jobID not found")
 
 
 def dataPrepare():
@@ -22,9 +43,9 @@ def dataPrepare():
     startFromEpoch = 0
     totalEpochNum = 1
 
-    directory_path = '/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/weights_difference/numpy/'
+    # directory_path = '/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/weights_difference/numpy/'
     for epoch in range(startFromEpoch, totalEpochNum):
-        files = glob(f'{directory_path}/activation_lastLayer_epoch{epoch}_batch_i*.pth.tar.npy')
+        files = glob(f'{directory_path}/activation_lastLayer_epoch{epoch}_batch_i*.npy')
         if testMode:
             files = files[:testBatchNum]
             epochBatchNum[epoch] = len(files)
@@ -52,11 +73,11 @@ def dataPrepare():
             #            f'{weights_difference_folder}/activation_secondLastLayer_epoch{self.current_epoch}_batch_i{batch_i}.pth.tar')
             # load activations and weights
             activation_secondLastLayer = np.load(
-                f'{directory_path}/activation_secondLastLayer_epoch{epoch}_batch_i{batch_i}.pth.tar.npy')
+                f'{directory_path}/activation_secondLastLayer_epoch{epoch}_batch_i{batch_i}.npy')
             activation_lastLayer = np.load(
-                f'{directory_path}/activation_lastLayer_epoch{epoch}_batch_i{batch_i}.pth.tar.npy')
+                f'{directory_path}/activation_lastLayer_epoch{epoch}_batch_i{batch_i}.npy')
             weight_change = np.load(
-                f'{directory_path}/weights_difference_epoch{epoch}_batch_i{batch_i}.pth.tar.npy')  # .detach().numpy()
+                f'{directory_path}/weights_difference_epoch{epoch}_batch_i{batch_i}.npy')  # .detach().numpy()
 
             fc1_activations[currBatchNum, :, :] = activation_secondLastLayer[:,
                                                   selected_channel_penultimate_layer]  # (128 batch#, 512)
@@ -99,19 +120,22 @@ def dataPrepare():
 
 
 co_activations_flatten_, weight_changes_flatten_, pairIDs_ = dataPrepare()
+# mkdir(f'{directory_path}/temp')
+if not os.path.exists(f'{directory_path}/temp'):
+    os.mkdir(f'{directory_path}/temp')
 
-# np.save('/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/temp/co_activations_flatten_.npy',
-#         co_activations_flatten_)  # shape = [pair#, batch#]
-# np.save('/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/temp/weight_changes_flatten_.npy',
-#         weight_changes_flatten_)  # shape = [pair#, batch#]
-# np.save('/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/temp/pairIDs_.npy',
-#         pairIDs_)  # shape = [pair#, [ID1, ID2]]
-
-# co_activations_flatten_ = np.load('/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/temp/co_activations_flatten_.npy',
+np.save(f'{directory_path}/temp/co_activations_flatten_.npy',
+        co_activations_flatten_)  # shape = [pair#, batch#]
+np.save(f'{directory_path}/temp/weight_changes_flatten_.npy',
+        weight_changes_flatten_)  # shape = [pair#, batch#]
+np.save(f'{directory_path}/pairIDs_.npy',
+        pairIDs_)  # shape = [pair#, [ID1, ID2]]
+#
+# co_activations_flatten_ = np.load(f'{directory_path}/temp/co_activations_flatten_.npy',
 #                                   allow_pickle=True)  # shape = [pair#, batch#]
-# weight_changes_flatten_ = np.load('/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/temp/weight_changes_flatten_.npy',
+# weight_changes_flatten_ = np.load(f'{directory_path}/temp/weight_changes_flatten_.npy',
 #                                   allow_pickle=True)  # shape = [pair#, batch#]
-# pairIDs_ = np.load('/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/temp/pairIDs_.npy',
+# pairIDs_ = np.load(f'{directory_path}/temp/pairIDs_.npy',
 #                    allow_pickle=True)  # shape = [pair#, [ID1, ID2]]
 
 
@@ -129,8 +153,11 @@ def run_NMPH(co_activations_flatten, weight_changes_flatten, pairIDs, rows=None,
     for i in range(len(co_activations_flatten)):
         if testMode:
             x__ = co_activations_flatten[i][:testBatchNum]
+            print(f"x__={x__}")
             y__ = weight_changes_flatten[i][:testBatchNum]
+            print(f"y__={y__}")
             pairID = pairIDs[i]
+            print(f"pairID={pairID}")
         else:
             x__ = co_activations_flatten[i]
             y__ = weight_changes_flatten[i]
@@ -160,3 +187,49 @@ def run_NMPH(co_activations_flatten, weight_changes_flatten, pairIDs, rows=None,
 
 
 run_NMPH(co_activations_flatten_, weight_changes_flatten_, pairIDs_)
+
+
+import numpy as np
+from scipy.optimize import curve_fit
+from sklearn.model_selection import KFold
+from scipy.stats import pearsonr
+
+
+def constrained_cubic_fit_correlation(x, y):
+    def cubic_function(x, a, b, c, d):
+        return a * x**3 + b * x**2 + c * x + d
+
+    # Function to compute correlation coefficient
+    def compute_correlation(observed, predicted):
+        return pearsonr(observed, predicted)[0]
+
+    # Initialize KFold with 10 folds
+    kf = KFold(n_splits=10, shuffle=True, random_state=42)
+
+    # Initialize array to store correlation coefficients
+    correlation_coefficients = []
+
+    for train_index, test_index in kf.split(x):
+        # Split data into training and testing sets
+        x_train, x_test = x[train_index], x[test_index]
+        y_train, y_test = y[train_index], y[test_index]
+
+        # Perform constrained cubic fit on the training data
+        params, _ = curve_fit(cubic_function, x_train, y_train)
+
+        # Predict y values on the test data
+        y_pred = cubic_function(x_test, *params)
+
+        # Compute correlation coefficient and store it
+        correlation_coefficient = compute_correlation(y_test, y_pred)
+        correlation_coefficients.append(correlation_coefficient)
+
+    return correlation_coefficients
+
+
+# Example usage
+x__ = np.array([-0.01337063, -0.01693626, -0.03028395, -0.03174323, -0.04779751, -0.05754384, -0.06399068, -0.07061033, -0.09292604, -0.08798023, -0.095779, -0.08514577, -0.09195771, -0.09968637, -0.08177572, -0.08894159, -0.09934128, -0.08480207, -0.08318947, -0.09024453, -0.08300266, -0.10122141, -0.10633385, -0.10665936, -0.10781459, -0.1259854, -0.13187735, -0.13555743, -0.140931, -0.14450621, -0.1364753, -0.15242977, -0.14012327, -0.10739904])
+y__ = np.array([1.71735883e-06, -1.57840550e-05, 3.84114683e-05, 4.14438546e-05, 1.91703439e-05, 4.61861491e-05, 3.67611647e-05, 1.37425959e-05, -5.71087003e-06, -2.46353447e-05, -1.38916075e-05, 7.54334033e-05, 7.71433115e-05, 4.81046736e-05, 2.15470791e-05, -2.89455056e-06, -1.20028853e-05, -2.79136002e-05, 1.59293413e-05, -6.66454434e-06, -2.77347863e-05, -4.52324748e-05, -2.76193023e-05, -4.45954502e-05, -1.90772116e-05, -3.65227461e-05, -2.76044011e-05, -1.98855996e-05, -1.44354999e-05, -3.10726464e-05, 1.36781484e-04, 1.21731311e-04, 1.04047358e-04, 7.56606460e-05])
+correlation_coefficients = constrained_cubic_fit_correlation(x__, y__)
+print(f"The correlation coefficients for the 10 folds are: {correlation_coefficients}")
+

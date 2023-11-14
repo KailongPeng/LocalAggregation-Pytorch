@@ -414,23 +414,6 @@ class ImageNetFineTuneAgent(BaseAgent):
         super(ImageNetFineTuneAgent, self).__init__(config)
         self.config = config
 
-        if self.config.model_params.resnet_version == 'preact-resnet18':
-            # model = PreActResNet18()
-            model = PreActResNet18(num_classes=self.config.model_params.out_dim, config=self.config)
-        else:
-            raise NotImplementedError
-
-        model = model.cuda()
-        if self.multigpu:
-            model = nn.DataParallel(model)
-        load_pretrained_model = False
-        if load_pretrained_model:
-            filename = os.path.join(self.config.trained_agent_exp_dir, 'checkpoints', 'model_best.pth.tar')
-            checkpoint = torch.load(filename, map_location='cpu')
-            model_state_dict = checkpoint['model_state_dict']
-            model.load_state_dict(model_state_dict)
-
-        self.resnet = model
         # self.resnet = nn.Sequential(*list(self.resnet.module.children())[:-1])
         # self.resnet = nn.Sequential(*list(self.resnet.children())[:-1])
 
@@ -466,8 +449,7 @@ class ImageNetFineTuneAgent(BaseAgent):
                 transforms.TenCrop(image_size),
                 transforms.Lambda(lambda crops: torch.stack([transforms.ToTensor()(crop) for crop in crops])),
                 transforms.Lambda(lambda crops: torch.stack([transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                                                                  std=[0.229, 0.224, 0.225])(crop) for
-                                                             crop in crops])),
+                                    std=[0.229, 0.224, 0.225])(crop) for crop in crops])),
             ])
         else:
             test_transforms = transforms.Compose([
@@ -489,13 +471,31 @@ class ImageNetFineTuneAgent(BaseAgent):
         self.train_dataset = train_dataset
         self.val_dataset = val_dataset
 
+    # def _create_model(self):
+    #     assert self.config.data_params.image_size == 224
+    #     model = nn.Linear(512 * 7 * 7, 128)
+    #     model = model.to(self.device)
+    #     if self.multigpu:
+    #         model = nn.DataParallel(model)
+    #     self.model = model
+
     def _create_model(self):
-        assert self.config.data_params.image_size == 224
-        model = nn.Linear(512 * 7 * 7, 1000)
-        model = model.to(self.device)
+        if self.config.model_params.resnet_version == 'preact-resnet18':
+            # model = PreActResNet18()
+            self.model = PreActResNet18(num_classes=self.config.model_params.out_dim, config=self.config)
+        else:
+            raise NotImplementedError
+
+        self.model = self.model.cuda()
         if self.multigpu:
-            model = nn.DataParallel(model)
-        self.model = model
+            self.model = nn.DataParallel(self.model)
+
+        load_pretrained_model = False
+        if load_pretrained_model:
+            filename = os.path.join(self.config.trained_agent_exp_dir, 'checkpoints', 'model_best.pth.tar')
+            checkpoint = torch.load(filename, map_location='cpu')
+            model_state_dict = checkpoint['model_state_dict']
+            self.model.load_state_dict(model_state_dict)
 
     def _set_models_to_eval(self):
         self.model = self.model.eval()
@@ -510,6 +510,7 @@ class ImageNetFineTuneAgent(BaseAgent):
                                      weight_decay=self.config.optim_params.weight_decay)
 
     def train_one_epoch(self):
+        Kailong = True
         num_batches = self.train_len // self.config.optim_params.batch_size
         tqdm_batch = tqdm(total=num_batches,
                           desc="[Epoch {}, lr {}]".format(self.current_epoch, self.optim.param_groups[0]['lr']))
@@ -524,13 +525,26 @@ class ImageNetFineTuneAgent(BaseAgent):
             images = images.to(self.device, non_blocking=True)
             labels = labels.to(self.device, non_blocking=True)
 
-            with torch.no_grad():
-                embeddings = self.resnet(images)
-                embeddings = embeddings.view(batch_size, -1)
+            logits = self.model(images)
 
-            logits = self.model(embeddings)
-            loss = self.criterion(logits,
-                                  labels)  # self.criterion = nn.CrossEntropyLoss().to(self.device)  # Compute the loss using CrossEntropyLoss
+            if Kailong:
+                # get the weights of the model
+                weights_previous = self.model.module.linear.weight.data.clone().to(self.device)
+                # print shape of weights_previous
+                print(f'weights_previous.shape = {weights_previous.shape}')
+                # self.model.module.linear.weight.data.shape = torch.Size([128, 512])  (#output channel, #input channel)
+                # weights_previous.shape = torch.Size([128, 512])
+
+            # with torch.no_grad():
+            #     embeddings = self.resnet(images)
+            #     embeddings = embeddings.view(batch_size, -1)
+            #
+            # logits = self.model(embeddings)
+            print(f"logits.shape = {logits.shape}")  # logits.shape = torch.Size([9, 128])
+            print(f"labels.shape = {labels.shape}")  # labels.shape = torch.Size([9])
+            print(f"logits[:2, :] = {logits[:2, :]}")
+            print(f"labels[:2] = {labels[:2]}")
+            loss = self.criterion(logits, labels)  # self.criterion = nn.CrossEntropyLoss().to(self.device)  # Compute the loss using CrossEntropyLoss
 
             self.optim.zero_grad()
             loss.backward()  # Backpropagate the gradients
@@ -545,6 +559,48 @@ class ImageNetFineTuneAgent(BaseAgent):
             self.train_loss.append(epoch_loss.val)  # Save the loss
             self.current_iteration += 1  # Update the iteration count
             tqdm_batch.update()  # Update the progress bar
+
+            if Kailong:
+                # get the weights of the model
+                weights_current = self.model.module.linear.weight.data.clone()
+                # print shape of weights_current
+                print(f'weights_current.shape = {weights_current.shape}')
+
+                # compute the difference between the weights
+                weights_difference = weights_current - weights_previous
+                weights_previous = weights_current.clone()
+
+                # print shape of weights_difference
+                print(f'weights_difference.shape = {weights_difference.shape}')
+
+                # print __dir__
+                # print(f"self.model.module.__dir__()={self.model.module.__dir__()}")
+                # self.__dir__()
+                #   ['config', 'logger', 'train_dataset', 'val_dataset', 'train_ordered_labels', 'train_loader', 'train_len', 'val_loader', 'val_len', 'is_cuda', 'cuda', 'manual_seed', 'multigpu', 'device', 'gpu_devices', 'model', 'optim', 'current_epoch', 'current_iteration', 'current_val_iteration', 'current_loss', 'current_val_metric', 'best_val_metric', 'iter_with_no_improv', 'summary_writer', 'memory_bank', 'cluster_labels', 'loss_fn', 'km', 'parallel_helper_idxs', 'val_acc', 'train_loss', 'train_extra', 'first_iteration_kmeans', '__module__', '__init__', '_init_memory_bank', 'load_memory_bank', '_load_memory_bank', 'get_memory_bank', '_get_memory_bank', '_get_loss_func', '_init_cluster_labels', '_init_loss_function', '_load_image_transforms', '_load_datasets', '_create_model', '_set_models_to_eval', '_set_models_to_train', '_create_optimizer', 'train_one_epoch', 'validate', 'load_checkpoint', 'copy_checkpoint', 'save_checkpoint', '__doc__', '_set_seed', '_choose_device', '_create_dataloader', 'run', 'train', 'backup', 'finalise', 'cleanup', '__dict__', '__weakref__', '__repr__', '__hash__', '__str__', '__getattribute__', '__setattr__', '__delattr__', '__lt__', '__le__', '__eq__', '__ne__', '__gt__', '__ge__', '__new__', '__reduce_ex__', '__reduce__', '__subclasshook__', '__init_subclass__', '__format__', '__sizeof__', '__dir__', '__class__']
+
+                # save the activation of the last layer
+                activation_lastLayer = self.model.module.features_lastLayer
+                print(
+                    f'activation_lastLayer.shape = {activation_lastLayer.shape}')  # activation_lastLayer.shape = (9, 128)
+
+                # save the activation of the second last layer
+                activation_secondLastLayer = self.model.module.features_secondLastLayer  # self.model.module.layer4[1].relu2
+                print(
+                    f'activation_secondLastLayer.shape = {activation_secondLastLayer.shape}')  # activation_secondLastLayer.shape = (9, 512)
+
+                # create a folder to save the weights_difference
+                weights_difference_folder = f'/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/{self.config.exp_name_kailong}/weights_difference/numpy/'
+                if not os.path.exists(weights_difference_folder):
+                    os.makedirs(weights_difference_folder)
+                np.save(f'{weights_difference_folder}/weights_difference_epoch{self.current_epoch}_batch_i{batch_i}.npy',
+                        weights_difference.cpu().numpy())
+                np.save(f'{weights_difference_folder}/activation_lastLayer_epoch{self.current_epoch}_batch_i{batch_i}.npy',
+                        np.asarray(activation_lastLayer))
+                np.save(f'{weights_difference_folder}/activation_secondLastLayer_epoch{self.current_epoch}_batch_i{batch_i}.npy',
+                        np.asarray(activation_secondLastLayer))
+                print(colored(
+                    f'weights_difference saved to {weights_difference_folder}weights_difference_epoch{self.current_epoch}_batch_i{batch_i}.pth.tar',
+                    'red'))
 
         self.current_loss = epoch_loss.avg
         tqdm_batch.close()
@@ -585,14 +641,15 @@ class ImageNetFineTuneAgent(BaseAgent):
                 images = images.to(self.device)
                 labels = labels.to(self.device)
 
-                embeddings = self.resnet(images)
-
-                if self.config.data_params.ten_crop:
-                    embeddings = embeddings.view(batch_size, ncrops, -1).mean(1)
-                else:
-                    embeddings = embeddings.view(batch_size, -1)
-
-                logits = self.model(embeddings)
+                # embeddings = self.resnet(images)
+                #
+                # if self.config.data_params.ten_crop:
+                #     embeddings = embeddings.view(batch_size, ncrops, -1).mean(1)
+                # else:
+                #     embeddings = embeddings.view(batch_size, -1)
+                #
+                # logits = self.model(embeddings)
+                logits = self.model(images)
                 acc = self.accuracy(logits, labels)[0]
                 top1.update(acc.item(), batch_size)
 
@@ -636,7 +693,7 @@ class ImageNetFineTuneAgent(BaseAgent):
                 self.model.load_state_dict(model_state_dict)
 
                 resnet_state_dict = checkpoint['resnet_state_dict']
-                self.resnet.load_state_dict(resnet_state_dict)
+                self.model.load_state_dict(resnet_state_dict)
 
             if load_optim:
                 optim_state_dict = checkpoint['optim_state_dict']
@@ -658,7 +715,7 @@ class ImageNetFineTuneAgent(BaseAgent):
 
     def save_checkpoint(self, filename="checkpoint.pth.tar"):
         out_dict = {
-            'resnet_state_dict': self.resnet.state_dict(),
+            'resnet_state_dict': self.model.state_dict(),
             'model_state_dict': self.model.state_dict(),
             'optim_state_dict': self.optim.state_dict(),
             'epoch': self.current_epoch,
@@ -689,10 +746,12 @@ class ImageNetFineTuneAgent(BaseAgent):
 
 from src.utils.setup import process_config
 
+
 config_path = "/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_ft_layerNorm.json"
 config = process_config(config_path)
-ImageNetFineTuneAgent_ = ImageNetFineTuneAgent(config)
-
-
-ImageNetFineTuneAgent_.run()  # ImageNetFineTuneAgent_.train_one_epoch()
-
+# ImageNetFineTuneAgent_ = ImageNetFineTuneAgent(config)
+#
+#
+# ImageNetFineTuneAgent_.run()  # ImageNetFineTuneAgent_.train_one_epoch()
+#
+model = PreActResNet18(num_classes=128, config=config)
