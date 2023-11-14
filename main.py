@@ -86,6 +86,8 @@ def wholeSet():
     sbatch ./scripts/instance.sh /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_ft_layerNorm.json  # 25553734 25553740
     sbatch ./scripts/instance.sh /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_ir_layerNorm.json  # 25553735 25553741
     
+    
+    # 25553742 25553743?done 25553744 25553745? 25553746? 25553747?
     """
 
 def testNMPH_curveFitting():

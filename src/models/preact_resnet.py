@@ -18,8 +18,11 @@ def batch_norm(num_features):
     return nn.BatchNorm2d(num_features, momentum=BATCH_NORM_MOMENTUM)
 
 
-def layer_norm(num_features):
-    return nn.LayerNorm(num_features)
+# create layer norm
+def layer_norm(normalized_shape):
+    return nn.LayerNorm(normalized_shape)
+
+
 
 
 class PreActBlock(nn.Module):
@@ -30,7 +33,7 @@ class PreActBlock(nn.Module):
     def __init__(self, in_planes, planes, stride=1, enable_shortcut=False, config=None):
         super(PreActBlock, self).__init__()
         if config.layer_norm:
-            self.norm1 = layer_norm(in_planes)
+            self.norm1 = layer_norm
         else:
             self.norm1 = batch_norm(in_planes)
         self.relu1 = nn.ReLU(inplace=True)
@@ -60,18 +63,18 @@ class PreActBottleneck(nn.Module):
     def __init__(self, in_planes, planes, stride=1, config=None):
         super(PreActBottleneck, self).__init__()
         if config.layer_norm:
-            self.norm1 = layer_norm(in_planes)
+            self.norm1 = layer_norm
         else:
             self.norm1 = batch_norm(in_planes)
         self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=1, bias=False)
         if config.layer_norm:
-            self.norm2 = layer_norm(planes)
+            self.norm2 = layer_norm
         else:
             self.norm2 = batch_norm(planes)
 
         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
         if config.layer_norm:
-            self.norm3 = layer_norm(planes)
+            self.norm3 = layer_norm
         else:
             self.norm3 = batch_norm(planes)
         self.conv3 = nn.Conv2d(planes, self.expansion * planes, kernel_size=1, bias=False)
@@ -109,7 +112,7 @@ class PreActResNet(nn.Module):
         self.layer4 = self._make_layer(block, 512, num_blocks[3], stride=2)  # conv5_x
 
         if self.config.layer_norm:
-            self.norm = layer_norm(512)
+            self.norm = layer_norm
         else:
             self.norm = batch_norm(512)
         self.relu = nn.ReLU(inplace=True)

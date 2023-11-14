@@ -617,9 +617,11 @@ class ImageNetFineTuneAgent(BaseAgent):
 
     def __init__(self, config):
         super(ImageNetFineTuneAgent, self).__init__(config)
+        self.config = config
 
         if self.config.model_params.resnet_version == 'preact-resnet18':
-            model = PreActResNet18()
+            # model = PreActResNet18()
+            model = PreActResNet18(num_classes=self.config.model_params.out_dim, config=self.config)
         else:
             raise NotImplementedError
 
