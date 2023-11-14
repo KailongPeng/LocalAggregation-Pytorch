@@ -619,23 +619,6 @@ class ImageNetFineTuneAgent(BaseAgent):
         super(ImageNetFineTuneAgent, self).__init__(config)
         self.config = config
 
-        if self.config.model_params.resnet_version == 'preact-resnet18':
-            # model = PreActResNet18()
-            self.model = PreActResNet18(num_classes=self.config.model_params.out_dim, config=self.config)
-        else:
-            raise NotImplementedError
-
-        self.model = self.model.cuda()
-        if self.multigpu:
-            self.model = nn.DataParallel(self.model)
-
-        load_pretrained_model = False
-        if load_pretrained_model:
-            filename = os.path.join(self.config.trained_agent_exp_dir, 'checkpoints', 'model_best.pth.tar')
-            checkpoint = torch.load(filename, map_location='cpu')
-            model_state_dict = checkpoint['model_state_dict']
-            self.model.load_state_dict(model_state_dict)
-
         # self.resnet = nn.Sequential(*list(self.resnet.module.children())[:-1])
         # self.resnet = nn.Sequential(*list(self.resnet.children())[:-1])
 
@@ -702,10 +685,22 @@ class ImageNetFineTuneAgent(BaseAgent):
     #     self.model = model
 
     def _create_model(self):
-        # model = nn.DataParallel(self.resnet)  # parallel GPU utilization
-        # model = model.to(self.device)
-        # cudnn.benchmark = True
-        pass
+        if self.config.model_params.resnet_version == 'preact-resnet18':
+            # model = PreActResNet18()
+            self.model = PreActResNet18(num_classes=self.config.model_params.out_dim, config=self.config)
+        else:
+            raise NotImplementedError
+
+        self.model = self.model.cuda()
+        if self.multigpu:
+            self.model = nn.DataParallel(self.model)
+
+        load_pretrained_model = False
+        if load_pretrained_model:
+            filename = os.path.join(self.config.trained_agent_exp_dir, 'checkpoints', 'model_best.pth.tar')
+            checkpoint = torch.load(filename, map_location='cpu')
+            model_state_dict = checkpoint['model_state_dict']
+            self.model.load_state_dict(model_state_dict)
 
     def _set_models_to_eval(self):
         self.model = self.model.eval()
