@@ -63,6 +63,7 @@ class PreActBlock(nn.Module):
         print(f"permute before norm out.shape={out.shape}")
         out = self.norm2(out)
         out = out.permute(0, 3, 1, 2)
+        print(f"permute after norm out.shape={out.shape}")
 
         out = self.conv2(self.relu2(out))
         out += shortcut
@@ -166,7 +167,12 @@ class PreActResNet(nn.Module):
         out = self.layer4(out)
 
 
+        out = out.permute(0, 2, 3, 1)
+        print(f"permute before norm out.shape={out.shape}")
         out = self.norm(out)
+        out = out.permute(0, 3, 1, 2)
+        print(f"permute after norm out.shape={out.shape}")
+
         out = self.relu(out)
 
         # follows the TF implementation to replace avgpool with mean

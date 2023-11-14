@@ -79,18 +79,19 @@ def wholeSet():
         # 25553728
 
     """
-    sbatch ./scripts/instance.sh /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_la.json  # 25553730 25553736
-    sbatch ./scripts/instance.sh /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_ft.json  # 25553731 25553737
-    sbatch ./scripts/instance.sh /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_ir.json  # 25553732 25553738
-    sbatch ./scripts/instance.sh /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_la_layerNorm.json  # 25553733 25553739? 
-    sbatch ./scripts/instance.sh /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_ft_layerNorm.json  # 25553734 25553740
-    sbatch ./scripts/instance.sh /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_ir_layerNorm.json  # 25553735 25553741
+    sbatch ./scripts/instance.sh /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_la.json  # 
+    sbatch ./scripts/instance.sh /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_ft.json  # 25553776  25553778  running but no weight and activation saved
+    sbatch ./scripts/instance.sh /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_ir.json  # 
+    sbatch ./scripts/instance.sh /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_la_layerNorm.json  #  ? 25553773 25553779 25553782  25553786
+    sbatch ./scripts/instance.sh /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_ft_layerNorm.json  #  25553780 25553783 25553787
+    sbatch ./scripts/instance.sh /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_ir_layerNorm.json  #  25553781 
     
     
     # 25553742 25553743?done 25553744 25553745? 25553746? 25553747?
     # 25553762 25553763? 25553764 25553765? 25553766 25553767
     # 25553770 25553771 25553772 25553773 25553774 25553775
     """
+
 
 def testNMPH_curveFitting():
     pass

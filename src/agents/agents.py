@@ -637,7 +637,7 @@ class ImageNetFineTuneAgent(BaseAgent):
 
         self.resnet = model
         # self.resnet = nn.Sequential(*list(self.resnet.module.children())[:-1])
-        self.resnet = nn.Sequential(*list(self.resnet.children())[:-1])
+        # self.resnet = nn.Sequential(*list(self.resnet.children())[:-1])
 
         # # freeze all of these parameters and only learn the last layer
         # self.resnet = self.resnet.eval()
@@ -728,11 +728,17 @@ class ImageNetFineTuneAgent(BaseAgent):
             images = images.to(self.device, non_blocking=True)
             labels = labels.to(self.device, non_blocking=True)
 
-            with torch.no_grad():
-                embeddings = self.resnet(images)
-                embeddings = embeddings.view(batch_size, -1)
+            logits = self.resnet(images)
 
-            logits = self.model(embeddings)
+            # with torch.no_grad():
+            #     embeddings = self.resnet(images)
+            #     embeddings = embeddings.view(batch_size, -1)
+            #
+            # logits = self.model(embeddings)
+            print(f"logits.shape = {logits.shape}")  # logits.shape = torch.Size([9, 128])
+            print(f"labels.shape = {labels.shape}")  # labels.shape = torch.Size([9])
+            print(f"logits[:2, :] = {logits[:2, :]}")
+            print(f"labels[:2] = {labels[:2]}")
             loss = self.criterion(logits, labels)  # self.criterion = nn.CrossEntropyLoss().to(self.device)  # Compute the loss using CrossEntropyLoss
 
             self.optim.zero_grad()
