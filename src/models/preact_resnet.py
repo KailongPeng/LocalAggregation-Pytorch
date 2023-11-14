@@ -48,22 +48,25 @@ class PreActBlock(nn.Module):
         self.relu2 = nn.ReLU(inplace=True)
 
     def forward(self, x):
-
-        x = x.permute(0, 2, 3, 1)
-        print(f"permute before norm x.shape={x.shape}")
+        if self.config.layer_norm:
+            x = x.permute(0, 2, 3, 1)
+        # print(f"permute before norm x.shape={x.shape}")
         x = self.norm1(x)
-        x = x.permute(0, 3, 1, 2)
+        if self.config.layer_norm:
+            x = x.permute(0, 3, 1, 2)
 
         out = self.relu1(x)
         shortcut = self.shortcut(out) if hasattr(self, 'shortcut') else x
 
         out = self.conv1(out)
 
-        out = out.permute(0, 2, 3, 1)
-        print(f"permute before norm out.shape={out.shape}")
+        if self.config.layer_norm:
+            out = out.permute(0, 2, 3, 1)
+        # print(f"permute before norm out.shape={out.shape}")
         out = self.norm2(out)
-        out = out.permute(0, 3, 1, 2)
-        print(f"permute after norm out.shape={out.shape}")
+        if self.config.layer_norm:
+            out = out.permute(0, 3, 1, 2)
+        # print(f"permute after norm out.shape={out.shape}")
 
         out = self.conv2(self.relu2(out))
         out += shortcut
@@ -166,12 +169,13 @@ class PreActResNet(nn.Module):
         out = self.layer3(out)
         out = self.layer4(out)
 
-
-        out = out.permute(0, 2, 3, 1)
-        print(f"permute before norm out.shape={out.shape}")
+        if self.config.layer_norm:
+            out = out.permute(0, 2, 3, 1)
+        # print(f"permute before norm out.shape={out.shape}")
         out = self.norm(out)
-        out = out.permute(0, 3, 1, 2)
-        print(f"permute after norm out.shape={out.shape}")
+        if self.config.layer_norm:
+            out = out.permute(0, 3, 1, 2)
+        # print(f"permute after norm out.shape={out.shape}")
 
         out = self.relu(out)
 

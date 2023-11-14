@@ -42,7 +42,7 @@
     "note_num_epochs": "num_epochs = 200",
     "validate": true,
     "copy_checkpoint_freq": null,
-    "instance_exp_dir": "/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/mnt/fs6/honglinc/experiments_data/experiments/imagenet_ir/res18_IR",
+    "instance_exp_dir": "/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/mnt/fs6/honglinc/experiments_data/experiments/imagenet_la/res18",
     "note_instance_exp_dir": "instance_exp_dir = /home/kp/Desktop/LocalAggregation-Pytorch/mnt/fs6/honglinc/experiments_data/experiments/imagenet_ir/res18_IR",
     "pretrained_exp_dir": null,
     "layer_norm": false,
