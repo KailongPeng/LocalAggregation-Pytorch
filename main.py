@@ -93,6 +93,7 @@ def wholeSet():
     # 25553788 25553789 25553790 25553791 25553792 25553793
     # 25553795 25553796 25553797 25553798 25553799 25553800
     # 25553828done 25553846done 25553830done 25553831done 25553847done 25553833done
+    # rerun ir and ir_norm 25554369 25554370
     """
 
     def run_NMPH():
@@ -105,6 +106,7 @@ def wholeSet():
         # imagenet_ft_layer_norm p value = 0.084716796875
 
         # 25554278
+        # 25554371
 
 
 def testNMPH_curveFitting():
