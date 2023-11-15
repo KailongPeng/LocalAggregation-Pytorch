@@ -6,10 +6,10 @@ Code is based on Tensorflow implementation:
 https://github.com/neuroailab/LocalAggregation
 """
 
-# import pdb
+import pdb
 import faiss
 import torch
-
+import torch.cuda.comm
 import numpy as np
 import time
 from termcolor import colored
@@ -98,7 +98,7 @@ class LocalAggregationLossModule(torch.nn.Module):
         k = self.k
 
         all_dps = self._get_all_dot_products(self.outputs)
-        # pdb.set_trace()
+        pdb.set_trace()
         back_nei_dps, back_nei_idxs = torch.topk(all_dps, k=k, sorted=False, dim=1)
         back_nei_probs = self._softmax(back_nei_dps)
 
