@@ -18,9 +18,8 @@ def batch_norm(num_features):
     return nn.BatchNorm2d(num_features, momentum=BATCH_NORM_MOMENTUM)
 
 
-# create layer norm
-def layer_norm(normalized_shape):
-    return nn.LayerNorm(normalized_shape)
+def layer_norm(num_features):
+    return nn.LayerNorm(num_features)
 
 
 class PreActBlock(nn.Module):
