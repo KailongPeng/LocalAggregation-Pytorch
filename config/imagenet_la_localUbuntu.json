@@ -1,5 +1,5 @@
 {
-    "exp_base": "/home/kp/Desktop/LocalAggregation-Pytorch/mnt/fs6/honglinc/experiments_data",
+    "exp_base": "/workspace/mnt/fs6/honglinc/experiments_data",
     "note1": "exp_base = /home/kp/Desktop/LocalAggregation-Pytorch/mnt/fs6/honglinc/experiments_data",
     "debug":true,
     "exp_name": "imagenet_la",
@@ -42,7 +42,7 @@
     "note_num_epochs": "num_epochs = 200",
     "validate": true,
     "copy_checkpoint_freq": null,
-    "instance_exp_dir": "/home/kp/Desktop/LocalAggregation-Pytorch/mnt/fs6/honglinc/experiments_data/experiments/imagenet_ir/res18_IR",
+    "instance_exp_dir": "/workspace/mnt/fs6/honglinc/experiments_data/experiments/imagenet_ir/res18_IR",
     "note2": "instance_exp_dir = /home/kp/Desktop/LocalAggregation-Pytorch/mnt/fs6/honglinc/experiments_data/experiments/imagenet_ir/res18_IR",
     "pretrained_exp_dir": null
 }
