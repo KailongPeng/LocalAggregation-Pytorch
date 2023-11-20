@@ -13,6 +13,7 @@ from matplotlib.cm import get_cmap
 
 testMode = True
 testBatchNum = 5
+distanceType = 'cosine'  # 'cosine', 'L1', 'L2'
 if testMode:
     jobID = 1
 else:
@@ -200,15 +201,12 @@ def prepare_data_for_NMPH(curr_batch=None, fc2_activations=None, distanceType='c
             if distanceType == 'cosine':
                 cosine_similarity_before[i, j] = np.dot(fc2_activations_before[i, :], fc2_activations_before[j, :]) / (
                         np.linalg.norm(fc2_activations_before[i, :]) * np.linalg.norm(fc2_activations_before[j, :]))
-            elif distanceType == 'euclidean':
-                cosine_similarity_before[i, j] = np.linalg.norm(
-                    fc2_activations_before[i, :] - fc2_activations_before[j, :])
             elif distanceType == 'L1':
-                cosine_similarity_before[i, j] = np.linalg.norm(
+                cosine_similarity_before[i, j] = - np.linalg.norm(
                     fc2_activations_before[i, :] - fc2_activations_before[j, :],
                     ord=1)
-            elif distanceType == 'L2':
-                cosine_similarity_before[i, j] = np.linalg.norm(
+            elif distanceType == 'L2':  # euclidean
+                cosine_similarity_before[i, j] = - np.linalg.norm(
                     fc2_activations_before[i, :] - fc2_activations_before[j, :],
                     ord=2)
             else:
@@ -221,15 +219,12 @@ def prepare_data_for_NMPH(curr_batch=None, fc2_activations=None, distanceType='c
             if distanceType == 'cosine':
                 cosine_similarity_after[i, j] = np.dot(fc2_activations_after[i, :], fc2_activations_after[j, :]) / (
                         np.linalg.norm(fc2_activations_after[i, :]) * np.linalg.norm(fc2_activations_after[j, :]))
-            elif distanceType == 'euclidean':
-                cosine_similarity_after[i, j] = np.linalg.norm(
-                    fc2_activations_after[i, :] - fc2_activations_after[j, :])
             elif distanceType == 'L1':
-                cosine_similarity_after[i, j] = np.linalg.norm(
+                cosine_similarity_after[i, j] = - np.linalg.norm(
                     fc2_activations_after[i, :] - fc2_activations_after[j, :],
                     ord=1)
-            elif distanceType == 'L2':
-                cosine_similarity_after[i, j] = np.linalg.norm(
+            elif distanceType == 'L2':  # euclidean
+                cosine_similarity_after[i, j] = - np.linalg.norm(
                     fc2_activations_after[i, :] - fc2_activations_after[j, :],
                     ord=2)
             else:
@@ -249,7 +244,8 @@ representationChange_flatten__ = []
 for curr_batch in tqdm(range(len(fc2_activations_) - 1)):
     co_activations_flatten_, representationChange_flatten_ = prepare_data_for_NMPH(
         curr_batch=curr_batch,
-        fc2_activations=fc2_activations_
+        fc2_activations=fc2_activations_,
+        distanceType=distanceType
     )
     co_activations_flatten__.append(co_activations_flatten_)
     representationChange_flatten__.append(representationChange_flatten_)
