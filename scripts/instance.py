@@ -3,6 +3,7 @@
 import sys
 
 sys.path.append('/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch')
+sys.path.append('./')
 from copy import deepcopy
 from src.agents.agents import *
 from src.utils.setup import process_config
@@ -49,6 +50,9 @@ if __name__ == "__main__" or testMode:
         elif os.path.exists(
                 '/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_la.json'):
             args.config = '/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_la.json'
+        elif os.path.exists(
+                './config/imagenet_la_localUbuntu.json'):
+            args.config = './config/imagenet_la_localUbuntu.json'
         else:
             raise Exception("config file not found")
 

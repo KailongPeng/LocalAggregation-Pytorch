@@ -8,7 +8,7 @@ https://github.com/neuroailab/LocalAggregation
 
 import faiss
 import torch
-
+import torch.cuda.comm
 import numpy as np
 import time
 from termcolor import colored
@@ -97,7 +97,8 @@ class LocalAggregationLossModule(torch.nn.Module):
         k = self.k
 
         all_dps = self._get_all_dot_products(self.outputs)
-        back_nei_dps, back_nei_idxs = torch.topk(all_dps, k=k, sorted=False, dim=1)
+        # import pdb; pdb.set_trace()
+        back_nei_dps, back_nei_idxs = torch.topk(all_dps, k=k, sorted=False, dim=1)  # all_dps.shape = torch.Size([128, 165767])
         back_nei_probs = self._softmax(back_nei_dps)
 
         all_close_nei_in_back = None

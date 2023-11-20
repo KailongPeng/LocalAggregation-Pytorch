@@ -15,6 +15,8 @@ if testMode:
         IMAGENET_DIR = '/home/kp/Desktop/LocalAggregation-Pytorch/imagenet/'
     elif os.path.exists("/gpfs/milgram/project/turk-browne/projects/localize/ImageNet/ILSVRC/Data/CLS-LOC/"):
         IMAGENET_DIR = "/gpfs/milgram/project/turk-browne/projects/localize/ImageNet/ILSVRC/Data/CLS-LOC/"
+    elif os.path.exists("imagenet/"):
+        IMAGENET_DIR = "imagenet/"
     else:
         raise Exception("imagenet dir not found")
 else:
