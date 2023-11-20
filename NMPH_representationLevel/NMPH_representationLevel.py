@@ -13,7 +13,7 @@ from matplotlib.cm import get_cmap
 
 testMode = True
 testBatchNum = 5
-distanceType = 'cosine'  # 'cosine', 'L1', 'L2'
+distanceType = 'dot'  # 'cosine', 'L1', 'L2', 'dot'
 if testMode:
     jobID = 1
 else:
@@ -185,57 +185,61 @@ def cubic_fit_correlation_with_params(x, y, n_splits=10, random_state=42, return
         return mean_correlation, mean_params
 
 
-def prepare_data_for_NMPH(curr_batch=None, fc2_activations=None, distanceType='cosine'):
+def prepare_data_for_NMPH(curr_batch_=None, layer_activations=None, distanceType_=None):
     # fc2_activations.shape=(50, 128, 128)  # (#batch, batch size, #selected units)
 
     # get the activations of the last layer before weight change for 128 images
-    fc2_activations_before = fc2_activations[curr_batch, :, :]
+    layer_activations_before = layer_activations[curr_batch_, :, :]
 
     # get the activations of the last layer after weight change for 128 images
-    fc2_activations_after = fc2_activations[curr_batch + 1, :, :]
+    layer_activations_after = layer_activations[curr_batch_ + 1, :, :]
 
     # for each pair of images, calculate the cosine similarity of the activations before weight change
-    cosine_similarity_before = np.zeros((128, 128))
+    pairImg_similarity_before = np.zeros((128, 128))
     for i in range(128):
         for j in range(128):
-            if distanceType == 'cosine':
-                cosine_similarity_before[i, j] = np.dot(fc2_activations_before[i, :], fc2_activations_before[j, :]) / (
-                        np.linalg.norm(fc2_activations_before[i, :]) * np.linalg.norm(fc2_activations_before[j, :]))
-            elif distanceType == 'L1':
-                cosine_similarity_before[i, j] = - np.linalg.norm(
-                    fc2_activations_before[i, :] - fc2_activations_before[j, :],
+            if distanceType_ == 'cosine':
+                pairImg_similarity_before[i, j] = np.dot(layer_activations_before[i, :], layer_activations_before[j, :]) / (
+                        np.linalg.norm(layer_activations_before[i, :]) * np.linalg.norm(layer_activations_before[j, :]))
+            if distanceType_ == 'dot':
+                pairImg_similarity_before[i, j] = np.dot(layer_activations_before[i, :], layer_activations_before[j, :])
+            elif distanceType_ == 'L1':
+                pairImg_similarity_before[i, j] = - np.linalg.norm(
+                    layer_activations_before[i, :] - layer_activations_before[j, :],
                     ord=1)
-            elif distanceType == 'L2':  # euclidean
-                cosine_similarity_before[i, j] = - np.linalg.norm(
-                    fc2_activations_before[i, :] - fc2_activations_before[j, :],
+            elif distanceType_ == 'L2':  # euclidean
+                pairImg_similarity_before[i, j] = - np.linalg.norm(
+                    layer_activations_before[i, :] - layer_activations_before[j, :],
                     ord=2)
             else:
                 raise Exception("distanceType not found")
 
     # for each pair of images, calculate the cosine similarity of the activations after weight change
-    cosine_similarity_after = np.zeros((128, 128))
+    pairImg_similarity_after = np.zeros((128, 128))
     for i in range(128):
         for j in range(128):
-            if distanceType == 'cosine':
-                cosine_similarity_after[i, j] = np.dot(fc2_activations_after[i, :], fc2_activations_after[j, :]) / (
-                        np.linalg.norm(fc2_activations_after[i, :]) * np.linalg.norm(fc2_activations_after[j, :]))
-            elif distanceType == 'L1':
-                cosine_similarity_after[i, j] = - np.linalg.norm(
-                    fc2_activations_after[i, :] - fc2_activations_after[j, :],
+            if distanceType_ == 'cosine':
+                pairImg_similarity_after[i, j] = np.dot(layer_activations_after[i, :], layer_activations_after[j, :]) / (
+                        np.linalg.norm(layer_activations_after[i, :]) * np.linalg.norm(layer_activations_after[j, :]))
+            if distanceType_ == 'dot':
+                pairImg_similarity_after[i, j] = np.dot(layer_activations_after[i, :], layer_activations_after[j, :])
+            elif distanceType_ == 'L1':
+                pairImg_similarity_after[i, j] = - np.linalg.norm(
+                    layer_activations_after[i, :] - layer_activations_after[j, :],
                     ord=1)
-            elif distanceType == 'L2':  # euclidean
-                cosine_similarity_after[i, j] = - np.linalg.norm(
-                    fc2_activations_after[i, :] - fc2_activations_after[j, :],
+            elif distanceType_ == 'L2':  # euclidean
+                pairImg_similarity_after[i, j] = - np.linalg.norm(
+                    layer_activations_after[i, :] - layer_activations_after[j, :],
                     ord=2)
             else:
                 raise Exception("distanceType not found")
 
     # for each pair of images, calculate distance between the activations before and after weight change
-    cosine_similarity_representationalChange = cosine_similarity_after - cosine_similarity_before
+    representationalChange = pairImg_similarity_after - pairImg_similarity_before
 
     # prepare the data for NMPH
-    co_activations_flatten = cosine_similarity_before.reshape(-1)
-    representationChange_flatten = cosine_similarity_representationalChange.reshape(-1)
+    co_activations_flatten = pairImg_similarity_before.reshape(-1)
+    representationChange_flatten = representationalChange.reshape(-1)
     return co_activations_flatten, representationChange_flatten
 
 
@@ -243,9 +247,9 @@ co_activations_flatten__ = []
 representationChange_flatten__ = []
 for curr_batch in tqdm(range(len(fc2_activations_) - 1)):
     co_activations_flatten_, representationChange_flatten_ = prepare_data_for_NMPH(
-        curr_batch=curr_batch,
-        fc2_activations=fc2_activations_,
-        distanceType=distanceType
+        curr_batch_=curr_batch,
+        layer_activations=fc2_activations_,
+        distanceType_=distanceType
     )
     co_activations_flatten__.append(co_activations_flatten_)
     representationChange_flatten__.append(representationChange_flatten_)
