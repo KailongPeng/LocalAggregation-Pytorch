@@ -11,7 +11,7 @@ import random
 import matplotlib.pyplot as plt
 from matplotlib.cm import get_cmap
 
-testMode = False
+testMode = True
 testBatchNum = 50
 if testMode:
     jobID = 1
@@ -99,48 +99,47 @@ def dataPrepare():
     print(f"fc1_activations.shape={fc1_activations.shape}")
     print(f"fc2_activations.shape={fc2_activations.shape}")
     print(f"weight_changes.shape={weight_changes.shape}")
-    # fc1_activations.shape=(16, 64, 10)  # (#batch, batch size, #selected units)
-    # fc2_activations.shape=(16, 64, 5)
-    # fc2_partial_weights.shape=(16, 5, 10)
-    # weight_changes.shape=(16, 5, 10)
+    # fc1_activations.shape=(50, 128, 512)  # (#batch, batch size, #selected units)
+    # fc2_activations.shape=(50, 128, 128)
+    # weight_changes.shape=(50, 128, 512)
 
-    # Calculate the row-wise differences
-    # fc2_partial_weights_differences = fc2_partial_weights[1:] - fc2_partial_weights[:-1]
+    # # Calculate the row-wise differences
+    # # fc2_partial_weights_differences = fc2_partial_weights[1:] - fc2_partial_weights[:-1]
+    #
+    # # obtain all the co-activation and changes.
+    # co_activations_flatten = []
+    # weight_changes_flatten = []
+    # pairIDs = []
+    # for curr_fc1_feature in tqdm(range(len(selected_channel_penultimate_layer))):  # 512*128 = 65536 pairs
+    #     for curr_fc2_feature in range(len(selected_channel_last_layer)):
+    #         activation_lastLayer = fc1_activations[:, :, curr_fc1_feature]  # [#batch, batch size， channel#]
+    #         activation_secondLastLayer = fc2_activations[:, :, curr_fc2_feature]
+    #         weight_change = weight_changes[:, curr_fc2_feature, curr_fc1_feature]
+    #         weight_changes_flatten.append(weight_change)  # each batch has a single weight change
+    #         # Calculate the co-activation
+    #         co_activation = np.multiply(activation_lastLayer, activation_secondLastLayer)
+    #         # print(f"co_activation.shape={co_activation.shape}")
+    #         # each batch has a single weight change but multiple co-activations, average across the batch to obtain a batch specific co-activation
+    #         co_activation = np.mean(co_activation, axis=1)
+    #         # print(f"np.mean(co_activation, axis=1).shape={co_activation.shape}")
+    #         co_activations_flatten.append(co_activation)
+    #         pairIDs.append(
+    #             [selected_channel_penultimate_layer[curr_fc1_feature], selected_channel_last_layer[curr_fc2_feature]])
+    return fc2_activations
 
-    # obtain all the co-activation and changes.
-    co_activations_flatten = []
-    weight_changes_flatten = []
-    pairIDs = []
-    for curr_fc1_feature in tqdm(range(len(selected_channel_penultimate_layer))):  # 512*128 = 65536 pairs
-        for curr_fc2_feature in range(len(selected_channel_last_layer)):
-            activation_lastLayer = fc1_activations[:, :, curr_fc1_feature]  # [#batch, batch size， channel#]
-            activation_secondLastLayer = fc2_activations[:, :, curr_fc2_feature]
-            weight_change = weight_changes[:, curr_fc2_feature, curr_fc1_feature]
-            weight_changes_flatten.append(weight_change)  # each batch has a single weight change
-            # Calculate the co-activation
-            co_activation = np.multiply(activation_lastLayer, activation_secondLastLayer)
-            # print(f"co_activation.shape={co_activation.shape}")
-            # each batch has a single weight change but multiple co-activations, average across the batch to obtain a batch specific co-activation
-            co_activation = np.mean(co_activation, axis=1)
-            # print(f"np.mean(co_activation, axis=1).shape={co_activation.shape}")
-            co_activations_flatten.append(co_activation)
-            pairIDs.append(
-                [selected_channel_penultimate_layer[curr_fc1_feature], selected_channel_last_layer[curr_fc2_feature]])
-    return co_activations_flatten, weight_changes_flatten, pairIDs
 
-
-co_activations_flatten_, weight_changes_flatten_, pairIDs_ = dataPrepare()
+fc2_activations_ = dataPrepare()
 # mkdir(f'{directory_path}/temp')
 if not os.path.exists(f'{directory_path}/temp'):
     os.mkdir(f'{directory_path}/temp')
-
-if not testMode:
-    np.save(f'{directory_path}/temp/co_activations_flatten_.npy',
-            co_activations_flatten_)  # shape = [pair#, batch#]
-    np.save(f'{directory_path}/temp/weight_changes_flatten_.npy',
-            weight_changes_flatten_)  # shape = [pair#, batch#]
-    np.save(f'{directory_path}/temp/pairIDs_.npy',
-            pairIDs_)  # shape = [pair#, [ID1, ID2]]
+#
+# if not testMode:
+#     np.save(f'{directory_path}/temp/co_activations_flatten_.npy',
+#             co_activations_flatten_)  # shape = [pair#, batch#]
+#     np.save(f'{directory_path}/temp/weight_changes_flatten_.npy',
+#             weight_changes_flatten_)  # shape = [pair#, batch#]
+#     np.save(f'{directory_path}/temp/pairIDs_.npy',
+#             pairIDs_)  # shape = [pair#, [ID1, ID2]]
 
 
 # co_activations_flatten_ = np.load(f'{directory_path}/temp/co_activations_flatten_.npy',
@@ -205,7 +204,52 @@ def cubic_fit_correlation_with_params(x, y, n_splits=10, random_state=42, return
         return mean_correlation, mean_params
 
 
-def run_NMPH(co_activations_flatten, weight_changes_flatten, pairIDs, rows=None, cols=None, plotFig=False):
+def prepare_data_for_NMPH(curr_batch=0, fc2_activations=None):
+    # fc2_activations.shape=(50, 128, 128)  # (#batch, batch size, #selected units)
+
+    # get the activations of the last layer before weight change for 128 images
+    fc2_activations_before = fc2_activations[curr_batch, :, :]
+    # get the activations of the last layer after weight change for 128 images
+    fc2_activations_after = fc2_activations[curr_batch + 1, :, :]
+
+    # for each pair of images, calculate the cosine similarity of the activations before weight change
+    cosine_similarity_before = np.zeros((128, 128))
+    for i in range(128):
+        for j in range(128):
+            cosine_similarity_before[i, j] = np.dot(fc2_activations_before[i, :], fc2_activations_before[j, :]) / (
+                    np.linalg.norm(fc2_activations_before[i, :]) * np.linalg.norm(fc2_activations_before[j, :]))
+
+    # for each pair of images, calculate the cosine similarity of the activations after weight change
+    cosine_similarity_after = np.zeros((128, 128))
+    for i in range(128):
+        for j in range(128):
+            cosine_similarity_after[i, j] = np.dot(fc2_activations_after[i, :], fc2_activations_after[j, :]) / (
+                    np.linalg.norm(fc2_activations_after[i, :]) * np.linalg.norm(fc2_activations_after[j, :]))
+
+    # for each pair of images, calculate distance between the activations before and after weight change
+    cosine_similarity_representationalChange = cosine_similarity_after - cosine_similarity_before
+
+    # prepare the data for NMPH
+    co_activations_flatten = cosine_similarity_before.reshape(-1)
+    representationChange_flatten = cosine_similarity_representationalChange.reshape(-1)
+    return co_activations_flatten, representationChange_flatten
+
+
+co_activations_flatten__ = []
+representationChange_flatten__ = []
+for curr_batch in tqdm(range(len(fc2_activations_) - 1)):
+    co_activations_flatten_, representationChange_flatten_ = prepare_data_for_NMPH(
+        curr_batch=curr_batch,
+        fc2_activations=fc2_activations_
+    )
+    co_activations_flatten__.append(co_activations_flatten_)
+    representationChange_flatten__.append(representationChange_flatten_)
+
+# co_activations_flatten_ = np.array(co_activations_flatten__)
+# representationChange_flatten_ = np.array(representationChange_flatten__)
+
+
+def run_NMPH(co_activations_flatten, rep_changes_flatten, rows=None, cols=None, plotFig=False):
     if plotFig:
         if rows is None:
             rows = int(np.ceil(np.sqrt(len(co_activations_flatten))))
@@ -224,14 +268,14 @@ def run_NMPH(co_activations_flatten, weight_changes_flatten, pairIDs, rows=None,
     x_partials = []
     y_partials = []
     for i in tqdm(range(len(co_activations_flatten))):
-        if testMode:
-            x__ = co_activations_flatten[i][:testBatchNum]
-            y__ = weight_changes_flatten[i][:testBatchNum]
-            pairID = pairIDs[i]
-        else:
-            x__ = co_activations_flatten[i]
-            y__ = weight_changes_flatten[i]
-            pairID = pairIDs[i]
+        # if testMode:
+        #     x__ = co_activations_flatten[i][:testBatchNum]
+        #     y__ = rep_changes_flatten[i][:testBatchNum]
+        #     pairID = pairIDs[i]
+        # else:
+        x__ = co_activations_flatten[i]
+        y__ = rep_changes_flatten[i]
+
         mean_correlation_coefficient, mean_parameter, x_partial, y_partial = cubic_fit_correlation_with_params(
             x__, y__,
             n_splits=10,
@@ -255,12 +299,12 @@ def run_NMPH(co_activations_flatten, weight_changes_flatten, pairIDs, rows=None,
 
             ax.scatter(x__, y__, s=10, c=colors)  # 's' controls the size of the points, 'c' sets the colors
 
-            # Add labels and a title to each subplot
-            ax.set_title(f'pairID: {pairID}')
+            # # Add labels and a title to each subplot
+            # ax.set_title(f'pairID: {pairID}')
 
             # Hide x and y-axis ticks and tick labels
-            ax.set_xticks([])
-            ax.set_yticks([])
+            # ax.set_xticks([])
+            # ax.set_yticks([])
 
     if plotFig:
         plt.tight_layout()  # Adjust subplot layout for better visualization
@@ -277,22 +321,22 @@ def run_NMPH(co_activations_flatten, weight_changes_flatten, pairIDs, rows=None,
 
 if testMode:
     mean_correlation_coefficients_, mean_parameters_, x_partials_, y_partials_ = run_NMPH(
-        co_activations_flatten_[:4], weight_changes_flatten_[:4], pairIDs_[:4])
+        co_activations_flatten__[:4], representationChange_flatten__[:4], rows=2, cols=2, plotFig=True)
 else:
     mean_correlation_coefficients_, mean_parameters_, x_partials_, y_partials_ = run_NMPH(
-        co_activations_flatten_, weight_changes_flatten_, pairIDs_)
+        co_activations_flatten__, representationChange_flatten__)
 
 
-if not testMode:
-    np.save(f'{directory_path}/temp/mean_correlation_coefficients_.npy', mean_correlation_coefficients_)
-    np.save(f'{directory_path}/temp/mean_parameters_.npy', mean_parameters_)
-    np.save(f'{directory_path}/temp/x_partials_.npy', x_partials_)
-    np.save(f'{directory_path}/temp/y_partials_.npy', y_partials_)
+# if not testMode:
+#     np.save(f'{directory_path}/temp/mean_correlation_coefficients_.npy', mean_correlation_coefficients_)
+#     np.save(f'{directory_path}/temp/mean_parameters_.npy', mean_parameters_)
+#     np.save(f'{directory_path}/temp/x_partials_.npy', x_partials_)
+#     np.save(f'{directory_path}/temp/y_partials_.npy', y_partials_)
 
 
-x_partials_ = x_partials_.flatten()
-y_partials_ = y_partials_.flatten()
-mean_parameters_avg = np.mean(mean_parameters_, axis=0)
+# x_partials_ = x_partials_.flatten()
+# y_partials_ = y_partials_.flatten()
+# mean_parameters_avg = np.mean(mean_parameters_, axis=0)
 
 
 def plot_scatter_and_cubic(x_partials, y_partials, mean_parameters):
