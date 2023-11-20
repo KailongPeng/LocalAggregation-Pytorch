@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from matplotlib.cm import get_cmap
 
 testMode = True
-testBatchNum = 50
+testBatchNum = 5
 if testMode:
     jobID = 1
 else:
@@ -103,28 +103,6 @@ def dataPrepare():
     # fc2_activations.shape=(50, 128, 128)
     # weight_changes.shape=(50, 128, 512)
 
-    # # Calculate the row-wise differences
-    # # fc2_partial_weights_differences = fc2_partial_weights[1:] - fc2_partial_weights[:-1]
-    #
-    # # obtain all the co-activation and changes.
-    # co_activations_flatten = []
-    # weight_changes_flatten = []
-    # pairIDs = []
-    # for curr_fc1_feature in tqdm(range(len(selected_channel_penultimate_layer))):  # 512*128 = 65536 pairs
-    #     for curr_fc2_feature in range(len(selected_channel_last_layer)):
-    #         activation_lastLayer = fc1_activations[:, :, curr_fc1_feature]  # [#batch, batch size， channel#]
-    #         activation_secondLastLayer = fc2_activations[:, :, curr_fc2_feature]
-    #         weight_change = weight_changes[:, curr_fc2_feature, curr_fc1_feature]
-    #         weight_changes_flatten.append(weight_change)  # each batch has a single weight change
-    #         # Calculate the co-activation
-    #         co_activation = np.multiply(activation_lastLayer, activation_secondLastLayer)
-    #         # print(f"co_activation.shape={co_activation.shape}")
-    #         # each batch has a single weight change but multiple co-activations, average across the batch to obtain a batch specific co-activation
-    #         co_activation = np.mean(co_activation, axis=1)
-    #         # print(f"np.mean(co_activation, axis=1).shape={co_activation.shape}")
-    #         co_activations_flatten.append(co_activation)
-    #         pairIDs.append(
-    #             [selected_channel_penultimate_layer[curr_fc1_feature], selected_channel_last_layer[curr_fc2_feature]])
     return fc2_activations
 
 
@@ -132,6 +110,8 @@ fc2_activations_ = dataPrepare()
 # mkdir(f'{directory_path}/temp')
 if not os.path.exists(f'{directory_path}/temp'):
     os.mkdir(f'{directory_path}/temp')
+
+
 #
 # if not testMode:
 #     np.save(f'{directory_path}/temp/co_activations_flatten_.npy',
@@ -204,11 +184,12 @@ def cubic_fit_correlation_with_params(x, y, n_splits=10, random_state=42, return
         return mean_correlation, mean_params
 
 
-def prepare_data_for_NMPH(curr_batch=0, fc2_activations=None):
+def prepare_data_for_NMPH(curr_batch=None, fc2_activations=None, distanceType='cosine'):
     # fc2_activations.shape=(50, 128, 128)  # (#batch, batch size, #selected units)
 
     # get the activations of the last layer before weight change for 128 images
     fc2_activations_before = fc2_activations[curr_batch, :, :]
+
     # get the activations of the last layer after weight change for 128 images
     fc2_activations_after = fc2_activations[curr_batch + 1, :, :]
 
@@ -216,15 +197,43 @@ def prepare_data_for_NMPH(curr_batch=0, fc2_activations=None):
     cosine_similarity_before = np.zeros((128, 128))
     for i in range(128):
         for j in range(128):
-            cosine_similarity_before[i, j] = np.dot(fc2_activations_before[i, :], fc2_activations_before[j, :]) / (
-                    np.linalg.norm(fc2_activations_before[i, :]) * np.linalg.norm(fc2_activations_before[j, :]))
+            if distanceType == 'cosine':
+                cosine_similarity_before[i, j] = np.dot(fc2_activations_before[i, :], fc2_activations_before[j, :]) / (
+                        np.linalg.norm(fc2_activations_before[i, :]) * np.linalg.norm(fc2_activations_before[j, :]))
+            elif distanceType == 'euclidean':
+                cosine_similarity_before[i, j] = np.linalg.norm(
+                    fc2_activations_before[i, :] - fc2_activations_before[j, :])
+            elif distanceType == 'L1':
+                cosine_similarity_before[i, j] = np.linalg.norm(
+                    fc2_activations_before[i, :] - fc2_activations_before[j, :],
+                    ord=1)
+            elif distanceType == 'L2':
+                cosine_similarity_before[i, j] = np.linalg.norm(
+                    fc2_activations_before[i, :] - fc2_activations_before[j, :],
+                    ord=2)
+            else:
+                raise Exception("distanceType not found")
 
     # for each pair of images, calculate the cosine similarity of the activations after weight change
     cosine_similarity_after = np.zeros((128, 128))
     for i in range(128):
         for j in range(128):
-            cosine_similarity_after[i, j] = np.dot(fc2_activations_after[i, :], fc2_activations_after[j, :]) / (
-                    np.linalg.norm(fc2_activations_after[i, :]) * np.linalg.norm(fc2_activations_after[j, :]))
+            if distanceType == 'cosine':
+                cosine_similarity_after[i, j] = np.dot(fc2_activations_after[i, :], fc2_activations_after[j, :]) / (
+                        np.linalg.norm(fc2_activations_after[i, :]) * np.linalg.norm(fc2_activations_after[j, :]))
+            elif distanceType == 'euclidean':
+                cosine_similarity_after[i, j] = np.linalg.norm(
+                    fc2_activations_after[i, :] - fc2_activations_after[j, :])
+            elif distanceType == 'L1':
+                cosine_similarity_after[i, j] = np.linalg.norm(
+                    fc2_activations_after[i, :] - fc2_activations_after[j, :],
+                    ord=1)
+            elif distanceType == 'L2':
+                cosine_similarity_after[i, j] = np.linalg.norm(
+                    fc2_activations_after[i, :] - fc2_activations_after[j, :],
+                    ord=2)
+            else:
+                raise Exception("distanceType not found")
 
     # for each pair of images, calculate distance between the activations before and after weight change
     cosine_similarity_representationalChange = cosine_similarity_after - cosine_similarity_before
@@ -244,9 +253,6 @@ for curr_batch in tqdm(range(len(fc2_activations_) - 1)):
     )
     co_activations_flatten__.append(co_activations_flatten_)
     representationChange_flatten__.append(representationChange_flatten_)
-
-# co_activations_flatten_ = np.array(co_activations_flatten__)
-# representationChange_flatten_ = np.array(representationChange_flatten__)
 
 
 def run_NMPH(co_activations_flatten, rep_changes_flatten, rows=None, cols=None, plotFig=False):
@@ -268,11 +274,6 @@ def run_NMPH(co_activations_flatten, rep_changes_flatten, rows=None, cols=None, 
     x_partials = []
     y_partials = []
     for i in tqdm(range(len(co_activations_flatten))):
-        # if testMode:
-        #     x__ = co_activations_flatten[i][:testBatchNum]
-        #     y__ = rep_changes_flatten[i][:testBatchNum]
-        #     pairID = pairIDs[i]
-        # else:
         x__ = co_activations_flatten[i]
         y__ = rep_changes_flatten[i]
 
@@ -343,6 +344,7 @@ def plot_scatter_and_cubic(x_partials, y_partials, mean_parameters):
     def cubic_function(_x, a, b, c, d):
         print(f"a={a}, b={b}, c={c}, d={d}")
         return a * _x ** 3 + b * _x ** 2 + c * _x + d
+
     # Scatter plot
     plt.scatter(x_partials, y_partials, label='Data Points', color='green', marker='o', s=30)
 
@@ -364,7 +366,6 @@ def plot_scatter_and_cubic(x_partials, y_partials, mean_parameters):
     # Show the plot
     plt.show()
 
-
 # plot_scatter_and_cubic(x_partials_, y_partials_, mean_parameters_avg)
 
 
@@ -373,4 +374,3 @@ def plot_scatter_and_cubic(x_partials, y_partials, mean_parameters):
 # y__ = np.array([1.71735883e-06, -1.57840550e-05, 3.84114683e-05, 4.14438546e-05, 1.91703439e-05, 4.61861491e-05, 3.67611647e-05, 1.37425959e-05, -5.71087003e-06, -2.46353447e-05, -1.38916075e-05, 7.54334033e-05, 7.71433115e-05, 4.81046736e-05, 2.15470791e-05, -2.89455056e-06, -1.20028853e-05, -2.79136002e-05, 1.59293413e-05, -6.66454434e-06, -2.77347863e-05, -4.52324748e-05, -2.76193023e-05, -4.45954502e-05, -1.90772116e-05, -3.65227461e-05, -2.76044011e-05, -1.98855996e-05, -1.44354999e-05, -3.10726464e-05, 1.36781484e-04, 1.21731311e-04, 1.04047358e-04, 7.56606460e-05])
 # mean_correlation_coefficients, mean_params = cubic_fit_correlation(x__, y__)
 # print(f"The averaged correlation coefficients for the 10 folds are: {mean_correlation_coefficients}")
-
