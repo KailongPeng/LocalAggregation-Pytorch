@@ -740,6 +740,26 @@ class ImageNetFineTuneAgent(BaseAgent):
                 # self.model.module.linear.weight.data.shape = torch.Size([128, 512])  (#output channel, #input channel)
                 # weights_previous.shape = torch.Size([128, 512])
 
+                # create a folder to save the weights_difference
+                weights_difference_folder = f'/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/{self.config.exp_name_kailong}/weights_difference/numpy/'
+                if not os.path.exists(weights_difference_folder):
+                    os.makedirs(weights_difference_folder)
+
+                if batch_i == 0:
+                    # save the activation of the last layer
+                    activation_lastLayer = self.model.module.features_lastLayer
+                    print(f'activation_lastLayer.shape = {activation_lastLayer.shape}')
+
+                    # save the activation of the second last layer
+                    activation_secondLastLayer = self.model.module.features_secondLastLayer
+                    print(f'activation_secondLastLayer.shape = {activation_secondLastLayer.shape}')
+
+                    np.save(
+                        f"{weights_difference_folder}/"
+                        f"activation_lastLayer_epoch{self.current_epoch}_batch_i{'_initial'}.npy",
+                        np.asarray(activation_lastLayer)
+                    )
+
             # with torch.no_grad():
             #     embeddings = self.resnet(images)
             #     embeddings = embeddings.view(batch_size, -1)
@@ -793,10 +813,6 @@ class ImageNetFineTuneAgent(BaseAgent):
                 print(
                     f'activation_secondLastLayer.shape = {activation_secondLastLayer.shape}')  # activation_secondLastLayer.shape = (9, 512)
 
-                # create a folder to save the weights_difference
-                weights_difference_folder = f'/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/{self.config.exp_name_kailong}/weights_difference/numpy/'
-                if not os.path.exists(weights_difference_folder):
-                    os.makedirs(weights_difference_folder)
                 np.save(f'{weights_difference_folder}/weights_difference_epoch{self.current_epoch}_batch_i{batch_i}.npy',
                         weights_difference.cpu().numpy())
                 np.save(f'{weights_difference_folder}/activation_lastLayer_epoch{self.current_epoch}_batch_i{batch_i}.npy',

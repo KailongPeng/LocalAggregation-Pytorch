@@ -52,7 +52,7 @@ def run_NMPH():
     kp_run("sbatch ./NMPH/NMPH.sh")
 
 
-def wholeSet():
+def wholeSet_synapseLevel():
     def run_LA():
         kp_run("sbatch ./scripts/instance.sh /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_la.json")
         # 25553724
@@ -107,6 +107,12 @@ def wholeSet():
 
         # 25554278
         # 25554371
+
+
+def wholeSet_representationLevel():
+    def run_NMPH_representationLevel():
+        os.chdir('/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch')
+        kp_run("sbatch --array=1-6 ./NMPH_representationLevel/NMPH_representationLevel.sh")
 
 
 def testNMPH_curveFitting():
