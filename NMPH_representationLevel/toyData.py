@@ -182,76 +182,87 @@ distance_before_flat = distances_before_learning.reshape(-1)
 distance_change_flat = distance_change.reshape(-1)
 label_matrix_flat = label_matrix.reshape(-1)
 
-# Define a custom colormap with specific colors and alpha channel for transparency
-colors_with_alpha_original = {
-    0: (1, 1, 1, 0),  # none
-    1: (0, 0, 0, 0.1),  # black  # 'close_neighbors to close_neighbors'
-    2: (0, 0, 1, 0.1),  # blue  # 'background_neighbors to background_neighbors'
-    3: (1, 0.5, 0, 0.1),  # orange  # 'irrelevant_neighbors to irrelevant_neighbors'
 
-    4: (1, 0, 0, 0.1),  # red  # 'close_neighbors to center'
-    5: (0, 1, 1, 0.1),  # cyan  # 'background_neighbors to center'
-    6: (0.5, 0, 0.5, 0.1),  # purple  # 'irrelevant_neighbors to center'
+def plot_distance_change_components(co_activation, similarity_change, label_matrix_flat, use_distance=False):
+    # Define a custom colormap with specific colors and alpha channel for transparency
+    colors_with_alpha_original = {
+        0: (1, 1, 1, 0),  # none
+        1: (0, 0, 0, 0.1),  # black  # 'close_neighbors to close_neighbors'
+        2: (0, 0, 1, 0.1),  # blue  # 'background_neighbors to background_neighbors'
+        3: (1, 0.5, 0, 0.1),  # orange  # 'irrelevant_neighbors to irrelevant_neighbors'
 
-    7: (1, 1, 0, 0.1),  # yellow  # 'close_neighbors to background_neighbors'
-    8: (0, 1, 0, 0.1),  # green  # 'close_neighbors to irrelevant_neighbors'
-    9: (0.7, 0.7, 0.7, 0.1)  # light grey  # 'background_neighbors to irrelevant_neighbors'
-}
+        4: (1, 0, 0, 0.1),  # red  # 'close_neighbors to center'
+        5: (0, 1, 1, 0.1),  # cyan  # 'background_neighbors to center'
+        6: (0.5, 0, 0.5, 0.1),  # purple  # 'irrelevant_neighbors to center'
 
-titles = {
-    0: 'None',
-    1: 'black: close_neighbors to close_neighbors ',
-    2: 'blue: background_neighbors to background_neighbors',
-    3: 'orange: irrelevant_neighbors to irrelevant_neighbors',
+        7: (1, 1, 0, 0.1),  # yellow  # 'close_neighbors to background_neighbors'
+        8: (0, 1, 0, 0.1),  # green  # 'close_neighbors to irrelevant_neighbors'
+        9: (0.7, 0.7, 0.7, 0.1)  # light grey  # 'background_neighbors to irrelevant_neighbors'
+    }
 
-    4: 'red: close_neighbors to center',
-    5: 'cyan: background_neighbors to center',
-    6: 'purple: irrelevant_neighbors to center',
+    titles = {
+        0: 'None',
+        1: 'black: close_neighbors to close_neighbors ',
+        2: 'blue: background_neighbors to background_neighbors',
+        3: 'orange: irrelevant_neighbors to irrelevant_neighbors',
 
-    7: 'yellow: close_neighbors to background_neighbors',
-    8: 'green: close_neighbors to irrelevant_neighbors',
-    9: 'light grey: background_neighbors to irrelevant_neighbors',
-    10: 'All'
-}
-# Iterate for 9 times, each time set all colors but one to be transparent
-for i in range(11):
-    # Set all colors to be transparent
-    colors_with_alpha = colors_with_alpha_original.copy()
-    for j in range(10):
-        if j != i:
-            colors_with_alpha[j] = (
-                colors_with_alpha_original[j][0], colors_with_alpha_original[j][1], colors_with_alpha_original[j][2], 0)
-        else:
-            colors_with_alpha[j] = (
-                colors_with_alpha_original[j][0], colors_with_alpha_original[j][1], colors_with_alpha_original[j][2], 1)
-    if i == 10:
-        colors_with_alpha = colors_with_alpha_original
+        4: 'red: close_neighbors to center',
+        5: 'cyan: background_neighbors to center',
+        6: 'purple: irrelevant_neighbors to center',
 
-    # Function to convert label_matrix_flat values to RGBA colors
-    def map_labels_to_colors(labels, label_colors):
-        return [label_colors[label] for label in labels]
+        7: 'yellow: close_neighbors to background_neighbors',
+        8: 'green: close_neighbors to irrelevant_neighbors',
+        9: 'light grey: background_neighbors to irrelevant_neighbors',
+        10: 'All'
+    }
+    # Iterate for 9 times, each time set all colors but one to be transparent
+    for i in range(11):
+        # Set all colors to be transparent
+        colors_with_alpha = colors_with_alpha_original.copy()
+        for j in range(10):
+            if j != i:
+                colors_with_alpha[j] = (
+                    colors_with_alpha_original[j][0], colors_with_alpha_original[j][1], colors_with_alpha_original[j][2], 0)
+            else:
+                colors_with_alpha[j] = (
+                    colors_with_alpha_original[j][0], colors_with_alpha_original[j][1], colors_with_alpha_original[j][2], 1)
+        if i == 10:
+            colors_with_alpha = colors_with_alpha_original
 
-    # Convert label_matrix_flat values to RGBA colors
-    colors = map_labels_to_colors(label_matrix_flat, colors_with_alpha)
+        # Function to convert label_matrix_flat values to RGBA colors
+        def map_labels_to_colors(labels, label_colors):
+            return [label_colors[label] for label in labels]
 
-    _ = plt.figure()
-    scatter = plt.scatter(distance_before_flat, distance_change_flat, c=colors,
-                          label='Change in Distance')
+        # Convert label_matrix_flat values to RGBA colors
+        colors = map_labels_to_colors(label_matrix_flat, colors_with_alpha)
+
+        _ = plt.figure()
+        scatter = plt.scatter(co_activation, similarity_change, c=colors,
+                              label='Change in Distance')
+
+        # Display the plot
+        plt.title(f'{titles[i]}')
+        plt.xlabel('Distance Before Learning')
+        plt.ylabel('Change in Distance')
+        plt.show()
 
     # Display the plot
-    plt.title(f'{titles[i]}')
-    plt.xlabel('Distance Before Learning')
-    plt.ylabel('Change in Distance')
     plt.show()
 
+    # Plot the histogram of change in distance
+    _ = plt.figure(figsize=(10, 10))
+    _ = plt.hist(similarity_change, bins=100)
+    if use_distance:
+        _ = plt.title("distance_change_flat hist")
+    else:
+        _ = plt.title("similarity change hist")
 
-# Display the plot
-plt.show()
 
-# Plot the histogram of change in distance
-_ = plt.figure(figsize=(10, 10))
-_ = plt.hist(distance_change_flat, bins=100)
-_ = plt.title("distance_change_flat hist")
+use_distance = False
+if use_distance:
+    plot_distance_change_components(distance_before_flat, distance_change_flat, label_matrix_flat, use_distance=use_distance)
+else:
+    plot_distance_change_components(- distance_before_flat, - distance_change_flat, label_matrix_flat, use_distance=use_distance)
 
 
 def multiple_pull_push():
