@@ -22,7 +22,7 @@ def move_neighbors(points, center_point_index, close_count=20, background_count=
     close_neighbors_moved = close_neighbors - move_factor * (close_neighbors - center_point)
     background_neighbors_moved = background_neighbors + move_factor * (background_neighbors - center_point)
 
-    return center, close_neighbors_moved, background_neighbors_moved, irrelevant_neighbors
+    return center, close_neighbors, background_neighbors, irrelevant_neighbors, close_neighbors_moved, background_neighbors_moved
 
 # Generate random 2D points
 np.random.seed(42)
@@ -38,15 +38,29 @@ center_index = np.argmin(np.linalg.norm(points - centroid, axis=1))
 
 print("Index of the center point:", center_index)
 
-
 # Move neighbors using the function
-center, close_neighbors_moved, background_neighbors_moved, irrelevant_neighbors = move_neighbors(points, center_index)
+center, close_neighbors, background_neighbors, irrelevant_neighbors, close_neighbors_moved, background_neighbors_moved = move_neighbors(points, center_index)
 
-# Plot the points
+# Plot the un-moved points
 plt.scatter(center[0][0], center[0][1], color='red', label='Center')
-plt.scatter(close_neighbors_moved[:, 0], close_neighbors_moved[:, 1], color='blue', label='Close Neighbors')
-plt.scatter(background_neighbors_moved[:, 0], background_neighbors_moved[:, 1], color='black', label='Background Neighbors')
-plt.scatter(irrelevant_neighbors[:, 0], irrelevant_neighbors[:, 1], color='grey', label='Irrelevant Neighbors')
+plt.scatter(close_neighbors[:, 0], close_neighbors[:, 1], color='blue', label='Close Neighbors (Un-Moved)')
+plt.scatter(background_neighbors[:, 0], background_neighbors[:, 1], color='black', label='Background Neighbors (Un-Moved)')
+plt.scatter(irrelevant_neighbors[:, 0], irrelevant_neighbors[:, 1], color='grey', label='Irrelevant Neighbors (Un-Moved)')
+
+# Add labels and legend
+plt.xlabel('X-axis')
+plt.ylabel('Y-axis')
+plt.legend()
+plt.title('Neighbor Categories (Un-Moved)')
+
+# Display the plot
+plt.show()
+
+# Plot the moved points
+plt.scatter(center[0][0], center[0][1], color='red', label='Center')
+plt.scatter(close_neighbors_moved[:, 0], close_neighbors_moved[:, 1], color='blue', label='Close Neighbors (Moved)')
+plt.scatter(background_neighbors_moved[:, 0], background_neighbors_moved[:, 1], color='black', label='Background Neighbors (Moved)')
+plt.scatter(irrelevant_neighbors[:, 0], irrelevant_neighbors[:, 1], color='grey', label='Irrelevant Neighbors (Moved)')
 
 # Add labels and legend
 plt.xlabel('X-axis')
