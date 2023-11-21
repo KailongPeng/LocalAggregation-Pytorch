@@ -162,7 +162,8 @@ def plot_dots():
     plt.scatter(close_neighbors_moved[:, 0], close_neighbors_moved[:, 1], color='blue', label='Close Neighbors (Moved)')
     plt.scatter(background_neighbors_moved[:, 0], background_neighbors_moved[:, 1], color='black',
                 label='Background Neighbors (Moved)')
-    plt.scatter(irrelevant_neighbors[:, 0], irrelevant_neighbors[:, 1], color='grey', label='Irrelevant Neighbors (Moved)')
+    plt.scatter(irrelevant_neighbors[:, 0], irrelevant_neighbors[:, 1], color='grey',
+                label='Irrelevant Neighbors (Moved)')
 
     # Add labels and legend
     plt.xlabel('X-axis')
@@ -202,7 +203,8 @@ def plot_distance_change_components(co_activation, similarity_change, label_matr
 
     titles = {
         0: 'None',
-        1: 'black: close_neighbors to close_neighbors ',
+
+        1: 'black: close_neighbors to close_neighbors',
         2: 'blue: background_neighbors to background_neighbors',
         3: 'orange: irrelevant_neighbors to irrelevant_neighbors',
 
@@ -213,21 +215,40 @@ def plot_distance_change_components(co_activation, similarity_change, label_matr
         7: 'yellow: close_neighbors to background_neighbors',
         8: 'green: close_neighbors to irrelevant_neighbors',
         9: 'light grey: background_neighbors to irrelevant_neighbors',
-        10: 'All'
+
+        10: 'All',
+        11: 'to center'
     }
     # Iterate for 9 times, each time set all colors but one to be transparent
-    for i in range(11):
+    for i in range(12):
         # Set all colors to be transparent
         colors_with_alpha = colors_with_alpha_original.copy()
         for j in range(10):
             if j != i:
                 colors_with_alpha[j] = (
-                    colors_with_alpha_original[j][0], colors_with_alpha_original[j][1], colors_with_alpha_original[j][2], 0)
+                    colors_with_alpha_original[j][0], colors_with_alpha_original[j][1],
+                    colors_with_alpha_original[j][2], 0)
             else:
                 colors_with_alpha[j] = (
-                    colors_with_alpha_original[j][0], colors_with_alpha_original[j][1], colors_with_alpha_original[j][2], 1)
+                    colors_with_alpha_original[j][0], colors_with_alpha_original[j][1],
+                    colors_with_alpha_original[j][2], 1)
         if i == 10:
             colors_with_alpha = colors_with_alpha_original
+        elif i == 11:
+            colors_with_alpha = {
+                0: (1, 1, 1, 0),  # none
+                1: (0, 0, 0, 0),  # black  # 'close_neighbors to close_neighbors'
+                2: (0, 0, 1, 0),  # blue  # 'background_neighbors to background_neighbors'
+                3: (1, 0.5, 0, 0),  # orange  # 'irrelevant_neighbors to irrelevant_neighbors'
+
+                4: (1, 0, 0, 0.1),  # red  # 'close_neighbors to center'
+                5: (0, 1, 1, 0.1),  # cyan  # 'background_neighbors to center'
+                6: (0.5, 0, 0.5, 0.1),  # purple  # 'irrelevant_neighbors to center'
+
+                7: (1, 1, 0, 0),  # yellow  # 'close_neighbors to background_neighbors'
+                8: (0, 1, 0, 0),  # green  # 'close_neighbors to irrelevant_neighbors'
+                9: (0.7, 0.7, 0.7, 0)  # light grey  # 'background_neighbors to irrelevant_neighbors'
+            }
 
         # Function to convert label_matrix_flat values to RGBA colors
         def map_labels_to_colors(labels, label_colors):
@@ -237,19 +258,22 @@ def plot_distance_change_components(co_activation, similarity_change, label_matr
         colors = map_labels_to_colors(label_matrix_flat, colors_with_alpha)
 
         _ = plt.figure()
-        scatter = plt.scatter(co_activation, similarity_change, c=colors,
-                              label='Change in Distance')
+        scatter = plt.scatter(co_activation, similarity_change, c=colors)
 
         # Display the plot
         plt.title(f'{titles[i]}')
-        plt.xlabel('Distance Before Learning')
-        plt.ylabel('Change in Distance')
+        if use_distance:
+            plt.xlabel('Distance Before Learning')
+            plt.ylabel('Change in Distance')
+        else:
+            plt.xlabel('Co-activation')
+            plt.ylabel('Similarity Change')
         plt.show()
 
     # Display the plot
     plt.show()
 
-    # Plot the histogram of change in distance
+    # Plot the histogram of distance change or similarity change
     _ = plt.figure(figsize=(10, 10))
     _ = plt.hist(similarity_change, bins=100)
     if use_distance:
@@ -260,9 +284,11 @@ def plot_distance_change_components(co_activation, similarity_change, label_matr
 
 use_distance = False
 if use_distance:
-    plot_distance_change_components(distance_before_flat, distance_change_flat, label_matrix_flat, use_distance=use_distance)
+    plot_distance_change_components(distance_before_flat, distance_change_flat, label_matrix_flat,
+                                    use_distance=use_distance)
 else:
-    plot_distance_change_components(- distance_before_flat, - distance_change_flat, label_matrix_flat, use_distance=use_distance)
+    plot_distance_change_components(- distance_before_flat, - distance_change_flat, label_matrix_flat,
+                                    use_distance=use_distance)
 
 
 def multiple_pull_push():
