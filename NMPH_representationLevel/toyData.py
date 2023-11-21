@@ -26,8 +26,14 @@ def move_neighbors(points, center_point_index, close_count=None, background_coun
 
 
 # Function to calculate distances between points
-def calculate_distances(_points):
-    return np.linalg.norm(_points[:, np.newaxis, :] - _points, axis=2)
+def calculate_distances(points_):
+    # Euclidean distance between two points
+    distance_matrix = np.zeros((points_.shape[0], points_.shape[0]))
+    for _i in range(len(points_)):
+        for _j in range(len(points_)):
+            distance_matrix[_i][_j] = np.linalg.norm(points_[_i] - points_[_j])
+    return distance_matrix
+    # return np.linalg.norm(_points[:, np.newaxis, :] - _points, axis=2)
     # calculate_distances(np.array([[1,1],
     #                              [1,1],
     #                              [8,8],
@@ -130,105 +136,112 @@ distances_after_learning = calculate_distances(
 # Calculate the change in distances
 distance_change = distances_after_learning - distances_before_learning
 
-# Plot the un-moved points
-plt.figure(figsize=(10, 10))
-plt.scatter(center[0][0], center[0][1], color='red', label='Center')
-plt.scatter(close_neighbors[:, 0], close_neighbors[:, 1], color='blue', label='Close Neighbors (Un-Moved)')
-plt.scatter(background_neighbors[:, 0], background_neighbors[:, 1], color='black',
-            label='Background Neighbors (Un-Moved)')
-plt.scatter(irrelevant_neighbors[:, 0], irrelevant_neighbors[:, 1], color='grey',
-            label='Irrelevant Neighbors (Un-Moved)')
 
-# Add labels and legend
-plt.xlabel('X-axis')
-plt.ylabel('Y-axis')
-plt.legend()
-plt.title('Neighbor Categories (Un-Moved)')
+def plot_dots():
+    # Plot the un-moved points
+    plt.figure(figsize=(10, 10))
+    plt.scatter(center[0][0], center[0][1], color='red', label='Center')
+    plt.scatter(close_neighbors[:, 0], close_neighbors[:, 1], color='blue', label='Close Neighbors (Un-Moved)')
+    plt.scatter(background_neighbors[:, 0], background_neighbors[:, 1], color='black',
+                label='Background Neighbors (Un-Moved)')
+    plt.scatter(irrelevant_neighbors[:, 0], irrelevant_neighbors[:, 1], color='grey',
+                label='Irrelevant Neighbors (Un-Moved)')
 
-# Display the plot
-plt.show()
+    # Add labels and legend
+    plt.xlabel('X-axis')
+    plt.ylabel('Y-axis')
+    plt.legend()
+    plt.title('Neighbor Categories (Un-Moved)')
 
-# Plot the moved points
-plt.figure(figsize=(10, 10))
-plt.scatter(center[0][0], center[0][1], color='red', label='Center')
-plt.scatter(close_neighbors_moved[:, 0], close_neighbors_moved[:, 1], color='blue', label='Close Neighbors (Moved)')
-plt.scatter(background_neighbors_moved[:, 0], background_neighbors_moved[:, 1], color='black',
-            label='Background Neighbors (Moved)')
-plt.scatter(irrelevant_neighbors[:, 0], irrelevant_neighbors[:, 1], color='grey', label='Irrelevant Neighbors (Moved)')
+    # Display the plot
+    plt.show()
 
-# Add labels and legend
-plt.xlabel('X-axis')
-plt.ylabel('Y-axis')
-plt.legend()
-plt.title('Neighbor Categories (Moved)')
+    # Plot the moved points
+    plt.figure(figsize=(10, 10))
+    plt.scatter(center[0][0], center[0][1], color='red', label='Center')
+    plt.scatter(close_neighbors_moved[:, 0], close_neighbors_moved[:, 1], color='blue', label='Close Neighbors (Moved)')
+    plt.scatter(background_neighbors_moved[:, 0], background_neighbors_moved[:, 1], color='black',
+                label='Background Neighbors (Moved)')
+    plt.scatter(irrelevant_neighbors[:, 0], irrelevant_neighbors[:, 1], color='grey', label='Irrelevant Neighbors (Moved)')
 
-# Display the plot
-plt.show()
+    # Add labels and legend
+    plt.xlabel('X-axis')
+    plt.ylabel('Y-axis')
+    plt.legend()
+    plt.title('Neighbor Categories (Moved)')
+
+    # Display the plot
+    plt.show()
+
+
+plot_dots()
 
 # Flatten arrays for plotting
 plt.figure(figsize=(15, 10))
-distance_before_flat = distances_before_learning.flatten()
-distance_change_flat = distance_change.flatten()
-
-# Plot the change in distance, color-coded by label_matrix
+distance_before_flat = distances_before_learning.reshape(-1)
+distance_change_flat = distance_change.reshape(-1)
+label_matrix_flat = label_matrix.reshape(-1)
 
 # Define a custom colormap with specific colors and alpha channel for transparency
-colors_with_alpha_original = [
-    (0, 0, 0, 0.1),  # black  # 'close_neighbors to close_neighbors'
-    (0, 0, 1, 0.1),  # blue  # 'background_neighbors to background_neighbors'
-    (1, 0.5, 0, 0.1),  # orange  # 'irrelevant_neighbors to irrelevant_neighbors'
+colors_with_alpha_original = {
+    0: (1, 1, 1, 0),  # none
+    1: (0, 0, 0, 0.1),  # black  # 'close_neighbors to close_neighbors'
+    2: (0, 0, 1, 0.1),  # blue  # 'background_neighbors to background_neighbors'
+    3: (1, 0.5, 0, 0.1),  # orange  # 'irrelevant_neighbors to irrelevant_neighbors'
 
-    (1, 0, 0, 0.1),  # red  # 'close_neighbors to center'
-    (0, 1, 1, 0.1),  # cyan  # 'background_neighbors to center'
-    (0.5, 0, 0.5, 0.1),  # purple  # 'irrelevant_neighbors to center'
+    4: (1, 0, 0, 0.1),  # red  # 'close_neighbors to center'
+    5: (0, 1, 1, 0.1),  # cyan  # 'background_neighbors to center'
+    6: (0.5, 0, 0.5, 0.1),  # purple  # 'irrelevant_neighbors to center'
 
-    (1, 1, 0, 0.1),  # yellow  # 'close_neighbors to background_neighbors'
-    (0, 1, 0, 0.1),  # green  # 'close_neighbors to irrelevant_neighbors'
-    (0.7, 0.7, 0.7, 0.1)  # light grey  # 'background_neighbors to irrelevant_neighbors'
-]
+    7: (1, 1, 0, 0.1),  # yellow  # 'close_neighbors to background_neighbors'
+    8: (0, 1, 0, 0.1),  # green  # 'close_neighbors to irrelevant_neighbors'
+    9: (0.7, 0.7, 0.7, 0.1)  # light grey  # 'background_neighbors to irrelevant_neighbors'
+}
 
+titles = {
+    0: 'None',
+    1: 'black: close_neighbors to close_neighbors ',
+    2: 'blue: background_neighbors to background_neighbors',
+    3: 'orange: irrelevant_neighbors to irrelevant_neighbors',
+
+    4: 'red: close_neighbors to center',
+    5: 'cyan: background_neighbors to center',
+    6: 'purple: irrelevant_neighbors to center',
+
+    7: 'yellow: close_neighbors to background_neighbors',
+    8: 'green: close_neighbors to irrelevant_neighbors',
+    9: 'light grey: background_neighbors to irrelevant_neighbors',
+    10: 'All'
+}
 # Iterate for 9 times, each time set all colors but one to be transparent
-for i in range(10):
+for i in range(11):
     # Set all colors to be transparent
     colors_with_alpha = colors_with_alpha_original.copy()
-    for j in range(9):
+    for j in range(10):
         if j != i:
             colors_with_alpha[j] = (
                 colors_with_alpha_original[j][0], colors_with_alpha_original[j][1], colors_with_alpha_original[j][2], 0)
         else:
             colors_with_alpha[j] = (
                 colors_with_alpha_original[j][0], colors_with_alpha_original[j][1], colors_with_alpha_original[j][2], 1)
-    if i == 9:
+    if i == 10:
         colors_with_alpha = colors_with_alpha_original
 
-    # Define the custom colormap with updated alpha values
-    custom_cmap = plt.cm.colors.ListedColormap(colors_with_alpha)
+    # Function to convert label_matrix_flat values to RGBA colors
+    def map_labels_to_colors(labels, label_colors):
+        return [label_colors[label] for label in labels]
+
+    # Convert label_matrix_flat values to RGBA colors
+    colors = map_labels_to_colors(label_matrix_flat, colors_with_alpha)
 
     _ = plt.figure()
-    # Plot the change in distance, color-coded by label_matrix using the custom colormap
-    scatter = plt.scatter(distance_before_flat, distance_change_flat, c=label_matrix.flatten(), cmap=custom_cmap,
+    scatter = plt.scatter(distance_before_flat, distance_change_flat, c=colors,
                           label='Change in Distance')
 
-    # Create a colorbar
-    cbar = plt.colorbar(scatter, ticks=np.arange(1, len(colors_with_alpha) + 1), label='Label')
-    cbar.set_ticklabels(['close_neighbors to close_neighbors',
-                         'background_neighbors to background_neighbors',
-                         'irrelevant_neighbors to irrelevant_neighbors',
-
-                         'close_neighbors to center',
-                         'background_neighbors to center',
-                         'irrelevant_neighbors to center',
-
-                         'close_neighbors to background_neighbors',
-                         'close_neighbors to irrelevant_neighbors',
-                         'background_neighbors to irrelevant_neighbors'])
-
     # Display the plot
-    plt.title(f'Plot {i + 1}')
-    # Add labels and legend
+    plt.title(f'{titles[i]}')
     plt.xlabel('Distance Before Learning')
     plt.ylabel('Change in Distance')
-    # plt.legend()
     plt.show()
 
 
