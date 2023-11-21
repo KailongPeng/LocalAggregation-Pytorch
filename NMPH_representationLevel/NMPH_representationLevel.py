@@ -1,4 +1,3 @@
-from __future__ import print_function
 import os
 from glob import glob
 import numpy as np
@@ -14,7 +13,7 @@ from matplotlib.cm import get_cmap
 testMode = True
 testBatchNum = 5
 repChange_distanceType = 'jacard'  # 'cosine', 'L1', 'L2', 'dot' 'correlation' 'jacard'(slow)
-coactivation_distanceType = 'correlation'  # 'cosine', 'L1', 'L2', 'dot' 'correlation' 'jacard'(slow)
+coactivation_distanceType = 'jacard'  # 'cosine', 'L1', 'L2', 'dot' 'correlation' 'jacard'(slow)
 co_activationType = 'before'  # 'before', 'after'
 if testMode:
     jobID = 1
