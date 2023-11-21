@@ -26,13 +26,6 @@ def move_neighbors(points, center_point_index, close_count=20, background_count=
 
 
 # Function to calculate distances between points
-def calculate_distances(points):
-    return np.linalg.norm(points[:, np.newaxis, :] - points, axis=2)
-    # calculate_distances(np.array([[1,1],
-    #                              [1,1],
-    #                              [8,8],
-    #                              [0,0],
-    #                              [3,4]]))
 
 
 # Function to calculate change in distances
@@ -56,12 +49,22 @@ print("Index of the center point:", center_index)
 center, close_neighbors, background_neighbors, irrelevant_neighbors, close_neighbors_moved, background_neighbors_moved = move_neighbors(
     points, center_index)
 
+
+def calculate_distances(points):
+    return np.linalg.norm(points[:, np.newaxis, :] - points, axis=2)
+    # calculate_distances(np.array([[1,1],
+    #                              [1,1],
+    #                              [8,8],
+    #                              [0,0],
+    #                              [3,4]]))
+
+
 # Calculate distances before and after learning
 distances_before_learning = calculate_distances(
     np.vstack((center[0],
                close_neighbors,
                background_neighbors,
-               # irrelevant_neighbors
+               irrelevant_neighbors
                )))  # input (100, 2); output (100, 100)
 distances_after_learning = calculate_distances(
     np.vstack((center[0],
@@ -129,6 +132,11 @@ plt.title('Change in Distance Before and After Learning')
 # Display the plot
 plt.show()
 
+# Plot the histogram of change in distance
+_ = plt.figure(figsize=(10, 10))
+_ = plt.hist(distance_change_flat, bins=100)
+_ = plt.title("distance_change_flat hist")
+
 
 def multiple_pull_push():
     import numpy as np
@@ -186,7 +194,7 @@ def multiple_pull_push():
 
     # Plot the points before any movement
     plt.figure(figsize=(10, 10))
-    plt.scatter(initial_points_list[0][:, 0], initial_points_list[0][:, 1], alpha=0.1, color='grey')
+    plt.scatter(initial_points_list[0][:, 0], initial_points_list[0][:, 1], alpha=0.5, color='grey')
 
     # Add labels and legend
     plt.xlabel('X-axis')
@@ -199,7 +207,7 @@ def multiple_pull_push():
     # Plot the points after all movements
     plt.figure(figsize=(10, 10))
     final_points = final_points_list[-1]
-    plt.scatter(final_points[:, 0], final_points[:, 1], alpha=0.1, color='purple')
+    plt.scatter(final_points[:, 0], final_points[:, 1], alpha=0.5, color='grey')
 
     # Add labels and legend
     plt.xlabel('X-axis')
@@ -223,7 +231,7 @@ def multiple_pull_push():
     distance_change_flat = distance_change.flatten()
 
     # Plot the change in distance
-    plt.scatter(distance_before_flat, distance_change_flat, color='purple', label='Change in Distance')
+    plt.scatter(distance_before_flat, distance_change_flat, color='purple', label='Change in Distance', alpha=0.5)
 
     # Add labels and legend
     plt.xlabel('Distance Before Learning')
@@ -233,4 +241,9 @@ def multiple_pull_push():
 
     # Display the plot
     plt.show()
+
+    # Plot the histogram of change in distance
+    plt.figure(figsize=(10, 10))
+    _ = plt.hist(distance_change_flat, bins=100)
+    _ = plt.title("distance_change_flat hist")
 
