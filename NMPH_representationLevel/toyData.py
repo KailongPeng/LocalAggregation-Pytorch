@@ -128,3 +128,79 @@ plt.title('Change in Distance Before and After Learning')
 
 # Display the plot
 plt.show()
+
+
+def multiple_pull_push():
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    def move_neighbors(points, center_point_index, close_count=20, background_count=40, move_factor=0.3):
+        # Calculate the centroid (center) of all points
+        center_point = points[center_point_index]
+
+        # Calculate distances from the center to all other points
+        distances = np.linalg.norm(points - center_point, axis=1)
+
+        # Sort indices based on distances
+        sorted_indices = np.argsort(distances)
+
+        # Define categories for points
+        center = [center_point]
+        close_neighbors = points[sorted_indices[1:close_count + 1]]
+        background_neighbors = points[sorted_indices[close_count + 1:close_count + background_count + 1]]
+        irrelevant_neighbors = points[sorted_indices[close_count + background_count + 1:]]
+
+        # Move close neighbors closer to the center and background neighbors further away
+        close_neighbors_moved = close_neighbors - move_factor * (close_neighbors - center_point)
+        background_neighbors_moved = background_neighbors + move_factor * (background_neighbors - center_point)
+
+        return center, close_neighbors, background_neighbors, irrelevant_neighbors, close_neighbors_moved, background_neighbors_moved
+
+    # Function to calculate distances between points
+    def calculate_distances(points):
+        return np.linalg.norm(points[:, np.newaxis, :] - points, axis=2)
+
+    # Generate random 2D points
+    np.random.seed(42)
+    points = np.random.rand(100, 2)
+
+    # List to store initial and final points
+    initial_points_list = []
+    final_points_list = []
+
+    # Iterate through all possible center indices
+    for center_index in range(len(points)):
+        # Move neighbors using the function
+        center, close_neighbors, background_neighbors, _, close_neighbors_moved, background_neighbors_moved = move_neighbors(
+            points, center_index)
+
+        # Record initial and final points
+        initial_points_list.append(np.vstack((center[0], close_neighbors, background_neighbors)))
+        final_points_list.append(np.vstack((center[0], close_neighbors_moved, background_neighbors_moved)))
+
+    # Plot the points before any movement
+    plt.figure(figsize=(10, 10))
+    for initial_points in initial_points_list:
+        plt.scatter(initial_points[:, 0], initial_points[:, 1], alpha=0.1, color='grey')
+
+    # Add labels and legend
+    plt.xlabel('X-axis')
+    plt.ylabel('Y-axis')
+    plt.title('Points Before Any Movement')
+
+    # Display the plot
+    plt.show()
+
+    # Plot the points after all movements
+    plt.figure(figsize=(10, 10))
+    # for final_points in final_points_list:
+    final_points = final_points_list[-1]
+    plt.scatter(final_points[:, 0], final_points[:, 1], alpha=0.1, color='purple')
+
+    # Add labels and legend
+    plt.xlabel('X-axis')
+    plt.ylabel('Y-axis')
+    plt.title('Points After All Movements')
+
+    # Display the plot
+    plt.show()
