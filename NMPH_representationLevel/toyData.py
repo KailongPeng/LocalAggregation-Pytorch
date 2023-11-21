@@ -163,6 +163,7 @@ def multiple_pull_push():
     # Generate random 2D points
     np.random.seed(42)
     points = np.random.rand(100, 2)
+    # original_points = points.copy()
 
     # List to store initial and final points
     initial_points_list = []
@@ -170,18 +171,22 @@ def multiple_pull_push():
 
     # Iterate through all possible center indices
     for center_index in range(len(points)):
+        current_center_index = np.random.randint(len(points))
+
         # Move neighbors using the function
-        center, close_neighbors, background_neighbors, _, close_neighbors_moved, background_neighbors_moved = move_neighbors(
-            points, center_index)
+        center, close_neighbors, background_neighbors, irrelevant_neighbors, close_neighbors_moved, background_neighbors_moved = move_neighbors(
+            points, current_center_index)
+
+        # Update the points with the moved neighbors
+        points = np.vstack((center[0], close_neighbors_moved, background_neighbors_moved, irrelevant_neighbors))
 
         # Record initial and final points
-        initial_points_list.append(np.vstack((center[0], close_neighbors, background_neighbors)))
-        final_points_list.append(np.vstack((center[0], close_neighbors_moved, background_neighbors_moved)))
+        initial_points_list.append(np.vstack((center[0], close_neighbors, background_neighbors, irrelevant_neighbors)))
+        final_points_list.append(np.vstack((center[0], close_neighbors_moved, background_neighbors_moved, irrelevant_neighbors)))
 
     # Plot the points before any movement
     plt.figure(figsize=(10, 10))
-    for initial_points in initial_points_list:
-        plt.scatter(initial_points[:, 0], initial_points[:, 1], alpha=0.1, color='grey')
+    plt.scatter(initial_points_list[0][:, 0], initial_points_list[0][:, 1], alpha=0.1, color='grey')
 
     # Add labels and legend
     plt.xlabel('X-axis')
@@ -193,7 +198,6 @@ def multiple_pull_push():
 
     # Plot the points after all movements
     plt.figure(figsize=(10, 10))
-    # for final_points in final_points_list:
     final_points = final_points_list[-1]
     plt.scatter(final_points[:, 0], final_points[:, 1], alpha=0.1, color='purple')
 
@@ -204,3 +208,29 @@ def multiple_pull_push():
 
     # Display the plot
     plt.show()
+
+    # Calculate distances before and after learning
+    distances_before_learning = calculate_distances(initial_points_list[0])  # input (100, 2); output (100, 100)
+    distances_after_learning = calculate_distances(final_points_list[-1])  # input (100, 2); output (100, 100)
+
+    # Calculate the change in distances
+    # distance_change = calculate_distance_change(distances_before_learning, distances_after_learning)
+    distance_change = distances_after_learning - distances_before_learning
+
+    # Flatten arrays for plotting
+    plt.figure(figsize=(10, 10))
+    distance_before_flat = distances_before_learning.flatten()
+    distance_change_flat = distance_change.flatten()
+
+    # Plot the change in distance
+    plt.scatter(distance_before_flat, distance_change_flat, color='purple', label='Change in Distance')
+
+    # Add labels and legend
+    plt.xlabel('Distance Before Learning')
+    plt.ylabel('Change in Distance')
+    plt.legend()
+    plt.title('Change in Distance Before and After Learning')
+
+    # Display the plot
+    plt.show()
+
