@@ -28,6 +28,11 @@ def move_neighbors(points, center_point_index, close_count=20, background_count=
 # Function to calculate distances between points
 def calculate_distances(points):
     return np.linalg.norm(points[:, np.newaxis, :] - points, axis=2)
+    # calculate_distances(np.array([[1,1],
+    #                              [1,1],
+    #                              [8,8],
+    #                              [0,0],
+    #                              [3,4]]))
 
 
 # Function to calculate change in distances
@@ -48,14 +53,26 @@ center_index = np.argmin(np.linalg.norm(points - centroid, axis=1))  # Specify a
 print("Index of the center point:", center_index)
 
 # Move neighbors using the function
-center, close_neighbors, background_neighbors, irrelevant_neighbors, close_neighbors_moved, background_neighbors_moved = move_neighbors(points, center_index)
+center, close_neighbors, background_neighbors, irrelevant_neighbors, close_neighbors_moved, background_neighbors_moved = move_neighbors(
+    points, center_index)
 
 # Calculate distances before and after learning
-distances_before_learning = calculate_distances(points)
-distances_after_learning = calculate_distances(np.vstack((center[0], close_neighbors_moved, background_neighbors_moved, irrelevant_neighbors)))
+distances_before_learning = calculate_distances(
+    np.vstack((center[0],
+               close_neighbors,
+               background_neighbors,
+               # irrelevant_neighbors
+               )))  # input (100, 2); output (100, 100)
+distances_after_learning = calculate_distances(
+    np.vstack((center[0],
+               close_neighbors_moved,
+               background_neighbors_moved,
+               # irrelevant_neighbors
+               )))  # input (100, 2); output (100, 100)
 
 # Calculate the change in distances
-distance_change = calculate_distance_change(distances_before_learning, distances_after_learning)
+# distance_change = calculate_distance_change(distances_before_learning, distances_after_learning)
+distance_change = distances_after_learning - distances_before_learning
 
 # Plot the un-moved points
 plt.figure(figsize=(10, 10))
@@ -63,8 +80,9 @@ plt.scatter(center[0][0], center[0][1], color='red', label='Center')
 plt.scatter(close_neighbors[:, 0], close_neighbors[:, 1], color='blue', label='Close Neighbors (Un-Moved)')
 plt.scatter(background_neighbors[:, 0], background_neighbors[:, 1], color='black',
             label='Background Neighbors (Un-Moved)')
-plt.scatter(irrelevant_neighbors[:, 0], irrelevant_neighbors[:, 1], color='grey',
-            label='Irrelevant Neighbors (Un-Moved)')
+# plt.scatter(background_neighbors[:, 0], background_neighbors[:, 1], c=np.arange(len(background_neighbors)),
+#             cmap='viridis', label='Background Neighbors (Un-Moved)')
+plt.scatter(irrelevant_neighbors[:, 0], irrelevant_neighbors[:, 1], color='grey', label='Irrelevant Neighbors (Un-Moved)')
 
 # Add labels and legend
 plt.xlabel('X-axis')
@@ -81,6 +99,8 @@ plt.scatter(center[0][0], center[0][1], color='red', label='Center')
 plt.scatter(close_neighbors_moved[:, 0], close_neighbors_moved[:, 1], color='blue', label='Close Neighbors (Moved)')
 plt.scatter(background_neighbors_moved[:, 0], background_neighbors_moved[:, 1], color='black',
             label='Background Neighbors (Moved)')
+# plt.scatter(background_neighbors_moved[:, 0], background_neighbors_moved[:, 1], c=np.arange(len(background_neighbors)),
+#             cmap='viridis', label='Background Neighbors (Moved)')
 plt.scatter(irrelevant_neighbors[:, 0], irrelevant_neighbors[:, 1], color='grey', label='Irrelevant Neighbors (Moved)')
 
 # Add labels and legend
@@ -91,7 +111,6 @@ plt.title('Neighbor Categories (Moved)')
 
 # Display the plot
 plt.show()
-
 
 # Flatten arrays for plotting
 plt.figure(figsize=(10, 10))
