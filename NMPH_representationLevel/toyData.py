@@ -137,7 +137,7 @@ distances_after_learning = calculate_distances(
 distance_change = distances_after_learning - distances_before_learning
 
 
-def plot_dots():
+def plot_dots(center, close_neighbors, background_neighbors, irrelevant_neighbors, close_neighbors_moved, background_neighbors_moved):
     # Plot the un-moved points
     plt.figure(figsize=(10, 10))
     plt.scatter(center[0][0], center[0][1], color='red', label='Center')
@@ -175,7 +175,8 @@ def plot_dots():
     plt.show()
 
 
-plot_dots()
+plot_dots(center, close_neighbors, background_neighbors, irrelevant_neighbors, close_neighbors_moved, background_neighbors_moved)
+
 
 # Flatten arrays for plotting
 plt.figure(figsize=(15, 10))
@@ -282,7 +283,7 @@ def plot_distance_change_components(co_activation, similarity_change, label_matr
         _ = plt.title("similarity change hist")
 
 
-use_distance = False
+use_distance = False  # use similarity or distance ?
 if use_distance:
     plot_distance_change_components(distance_before_flat, distance_change_flat, label_matrix_flat,
                                     use_distance=use_distance)
