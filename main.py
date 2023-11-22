@@ -119,6 +119,9 @@ def testNMPH_curveFitting():
     pass
 
 
+def toyData():  # 目的是为了理解表征层次的共激活和表征改变之间的关系.
+    f"""NMPH_representationLevel/toyData.py"""
+
 
 # When loading self.imagenet_dir, how to make sure that this function only loads the specified subfolder name like n01440764 in a text file but not any other subfolder as image classes?
 # example text file where the n0... stands for subfolder name: {"0": ["n01440764", "tench"], "1": ["n01443537", "goldfish"], "2": ["n01484850", "great_white_shark"], "3": ["n01491361", "tiger_shark"]}

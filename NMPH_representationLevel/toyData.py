@@ -405,22 +405,38 @@ def multiple_pull_push():
 
     # Flatten arrays for plotting
     plt.figure(figsize=(10, 10))
+    use_distance = True  # use similarity or distance ?
+
     distance_before_flat = distances_before_learning.flatten()
     distance_change_flat = distance_change.flatten()
 
-    # Plot the change in distance
-    plt.scatter(distance_before_flat, distance_change_flat, color='black', label='Change in Distance', alpha=0.5)
+    if use_distance:
+        # Plot the change in distance
+        plt.scatter(distance_before_flat, distance_change_flat, color='black', alpha=0.5)
+    else:
+        # Plot the change in similarity
+        plt.scatter(- distance_before_flat, - distance_change_flat, color='black', alpha=0.5)
 
     # Add labels and legend
-    plt.xlabel('Distance Before Learning')
-    plt.ylabel('Change in Distance')
-    plt.title('Change in Distance Before and After Learning')
+    if use_distance:
+        plt.xlabel('Distance Before Learning')
+        plt.ylabel('Change in Distance')
+        plt.title('Change in Distance Before and After Learning')
+    else:
+        plt.xlabel('Co-activation')
+        plt.ylabel('Similarity Change')
+        plt.title('Similarity Change Before and After Learning')
 
     # Display the plot
     plt.show()
 
     # Plot the histogram of change in distance
     _ = plt.figure(figsize=(10, 10))
-    _ = plt.hist(distance_change_flat, bins=50)
-    _ = plt.title("distance_change_flat hist")
+
+    if use_distance:
+        _ = plt.title("distance_change_flat hist")
+        _ = plt.hist(distance_change_flat, bins=50)
+    else:
+        _ = plt.title("similarity change hist")
+        _ = plt.hist(- distance_change_flat, bins=50)
 
