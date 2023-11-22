@@ -295,6 +295,7 @@ else:
 def multiple_pull_push():
     import numpy as np
     import matplotlib.pyplot as plt
+    from matplotlib.cm import get_cmap
 
     def move_neighbors(points, center_point_index, close_count=20, background_count=40, move_factor=0.3):
         # Calculate the centroid (center) of all points
@@ -323,37 +324,56 @@ def multiple_pull_push():
         return points, center, close_neighbors, background_neighbors, irrelevant_neighbors, close_neighbors_moved, background_neighbors_moved
 
     # Function to calculate distances between points
-    def calculate_distances(points):
-        return np.linalg.norm(points[:, np.newaxis, :] - points, axis=2)
+    def calculate_distances(points_):
+        # Euclidean distance between two points
+        distance_matrix = np.zeros((points_.shape[0], points_.shape[0]))
+        for _i in range(len(points_)):
+            for _j in range(len(points_)):
+                distance_matrix[_i][_j] = np.linalg.norm(points_[_i] - points_[_j])
+        return distance_matrix
+        # return np.linalg.norm(_points[:, np.newaxis, :] - _points, axis=2)
+        # calculate_distances(np.array([[1,1],
+        #                              [1,1],
+        #                              [8,8],
+        #                              [0,0],
+        #                              [3,4]]))
 
     # Generate random 2D points
     np.random.seed(42)
     points = np.random.rand(100, 2)
-    # original_points = points.copy()
+    original_points = points.copy()
 
     # List to store initial and final points
-    initial_points_list = []
-    final_points_list = []
+    points_list_record = []
+
+    def normalize_points(__points):
+        # Find the minimum and maximum values along each axis
+        min_values = __points.min(axis=0)
+        max_values = __points.max(axis=0)
+
+        # Normalize the points to the range [0, 1] along both axes
+        normalized_points = (__points - min_values) / (max_values - min_values)
+        return normalized_points
 
     # Iterate through all possible center indices
+    points_list_record.append(original_points)
     for center_index in range(len(points)):
-        current_center_index = np.random.randint(len(points))
-
         # Move neighbors using the function
         points, center, close_neighbors, background_neighbors, irrelevant_neighbors, close_neighbors_moved, background_neighbors_moved = move_neighbors(
-            points, current_center_index)
-
-        # Update the points with the moved neighbors
-        points = np.vstack((center[0], close_neighbors_moved, background_neighbors_moved, irrelevant_neighbors))
+            points, center_index)
 
         # Record initial and final points
-        initial_points_list.append(np.vstack((center[0], close_neighbors, background_neighbors, irrelevant_neighbors)))
-        final_points_list.append(
-            np.vstack((center[0], close_neighbors_moved, background_neighbors_moved, irrelevant_neighbors)))
+        points_list_record.append(normalize_points(points.copy()))
+
+    # Create a numpy array with unique random colors for each point
+    random_colors = np.random.rand(len(points_list_record[0]), 3)
+    random_colors = np.clip(random_colors, 0, 1)
+    # Get the color map
+    cmap = get_cmap("rainbow")
 
     # Plot the points before any movement
     plt.figure(figsize=(10, 10))
-    plt.scatter(initial_points_list[0][:, 0], initial_points_list[0][:, 1], alpha=0.5, color='grey')
+    plt.scatter(points_list_record[0][:, 0], points_list_record[0][:, 1], alpha=0.8, c=random_colors, cmap=cmap)
 
     # Add labels and legend
     plt.xlabel('X-axis')
@@ -365,8 +385,8 @@ def multiple_pull_push():
 
     # Plot the points after all movements
     plt.figure(figsize=(10, 10))
-    final_points = final_points_list[-1]
-    plt.scatter(final_points[:, 0], final_points[:, 1], alpha=0.5, color='grey')
+    final_points = points_list_record[-1]
+    plt.scatter(final_points[:, 0], final_points[:, 1], alpha=0.8, c=random_colors, cmap=cmap)
 
     # Add labels and legend
     plt.xlabel('X-axis')
@@ -377,11 +397,10 @@ def multiple_pull_push():
     plt.show()
 
     # Calculate distances before and after learning
-    distances_before_learning = calculate_distances(initial_points_list[0])  # input (100, 2); output (100, 100)
-    distances_after_learning = calculate_distances(final_points_list[-1])  # input (100, 2); output (100, 100)
+    distances_before_learning = calculate_distances(points_list_record[0])  # input (100, 2); output (100, 100)
+    distances_after_learning = calculate_distances(points_list_record[-1])  # input (100, 2); output (100, 100)
 
     # Calculate the change in distances
-    # distance_change = calculate_distance_change(distances_before_learning, distances_after_learning)
     distance_change = distances_after_learning - distances_before_learning
 
     # Flatten arrays for plotting
@@ -390,18 +409,18 @@ def multiple_pull_push():
     distance_change_flat = distance_change.flatten()
 
     # Plot the change in distance
-    plt.scatter(distance_before_flat, distance_change_flat, color='purple', label='Change in Distance', alpha=0.5)
+    plt.scatter(distance_before_flat, distance_change_flat, color='black', label='Change in Distance', alpha=0.5)
 
     # Add labels and legend
     plt.xlabel('Distance Before Learning')
     plt.ylabel('Change in Distance')
-    plt.legend()
     plt.title('Change in Distance Before and After Learning')
 
     # Display the plot
     plt.show()
 
     # Plot the histogram of change in distance
-    plt.figure(figsize=(10, 10))
-    _ = plt.hist(distance_change_flat, bins=100)
+    _ = plt.figure(figsize=(10, 10))
+    _ = plt.hist(distance_change_flat, bins=50)
     _ = plt.title("distance_change_flat hist")
+
