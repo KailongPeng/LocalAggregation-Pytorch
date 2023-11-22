@@ -316,7 +316,11 @@ def multiple_pull_push():
         close_neighbors_moved = close_neighbors - move_factor * (close_neighbors - center_point)
         background_neighbors_moved = background_neighbors + move_factor * (background_neighbors - center_point)
 
-        return center, close_neighbors, background_neighbors, irrelevant_neighbors, close_neighbors_moved, background_neighbors_moved
+        # Update points without changing the point order
+        points[sorted_indices[1:close_count + 1]] = close_neighbors_moved
+        points[sorted_indices[close_count + 1:close_count + background_count + 1]] = background_neighbors_moved
+
+        return points, center, close_neighbors, background_neighbors, irrelevant_neighbors, close_neighbors_moved, background_neighbors_moved
 
     # Function to calculate distances between points
     def calculate_distances(points):
@@ -336,7 +340,7 @@ def multiple_pull_push():
         current_center_index = np.random.randint(len(points))
 
         # Move neighbors using the function
-        center, close_neighbors, background_neighbors, irrelevant_neighbors, close_neighbors_moved, background_neighbors_moved = move_neighbors(
+        points, center, close_neighbors, background_neighbors, irrelevant_neighbors, close_neighbors_moved, background_neighbors_moved = move_neighbors(
             points, current_center_index)
 
         # Update the points with the moved neighbors
