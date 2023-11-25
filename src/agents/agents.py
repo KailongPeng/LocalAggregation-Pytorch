@@ -410,7 +410,7 @@ class ImageNetAgent(BaseAgent):
 
                     # get kmeans clustering (update our saved clustering)
                     k = [self.config.loss_params.kmeans_k for _ in
-                         range(self.config.loss_params.n_kmeans)]
+                         range(self.config.loss_params.n_kmeans)]  # n_kmeans is number of kmeans to train (is H in the paper)
 
                     # NOTE: we use a different gpu for FAISS otherwise cannot fit onto memory
                     self.km = Kmeans(k, self.memory_bank, gpu_device=self.gpu_devices)

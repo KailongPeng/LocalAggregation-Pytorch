@@ -55,6 +55,8 @@ ls /gpfs/milgram/project/turk-browne/projects/localize/ImageNet/ILSVRC/Data/CLS-
         Do you need the test set category too? Since I have not found that just now. If you do need them, we can dig deeper to find it.
         
         in this preact-resnet18, the out_dim is set to be 128, which is the number of classes I need in the imagenet dataset.        
+        
+        128 classes from 1000 classes image number is 128*1300=166400
 """
 
 for path in DIR_LIST:

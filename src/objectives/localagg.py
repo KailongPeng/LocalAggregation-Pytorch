@@ -21,7 +21,7 @@ class LocalAggregationLossModule(torch.nn.Module):
 
     def __init__(self, memory_bank_broadcast, cluster_label_broadcast, k=4096, t=0.07, m=0.5):
         super(LocalAggregationLossModule, self).__init__()
-        # if testMode:
+        # if testMode:  # The number k of background neighbors to be used is a hyperparameter of the algorithm
         #     k = 8
         self.k, self.t, self.m = k, t, m
 
@@ -97,7 +97,7 @@ class LocalAggregationLossModule(torch.nn.Module):
         k = self.k
 
         all_dps = self._get_all_dot_products(self.outputs)
-        # import pdb; pdb.set_trace()
+        import pdb; pdb.set_trace()
         back_nei_dps, back_nei_idxs = torch.topk(all_dps, k=k, sorted=False, dim=1)  # all_dps.shape = torch.Size([128, 165767])
         back_nei_probs = self._softmax(back_nei_dps)
 
