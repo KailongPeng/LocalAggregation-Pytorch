@@ -87,12 +87,18 @@ labels_test = torch.tensor(test_labels, dtype=torch.long)
 
 # Define loss function and optimizer
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.SGD(model.parameters(), lr=0.01)
+initial_learning_rate = 0.05
+optimizer = optim.SGD(model.parameters(), lr=initial_learning_rate)
 # Lists to store training loss values
 train_loss_history = []
-
+# Total number of epochs
+total_epochs = 10000
 # Training loop
-for epoch in range(10000):
+for epoch in range(total_epochs):
+    # Adjust learning rate if epoch passes 1/3 of the total epochs
+    if epoch > total_epochs / 3:
+        optimizer.param_groups[0]['lr'] = initial_learning_rate / 2.0
+
     # Forward pass for training data
     output_train = model(input_train)
     loss_train = criterion(output_train, labels_train)
