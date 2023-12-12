@@ -412,7 +412,7 @@ def test_multiple_dotsNeighbotSIngleBatch():
     torch.manual_seed(42)
     torch.cuda.manual_seed(42)
     torch.cuda.manual_seed_all(42)
-
+    threeD_input = True
     # Define toy dataset
     class ToyDataset(Dataset):
         def __init__(self, data, labels):
@@ -438,7 +438,10 @@ def test_multiple_dotsNeighbotSIngleBatch():
     class SimpleFeedforwardNN(nn.Module):
         def __init__(self):
             super(SimpleFeedforwardNN, self).__init__()
-            self.input_layer = nn.Linear(2, 64)  # 3D input layer
+            if threeD_input:
+                self.input_layer = nn.Linear(3, 64)
+            else:
+                self.input_layer = nn.Linear(2, 64)  # 3D input layer
             self.hidden_layer1 = nn.Linear(64, 32)  # First hidden layer
             self.hidden_layer2 = nn.Linear(32, 2)  # Second-to-last layer is 2D
             # self.output_layer = nn.Linear(2, 27)  # Output layer, classifying into 27 categories
@@ -483,7 +486,10 @@ def test_multiple_dotsNeighbotSIngleBatch():
         return close_neighbors, background_neighbors
 
     # Define toy dataset shaped [1000, 2]
-    points_data, labels_data = generate_2d_scatter_plot(display_plot=True)
+    if threeD_input:
+        points_data, labels_data = generate_3d_scatter_plot(display_plot=True)
+    else:
+        points_data, labels_data = generate_2d_scatter_plot(display_plot=True)
 
     # Split the data into training and testing sets (1000 points each)
     train_data, test_data = points_data[:1000], points_data[1000:]
