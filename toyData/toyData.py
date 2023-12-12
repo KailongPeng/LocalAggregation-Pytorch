@@ -98,7 +98,6 @@ def trainWith_crossEntropyLoss():
     train_data, test_data = points_data[:1000], points_data[1000:]
     train_labels, test_labels = labels_data[:1000], labels_data[1000:]
 
-
     # Define the neural network model
     class SimpleFeedforwardNN(nn.Module):
         def __init__(self):
@@ -114,7 +113,6 @@ def trainWith_crossEntropyLoss():
             x = torch.relu(self.hidden_layer2(x))
             x = self.output_layer(x)
             return x
-
 
     # Instantiate the neural network model
     model = SimpleFeedforwardNN()
@@ -304,7 +302,7 @@ def trainWith_localAggLoss():
         c = 40
         b = 40
         _, closest_c_indices = torch.topk(-distances, c)
-        _, closest_b_indices = torch.topk(-distances, b+c)
+        _, closest_b_indices = torch.topk(-distances, b + c)
         closest_b_indices = closest_b_indices[c:]
 
         if plot_neighborhood:
@@ -341,7 +339,7 @@ def trainWith_localAggLoss():
         optimizer.step()
 
         # Print the loss for every 100 epochs
-        if epoch % int(total_epochs/10) == 0:
+        if epoch % int(total_epochs / 10) == 0:
             print(f'Epoch {epoch}, Loss: {loss.item()}')
         loss_values.append(loss.item())
 
@@ -396,6 +394,7 @@ def trainWith_localAggLoss():
     plt.tight_layout()
     plt.show()
 
+
 # add another loss so that the latent space (aka v=model(x)) is encouraged to span 0-1.
 # layer norm versus batch norm
 
@@ -429,32 +428,42 @@ def test():
 
     # Define local aggregation loss function
     def local_aggregation_loss(embeddings, close_neighbors, background_neighbors):
-        # Compute distances between embeddings and close neighbors
-        close_distances = torch.cdist(embeddings, close_neighbors)
-        # Compute distances between embeddings and background neighbors
-        background_distances = torch.cdist(embeddings, background_neighbors)
+        # Compute pairwise distances between embeddings and close neighbors  # embeddings(50,2) close_neighbors(50,10,2) -> (50,10)
+        expanded_embeddings = embeddings.unsqueeze(1).expand_as(
+            close_neighbors)  # Expand the embeddings to have the same dimensions as close_neighbors
+        close_distances = torch.norm(expanded_embeddings - close_neighbors,
+                                     dim=2)  # Calculate the Euclidean distance
+
+        # Compute pairwise distances between embeddings and background neighbors
+        expanded_embeddings = embeddings.unsqueeze(1).expand_as(
+            background_neighbors)  # Expand the embeddings to have the same dimensions as background_neighbors
+        background_distances = torch.norm(expanded_embeddings - background_neighbors,
+                                          dim=2)  # Calculate the Euclidean distance
+
+        # import pdb ; pdb.set_trace()
+
         # Compute loss based on distances
         loss = torch.mean(torch.log(1 + torch.exp(close_distances - background_distances)))
         return loss
 
     # Define close and background neighbors
-    def get_neighbors(embeddings, k):
+    def get_neighbors(embeddings, c=None, b=None):
         # Compute pairwise distances between embeddings
         distances = torch.cdist(embeddings, embeddings)
         # Get indices of k closest neighbors for each example
-        _, indices = torch.topk(distances, k + 1, largest=False)
+        _, indices = torch.topk(distances, c + b + 1, largest=False)
         # Remove self from list of neighbors
         indices = indices[:, 1:]
         # Get embeddings of close neighbors
-        close_neighbors = embeddings[indices]
+        close_neighbors = embeddings[indices[:, :c]]
         # Get embeddings of background neighbors
-        background_neighbors = embeddings
+        background_neighbors = embeddings[indices[:, c:]]
         return close_neighbors, background_neighbors
 
-    # Define toy dataset
-    data = torch.tensor([[1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9], [9, 10], [10, 11]])
+    # Define toy dataset shaped [1000, 2]
+    data = torch.tensor(np.random.rand(1000, 2), dtype=torch.float32)
     dataset = ToyDataset(data)
-    dataloader = DataLoader(dataset, batch_size=5, shuffle=True)
+    dataloader = DataLoader(dataset, batch_size=50, shuffle=True)
 
     # Define neural network and optimizer
     net = Net()
@@ -468,7 +477,9 @@ def test():
             # Forward pass
             embeddings = net(batch.float())
             # Get close and background neighbors
-            close_neighbors, background_neighbors = get_neighbors(embeddings, k=2)
+            c = 10
+            b = 10
+            close_neighbors, background_neighbors = get_neighbors(embeddings, c=c, b=b)
             # Compute loss
             loss = local_aggregation_loss(embeddings, close_neighbors, background_neighbors)
             # Backward pass
