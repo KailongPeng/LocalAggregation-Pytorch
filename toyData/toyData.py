@@ -5,6 +5,7 @@ import torch.optim as optim
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 
+
 # Function to generate 3D scatter plot and return data
 def generate_3d_scatter_plot(display_plot=False):
     np.random.seed(42)
@@ -63,8 +64,8 @@ class SimpleFeedforwardNN(nn.Module):
         super(SimpleFeedforwardNN, self).__init__()
         self.input_layer = nn.Linear(3, 64)  # 3D input layer
         self.hidden_layer1 = nn.Linear(64, 32)  # First hidden layer
-        self.hidden_layer2 = nn.Linear(32, 2)   # Second-to-last layer is 2D
-        self.output_layer = nn.Linear(2, 27)    # Output layer, classifying into 27 categories
+        self.hidden_layer2 = nn.Linear(32, 2)  # Second-to-last layer is 2D
+        self.output_layer = nn.Linear(2, 27)  # Output layer, classifying into 27 categories
 
     def forward(self, x):
         x = torch.relu(self.input_layer(x))
@@ -134,71 +135,95 @@ plt.show()
 
 
 def localAgg_test():
+    """
+        The definition of the local aggregation loss is as follows: for a specified data point
+        x_i, identify c points as close neighbors (C_i) and b points as background neighbors (B_i). Then, the loss is defined as:
+        \mathcal{L}_i=L\left(\mathbf{C}_i, \mathbf{B}_i \mid \boldsymbol{\theta}, \mathbf{x}_i\right)+\lambda\|\boldsymbol{\theta}\|_2^2
+        Here, θ represents the model parameters, and λ is a regularization parameter. The goal is to minimize this final loss during training.
+
+        Here, L\left(\mathbf{C}_i, \mathbf{B}_i \mid \boldsymbol{\theta}, \mathbf{x}_i\right)=-\log \frac{P\left(\mathbf{C}_i\mid \mathbf{v}_i\right)}{P\left(\mathbf{B}_i \mid \mathbf{v}_i\right)}
+        Where v _i  represents the feature vector associated with x_i
+
+        P\left(\mathbf{A}_i \mid \mathbf{v}_i\right) is the similarity between the set A and an arbitrary feature v. This is calculated as the opposite of the mean Euclidean distance between every element in A and v.
+
+        Based on this definition of the local aggregation loss, for a 3D input (x,y,z) with 1000 points uniformly distributed in the range [0, 1] for each dimension, a fully connected feedforward neural network is created. The structure consists of 3 layers, with the input being 3D and the last layer being 2D. The output of the last 2D layer is then used as the v_i space for local aggregation. Training is performed for local aggregation based on the given 1000 points' training data, and the loss is recorded.
+    """
     import torch
     import torch.nn as nn
     import torch.optim as optim
-    import numpy as np
 
-    # Generate 1000 random 3D points
-    points = np.random.rand(1000, 3)
-
-    # Define the neural network model
-    class FeedforwardNN(nn.Module):
-        def __init__(self):
-            super(FeedforwardNN, self).__init__()
-            self.input_layer = nn.Linear(3, 64)  # 3D input layer
-            self.hidden_layer1 = nn.Linear(64, 32)  # First hidden layer
-            self.output_layer = nn.Linear(32, 2)  # Output layer, 2D
-
-        def forward(self, x):
-            x = torch.relu(self.input_layer(x))
-            x = torch.relu(self.hidden_layer1(x))
-            x = self.output_layer(x)
-            return x
-
-    # Local Aggregation Loss
+    # Define the local aggregation loss
     class LocalAggregationLoss(nn.Module):
         def __init__(self, lambda_reg):
             super(LocalAggregationLoss, self).__init__()
             self.lambda_reg = lambda_reg
-            self.cross_entropy_loss = nn.CrossEntropyLoss()
 
-        def forward(self, Ci, Bi, vi):
-            # Compute the cross-entropy loss
-            loss = -torch.log(torch.exp(self.cross_entropy_loss(Ci, vi)) / torch.exp(self.cross_entropy_loss(Bi, vi)))
+        @staticmethod
+        def similarity(A, v):
+            # Calculate the similarity between set A and feature v
+            # (opposite of mean Euclidean distance)
+            distance = torch.norm(A - v, dim=1)
+            similarity = torch.exp(-distance).mean()
+
+            return similarity
+
+        def forward(self, Ci, Bi, theta, xi, vi):
+            # Compute the similarity between Ci and vi
+            P_Ci_given_vi = self.similarity(Ci, vi)
+
+            # Compute the similarity between Bi and vi
+            P_Bi_given_vi = self.similarity(Bi, vi)
+
+            # Compute the negative log ratio of probabilities
+            loss_local_aggregation = -torch.log(P_Ci_given_vi / P_Bi_given_vi)
 
             # Regularization term
-            reg_term = self.lambda_reg * torch.norm(vi)
+            reg_term = self.lambda_reg * torch.norm(theta, p=2)
 
-            return loss + reg_term
+            # Total loss
+            total_loss = loss_local_aggregation + reg_term
 
-    # Instantiate the neural network model
-    model = FeedforwardNN()
+            return total_loss
 
-    # Instantiate the Local Aggregation Loss
-    lambda_reg = 0.001  # Adjust as needed
-    local_aggregation_loss = LocalAggregationLoss(lambda_reg)
+    # Define the neural network model
+    class SimpleFeedforwardNN(nn.Module):
+        def __init__(self):
+            super(SimpleFeedforwardNN, self).__init__()
+            self.input_layer = nn.Linear(3, 64)  # 3D input layer
+            self.hidden_layer1 = nn.Linear(64, 32)  # First hidden layer
+            self.hidden_layer2 = nn.Linear(32, 2)  # Second-to-last layer is 2D
 
-    # Define training data for the 1000 points
-    input_data = torch.tensor(points, dtype=torch.float32)
-    labels = torch.randint(0, 2, (1000,))
+        def forward(self, x):
+            x = torch.relu(self.input_layer(x))
+            x = torch.relu(self.hidden_layer1(x))
+            x = self.hidden_layer2(x)
+            return x
 
-    # Define loss function and optimizer
+    # Generate 1000 random 3D points
+    input_data = torch.rand(1000, 3)
+
+    # Instantiate the neural network model and the local aggregation loss
+    model = SimpleFeedforwardNN()
+    local_aggregation_loss = LocalAggregationLoss(lambda_reg=0.001)
+
+    # Set up optimizer
     optimizer = optim.SGD(model.parameters(), lr=0.01)
 
     # Training loop
     for epoch in range(1000):
-        # Forward pass
-        output = model(input_data)
-
-        # Compute local aggregation loss
-        local_loss = local_aggregation_loss(output, output, output)
-
-        # Backward pass and optimization
+        # Zero gradients
         optimizer.zero_grad()
-        local_loss.backward()
+
+        # Forward pass
+        vi = model(input_data)
+        loss = local_aggregation_loss(Ci, Bi, theta, xi, vi)
+
+        # Backward pass
+        loss.backward()
+
+        # Update weights
         optimizer.step()
 
         # Print the loss for every 100 epochs
         if epoch % 100 == 0:
-            print(f'Epoch {epoch}, Local Aggregation Loss: {local_loss.item()}')
+            print(f'Epoch {epoch}, Loss: {loss.item()}')
