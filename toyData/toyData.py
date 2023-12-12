@@ -160,22 +160,26 @@ def localAgg_test():
 
         @staticmethod
         def similarity(A, v):
-            # Calculate the similarity between set A and feature v
-            # (opposite of mean Euclidean distance)
+            # Calculate the similarity between set A and feature v using Gaussian kernel
             distance = torch.norm(A - v, dim=1)
-            similarity = torch.exp(-distance).mean()
+            _similarity_ = - distance.mean() + 1e-4
+            # torch.exp(-distance ** 2).mean()
 
-            return similarity
+            return _similarity_
 
         def forward(self, Ci, Bi, theta, xi, vi):
             # Compute the similarity between Ci and vi
             P_Ci_given_vi = self.similarity(Ci, vi)
+            # print(f"P_Ci_given_vi={P_Ci_given_vi}")
 
             # Compute the similarity between Bi and vi
             P_Bi_given_vi = self.similarity(Bi, vi)
+            # print(f"P_Bi_given_vi={P_Bi_given_vi}")
 
             # Compute the negative log ratio of probabilities
-            loss_local_aggregation = -torch.log(P_Ci_given_vi / P_Bi_given_vi)
+            # loss_local_aggregation = - torch.log(P_Ci_given_vi / P_Bi_given_vi)
+            loss_local_aggregation = torch.log(P_Ci_given_vi / P_Bi_given_vi)
+            # print(f"loss_local_aggregation={loss_local_aggregation}")
 
             # Regularization term
             reg_term = self.lambda_reg * torch.norm(torch.cat([p.view(-1) for p in theta]), p=2)
@@ -209,18 +213,24 @@ def localAgg_test():
 
     # Instantiate the neural network model and the local aggregation loss
     model = SimpleFeedforwardNN()
+    # local_aggregation_loss = LocalAggregationLoss(lambda_reg=0)
     local_aggregation_loss = LocalAggregationLoss(lambda_reg=0.001)
 
     # Set up optimizer
-
-    optimizer = optim.SGD(model.parameters(), lr=0.01)
+    initial_learning_rate = 0.05
+    total_epochs = 5000
+    optimizer = optim.SGD(model.parameters(), lr=initial_learning_rate)
 
     # Training loop
-    for epoch in range(100):
+    loss_values = []
+    for epoch in range(total_epochs):
+        # Adjust learning rate if epoch passes 1/3 of the total epochs
+        if epoch > total_epochs / 3:
+            optimizer.param_groups[0]['lr'] = initial_learning_rate / 2.0
         # Zero gradients
         optimizer.zero_grad()
 
-        i = epoch
+        i = epoch % len(input_data)
         xi = input_data[i]
         vi = model(xi)  # in latent space
 
@@ -249,5 +259,17 @@ def localAgg_test():
         optimizer.step()
 
         # Print the loss for every 100 epochs
-        if epoch % 100 == 0:
+        if epoch % int(total_epochs/10) == 0:
             print(f'Epoch {epoch}, Loss: {loss.item()}')
+        loss_values.append(loss.item())
+
+    # Plot the loss curve
+    plt.figure(figsize=(10, 6))
+    plt.plot(range(0, total_epochs), loss_values, label='Training Loss')
+    plt.title('Local Aggregation Loss Curve')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
