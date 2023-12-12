@@ -473,14 +473,26 @@ def test_multiple_dotsNeighbotSIngleBatch():
     # Train network using local aggregation loss
     loss_values = []  # List to store loss values for each epoch
 
-    for epoch in range(10):
+    # record the initial latent space
+    initial_v_points = []
+
+    # record the final latent space
+    final_v_points = []
+
+    total_epochs = 10
+
+    for epoch in range(total_epochs):
         epoch_loss = 0.0  # Variable to accumulate loss within each epoch
 
-        for batch in dataloader:
+        for curr_batch, batch in enumerate(dataloader):
             # Zero gradients
             optimizer.zero_grad()
             # Forward pass
             embeddings = net(batch.float())
+            # record initial and final latent space points
+            if epoch == 0 and curr_batch == 0:
+                initial_v_points = embeddings.detach().numpy()
+
             # Get close and background neighbors
             c = 10
             b = 10
@@ -493,6 +505,10 @@ def test_multiple_dotsNeighbotSIngleBatch():
             optimizer.step()
 
             epoch_loss += loss.item()
+
+            # record initial and final latent space points
+            if epoch == total_epochs-1 and curr_batch == len(dataloader)-1:
+                final_v_points = embeddings.detach().numpy()
 
         # Calculate average loss for the epoch
         average_epoch_loss = epoch_loss / len(dataloader)
@@ -507,6 +523,26 @@ def test_multiple_dotsNeighbotSIngleBatch():
     plt.xlabel('Epochs')
     plt.ylabel('Average Loss')
     plt.grid(True)
+    plt.show()
+
+    # Plot initial and final latent space points with rainbow colormap
+    fig, axes = plt.subplots(1, 2, figsize=(12, 6))
+
+    # Initial latent space points
+    scatter_initial = axes[0].scatter(initial_v_points[:, 0], initial_v_points[:, 1], c=range(len(initial_v_points)), cmap='rainbow', marker='o')
+    axes[0].set_title('Initial Latent Space Points')
+    axes[0].set_xlabel('Dimension 1')
+    axes[0].set_ylabel('Dimension 2')
+    fig.colorbar(scatter_initial, ax=axes[0], label='Point Index')
+
+    # Final latent space points
+    scatter_final = axes[1].scatter(final_v_points[:, 0], final_v_points[:, 1], c=range(len(final_v_points)), cmap='rainbow', marker='o')
+    axes[1].set_title('Final Latent Space Points')
+    axes[1].set_xlabel('Dimension 1')
+    axes[1].set_ylabel('Dimension 2')
+    fig.colorbar(scatter_final, ax=axes[1], label='Point Index')
+
+    plt.tight_layout()
     plt.show()
 
 
@@ -576,7 +612,7 @@ def test_single_dotsNeighbotSIngleBatch():
         # Get embeddings of background neighbors for the random point
         background_neighbors = embeddings[indices[c:]]
 
-        return close_neighbors, background_neighbors, random_point
+        return close_neighbors, background_neighbors, random_point, random_index, indices[:c], indices[c:]
 
     # Define toy dataset shaped [1000, 2]
     data = torch.tensor(np.random.rand(1000, 2), dtype=torch.float32)
@@ -585,7 +621,13 @@ def test_single_dotsNeighbotSIngleBatch():
 
     # Define neural network and optimizer
     net = Net()
-    optimizer = optim.SGD(net.parameters(), lr=0.01)
+    optimizer = optim.SGD(net.parameters(), lr=0.05)
+
+    testMode = True
+    if testMode:
+        plot_neighborhood = True
+    else:
+        plot_neighborhood = False
 
     # Train network using local aggregation loss
     loss_values = []  # List to store loss values for each epoch
@@ -601,7 +643,29 @@ def test_single_dotsNeighbotSIngleBatch():
             # Get close and background neighbors for a single random point
             c = 20
             b = 20
-            close_neighbors, background_neighbors, random_point = get_neighbors_single_point(embeddings, c=c, b=b)
+            [close_neighbors, background_neighbors, random_point,
+             random_index, close_neighbors_indices, background_neighbors_indices] = get_neighbors_single_point(
+                embeddings, c=c, b=b)
+            if plot_neighborhood:
+                # plot in latent space, closest_c_indices as blue and closest_b_indices as black and the chosen vi as red
+                latent_points = embeddings.detach().numpy()
+                fig = plt.figure(figsize=(20, 20))
+                ax = fig.add_subplot(111)
+                ax.scatter(latent_points[:, 0], latent_points[:, 1], c='gray', marker='o',
+                           label='Other Points', alpha=0.2)
+                ax.scatter(latent_points[close_neighbors_indices, 0], latent_points[close_neighbors_indices, 1],
+                            c='blue', marker='o', label='Closest C Points')
+                ax.scatter(latent_points[background_neighbors_indices, 0], latent_points[background_neighbors_indices, 1],
+                            c='black', marker='o', label='Closest B Points')
+                ax.scatter(latent_points[random_index, 0], latent_points[random_index, 1], c='red', marker='*',
+                            s=200, label='Chosen vi')
+                # ax.set_xlabel('X Label')
+                # ax.set_ylabel('Y Label')
+                # ax.set_title(f'Epoch {epoch} before training')
+                # ax.legend()
+                # plt.show()
+
+
             # Compute loss
             loss = local_aggregation_loss(random_point, close_neighbors, background_neighbors)
             # Backward pass
@@ -610,6 +674,31 @@ def test_single_dotsNeighbotSIngleBatch():
             optimizer.step()
 
             epoch_loss += loss.item()
+
+            if plot_neighborhood:
+                # plot in latent space, closest_c_indices as blue and closest_b_indices as black and the chosen vi as red
+                embeddings = net(batch.float())
+                latent_points = embeddings.detach().numpy()
+
+                random_point = latent_points[random_index]
+                close_neighbors = latent_points[close_neighbors_indices]
+                background_neighbors = latent_points[background_neighbors_indices]
+
+                # fig = plt.figure(figsize=(20, 20))
+                # ax = fig.add_subplot(111)
+                ax.scatter(latent_points[:, 0], latent_points[:, 1], c='gray', marker='o',
+                           label='Other Points', alpha=0.1)
+                ax.scatter(close_neighbors[:, 0], close_neighbors[:, 1],
+                           c='green', marker='o', label='Closest C Points', alpha=0.5)
+                ax.scatter(background_neighbors[:, 0], background_neighbors[:, 1],
+                           c='purple', marker='o', label='Closest B Points', alpha=0.5)
+                ax.scatter(random_point[0], random_point[1], c='black', marker='*',
+                           s=200, label='Chosen vi', alpha=0.5)
+                ax.set_xlabel('X Label')
+                ax.set_ylabel('Y Label')
+                ax.set_title(f'Epoch {epoch} after training loss={epoch_loss}')
+                ax.legend()
+                plt.show()
 
         # Calculate average loss for the epoch
         average_epoch_loss = epoch_loss / len(dataloader)
