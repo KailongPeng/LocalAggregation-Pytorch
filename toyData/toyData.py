@@ -131,3 +131,110 @@ plt.ylabel('Loss')
 plt.legend()
 plt.grid(True)
 plt.show()
+
+
+def localAgg_test():
+    import torch
+    import torch.nn as nn
+    import torch.nn.functional as F
+    import matplotlib.pyplot as plt
+
+    class LocalAggregationLoss(nn.Module):
+        def __init__(self, alpha=1.0, beta=1.0):
+            super(LocalAggregationLoss, self).__init__()
+            self.alpha = alpha  # 全局损失的权重
+            self.beta = beta  # 局部损失的权重
+
+        def forward(self, predictions, targets, adjacency_matrix):
+            """
+            :param predictions: 模型的预测值张量（输出）
+            :param targets: 实际标签的张量
+            :param adjacency_matrix: 表示局部连接的邻接矩阵张量
+            :return: 局部聚合损失
+            """
+            # 全局损失（例如，交叉熵损失）
+            global_loss = F.cross_entropy(predictions, targets)
+
+            # 局部损失（聚合损失）
+            local_loss = self.local_aggregation_loss(predictions, adjacency_matrix)
+
+            # 组合全局和局部损失
+            loss = self.alpha * global_loss + self.beta * local_loss
+
+            return loss
+
+        def local_aggregation_loss(self, predictions, adjacency_matrix):
+            """
+            局部聚合损失函数
+            :param predictions: 模型的预测值张量（输出）
+            :param adjacency_matrix: 表示局部连接的邻接矩阵张量
+            :return: 局部聚合损失
+            """
+            # 计算每个局部邻域的平均预测值
+            local_predictions = torch.mm(adjacency_matrix, predictions)
+
+            # 计算局部聚合损失（例如，均方误差）
+            local_loss = F.mse_loss(local_predictions, predictions)
+
+            return local_loss
+
+    # Create a simple model with learnable parameters
+    class SimpleModel(nn.Module):
+        def __init__(self, input_size, output_size):
+            super(SimpleModel, self).__init__()
+            self.fc = nn.Linear(input_size, output_size)
+
+        def forward(self, x):
+            return self.fc(x)
+
+    # Example usage:
+    input_size = 10
+    output_size = 1
+
+    # Create an instance of the SimpleModel
+    model = SimpleModel(input_size, output_size)
+    loss_function = LocalAggregationLoss(alpha=1.0, beta=0.5)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
+
+
+    # Assume you have model predictions (output), ground truth labels, and adjacency matrix
+    batch_size = 32
+    num_classes = 10
+    predictions = torch.rand((batch_size, num_classes), requires_grad=True)
+    targets = torch.randint(0, num_classes, (batch_size,))
+    adjacency_matrix = torch.rand((batch_size, batch_size), requires_grad=True)
+
+    # Check unique values in the targets tensor
+    unique_targets = torch.unique(targets)
+    print("Unique target values:", unique_targets)
+
+    # Ensure target values are within the correct range [0, num_classes - 1]
+    if torch.min(targets) < 0 or torch.max(targets) >= num_classes:
+        # Adjust target values to be within the correct range
+        targets = torch.remainder(targets, num_classes)
+
+    # Record the loss values during training
+    num_epochs = 100
+    loss_values = []
+
+    for epoch in range(num_epochs):
+        # Forward pass
+        outputs = model(predictions)
+
+        # Compute the loss
+        loss = loss_function(outputs, targets, adjacency_matrix)
+
+        # Backward and optimize
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        # Record the loss value
+        loss_values.append(loss.item())
+
+    # Plot the loss values over time
+    plt.plot(loss_values, label='Training Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.show()
