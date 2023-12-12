@@ -397,9 +397,120 @@ def trainWith_localAggLoss():
 
 # add another loss so that the latent space (aka v=model(x)) is encouraged to span 0-1.
 # layer norm versus batch norm
+def test_multiple_dotsNeighbotSIngleBatch():
+
+    import torch
+    import torch.nn as nn
+    import torch.optim as optim
+    from torch.utils.data import DataLoader, Dataset
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    # Define toy dataset
+    class ToyDataset(Dataset):
+        def __init__(self, data):
+            self.data = data
+
+        def __len__(self):
+            return len(self.data)
+
+        def __getitem__(self, idx):
+            return self.data[idx]
+
+    # Define neural network architecture
+    class Net(nn.Module):
+        def __init__(self):
+            super(Net, self).__init__()
+            self.embedding = nn.Linear(2, 2)
+
+        def forward(self, x):
+            x = self.embedding(x)
+            return x
+
+    # Define local aggregation loss function
+    def local_aggregation_loss(embeddings, close_neighbors, background_neighbors):
+        # Compute pairwise distances between embeddings and close neighbors  # embeddings(50,2) close_neighbors(50,10,2) -> (50,10)
+        expanded_embeddings = embeddings.unsqueeze(1).expand_as(
+            close_neighbors)  # Expand the embeddings to have the same dimensions as close_neighbors
+        close_distances = torch.norm(expanded_embeddings - close_neighbors,
+                                     dim=2)  # Calculate the Euclidean distance
+
+        # Compute pairwise distances between embeddings and background neighbors
+        expanded_embeddings = embeddings.unsqueeze(1).expand_as(
+            background_neighbors)  # Expand the embeddings to have the same dimensions as background_neighbors
+        background_distances = torch.norm(expanded_embeddings - background_neighbors,
+                                          dim=2)  # Calculate the Euclidean distance
+
+        # import pdb ; pdb.set_trace()
+
+        # Compute loss based on distances
+        loss = torch.mean(torch.log(1 + torch.exp(close_distances - background_distances)))
+        return loss
+
+    # Define close and background neighbors
+    def get_neighbors(embeddings, c=None, b=None):
+        # Compute pairwise distances between embeddings
+        distances = torch.cdist(embeddings, embeddings)
+        # Get indices of k closest neighbors for each example
+        _, indices = torch.topk(distances, c + b + 1, largest=False)
+        # Remove self from list of neighbors
+        indices = indices[:, 1:]
+        # Get embeddings of close neighbors
+        close_neighbors = embeddings[indices[:, :c]]
+        # Get embeddings of background neighbors
+        background_neighbors = embeddings[indices[:, c:]]
+        return close_neighbors, background_neighbors
+
+    # Define toy dataset shaped [1000, 2]
+    data = torch.tensor(np.random.rand(1000, 2), dtype=torch.float32)
+    dataset = ToyDataset(data)
+    dataloader = DataLoader(dataset, batch_size=50, shuffle=True)
+
+    # Define neural network and optimizer
+    net = Net()
+    optimizer = optim.SGD(net.parameters(), lr=0.01)
+
+    # Train network using local aggregation loss
+    loss_values = []  # List to store loss values for each epoch
+
+    for epoch in range(10):
+        epoch_loss = 0.0  # Variable to accumulate loss within each epoch
+
+        for batch in dataloader:
+            # Zero gradients
+            optimizer.zero_grad()
+            # Forward pass
+            embeddings = net(batch.float())
+            # Get close and background neighbors
+            c = 10
+            b = 10
+            close_neighbors, background_neighbors = get_neighbors(embeddings, c=c, b=b)
+            # Compute loss
+            loss = local_aggregation_loss(embeddings, close_neighbors, background_neighbors)
+            # Backward pass
+            loss.backward()
+            # Update parameters
+            optimizer.step()
+
+            epoch_loss += loss.item()
+
+        # Calculate average loss for the epoch
+        average_epoch_loss = epoch_loss / len(dataloader)
+        loss_values.append(average_epoch_loss)
+
+        # Print and record the average loss for the epoch
+        print(f'Epoch [{epoch + 1}/10], Loss: {average_epoch_loss}')
+
+    # Plot the loss curve
+    plt.plot(range(1, 11), loss_values, marker='o')
+    plt.title('Local Aggregation Loss Curve')
+    plt.xlabel('Epochs')
+    plt.ylabel('Average Loss')
+    plt.grid(True)
+    plt.show()
 
 
-def test():
+def test_single_dotsNeighbotSIngleBatch():
     import torch
     import torch.nn as nn
     import torch.optim as optim
@@ -478,8 +589,8 @@ def test():
 
     # Train network using local aggregation loss
     loss_values = []  # List to store loss values for each epoch
-
-    for epoch in range(10):
+    total_epochs = 100
+    for epoch in range(total_epochs):
         epoch_loss = 0.0  # Variable to accumulate loss within each epoch
 
         for batch in dataloader:
@@ -488,8 +599,8 @@ def test():
             # Forward pass
             embeddings = net(batch.float())
             # Get close and background neighbors for a single random point
-            c = 10
-            b = 10
+            c = 20
+            b = 20
             close_neighbors, background_neighbors, random_point = get_neighbors_single_point(embeddings, c=c, b=b)
             # Compute loss
             loss = local_aggregation_loss(random_point, close_neighbors, background_neighbors)
@@ -505,10 +616,10 @@ def test():
         loss_values.append(average_epoch_loss)
 
         # Print and record the average loss for the epoch
-        print(f'Epoch [{epoch + 1}/10], Loss: {average_epoch_loss}')
+        print(f'Epoch [{epoch + 1}/{total_epochs}], Loss: {average_epoch_loss}')
 
     # Plot the loss curve
-    plt.plot(range(1, 11), loss_values, marker='o')
+    plt.plot(range(1, total_epochs+1), loss_values, marker='o')
     plt.title('Local Aggregation Loss Curve')
     plt.xlabel('Epochs')
     plt.ylabel('Average Loss')
