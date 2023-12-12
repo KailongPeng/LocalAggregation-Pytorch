@@ -88,6 +88,8 @@ labels_test = torch.tensor(test_labels, dtype=torch.long)
 # Define loss function and optimizer
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(model.parameters(), lr=0.01)
+# Lists to store training loss values
+train_loss_history = []
 
 # Training loop
 for epoch in range(10000):
@@ -100,8 +102,11 @@ for epoch in range(10000):
     loss_train.backward()
     optimizer.step()
 
+    # Append the training loss to the history list
+    train_loss_history.append(loss_train.item())
+
     # Print the loss for every 10 epochs
-    if epoch % 10 == 0:
+    if epoch % 100 == 0:
         print(f'Epoch {epoch}, Training Loss: {loss_train.item()}')
 
 # Evaluate the model on the testing dataset and calculate accuracy
@@ -110,3 +115,13 @@ with torch.no_grad():
     _, predicted_test = torch.max(output_test, 1)
     accuracy = (predicted_test == labels_test).float().mean()
     print(f'Testing Accuracy: {accuracy.item()}')
+
+# Plot the learning loss curve
+plt.figure(figsize=(10, 6))
+plt.plot(range(0, 10000), train_loss_history, label='Training Loss')
+plt.title('Learning Loss Curve')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.legend()
+plt.grid(True)
+plt.show()
