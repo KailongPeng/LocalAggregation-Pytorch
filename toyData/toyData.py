@@ -1,13 +1,14 @@
 import numpy as np
+import torch
+import torch.nn as nn
+import torch.optim as optim
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.colors import ListedColormap
 
-
+# Function to generate 3D scatter plot and return data
 def generate_3d_scatter_plot(display_plot=False):
-    # Generate 1000 random 3D points
     np.random.seed(42)
-    points = np.random.rand(1000, 3)
+    points = np.random.rand(2000, 3)  # Increase the number of points to 2000
 
     # Define the boundaries for region division
     boundaries = [1 / 3, 2 / 3]
@@ -51,14 +52,9 @@ def generate_3d_scatter_plot(display_plot=False):
 # Call the function to get data and figure
 points_data, labels_data = generate_3d_scatter_plot(display_plot=True)
 
-
-# For a 3D input (x, y, z) with 1000 points, uniformly distributed in the range [0, 1] for each dimension.
-# Each point is assigned to one of 27 labels ranging from 0 to 26.
-# Now, let's create a fully connected feedforward neural network with 4 layers.
-# The input is 3D, the second-to-last layer is 2D, and the last layer classifies into 27 categories.
-import torch
-import torch.nn as nn
-import torch.optim as optim
+# Split the data into training and testing sets (1000 points each)
+train_data, test_data = points_data[:1000], points_data[1000:]
+train_labels, test_labels = labels_data[:1000], labels_data[1000:]
 
 
 # Define the neural network model
@@ -82,37 +78,35 @@ class SimpleFeedforwardNN(nn.Module):
 model = SimpleFeedforwardNN()
 
 # Define training data for the 1000 points
-# input_data = points_data
-input_data = torch.tensor(points_data, dtype=torch.float32)
-labels = torch.tensor(labels_data, dtype=torch.long)  # torch.randint(0, 27, (1000,))
+input_train = torch.tensor(train_data, dtype=torch.float32)
+labels_train = torch.tensor(train_labels, dtype=torch.long)
+
+# Define testing data for the 1000 points
+input_test = torch.tensor(test_data, dtype=torch.float32)
+labels_test = torch.tensor(test_labels, dtype=torch.long)
 
 # Define loss function and optimizer
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(model.parameters(), lr=0.01)
 
 # Training loop
-for epoch in range(100):
-    # Forward pass
-    output = model(input_data)
-
-    # Compute loss
-    loss = criterion(output, labels)
+for epoch in range(10000):
+    # Forward pass for training data
+    output_train = model(input_train)
+    loss_train = criterion(output_train, labels_train)
 
     # Backward pass and optimization
     optimizer.zero_grad()
-    loss.backward()
+    loss_train.backward()
     optimizer.step()
 
     # Print the loss for every 10 epochs
     if epoch % 10 == 0:
-        print(f'Epoch {epoch}, Loss: {loss.item()}')
-    # Epoch 0, Loss: 3.3573741912841797
-    # Epoch 10, Loss: 3.3567841053009033
-    # Epoch 20, Loss: 3.3561997413635254
-    # Epoch 30, Loss: 3.355625867843628
-    # Epoch 40, Loss: 3.3550524711608887
-    # Epoch 50, Loss: 3.354484796524048
-    # Epoch 60, Loss: 3.353917121887207
-    # Epoch 70, Loss: 3.3533620834350586
-    # Epoch 80, Loss: 3.3528056144714355
-    # Epoch 90, Loss: 3.35225510597229
+        print(f'Epoch {epoch}, Training Loss: {loss_train.item()}')
+
+# Evaluate the model on the testing dataset and calculate accuracy
+with torch.no_grad():
+    output_test = model(input_test)
+    _, predicted_test = torch.max(output_test, 1)
+    accuracy = (predicted_test == labels_test).float().mean()
+    print(f'Testing Accuracy: {accuracy.item()}')
