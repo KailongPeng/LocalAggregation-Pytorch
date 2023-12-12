@@ -203,24 +203,22 @@ def trainWith_localAggLoss():
         def similarity(A, v):
             # Calculate the similarity between set A and feature v using Gaussian kernel
             distance = torch.norm(A - v, dim=1)
+            # import pdb; pdb.set_trace()
             _similarity_ = - distance.mean() + 1e-6
-            # torch.exp(-distance ** 2).mean()
+            # _similarity_ = torch.exp(-distance ** 2).mean()
 
             return _similarity_
 
         def forward(self, Ci, Bi, theta, xi, vi):
             # Compute the similarity between Ci and vi
             P_Ci_given_vi = self.similarity(Ci, vi)
-            # print(f"P_Ci_given_vi={P_Ci_given_vi}")
 
             # Compute the similarity between Bi and vi
             P_Bi_given_vi = self.similarity(Bi, vi)
-            # print(f"P_Bi_given_vi={P_Bi_given_vi}")
 
             # Compute the negative log ratio of probabilities
-            # loss_local_aggregation = - torch.log(P_Ci_given_vi / P_Bi_given_vi)
-            loss_local_aggregation = torch.log(P_Ci_given_vi / P_Bi_given_vi)
-            # print(f"loss_local_aggregation={loss_local_aggregation}")
+            loss_local_aggregation = - torch.log(P_Ci_given_vi / P_Bi_given_vi)
+            # loss_local_aggregation = torch.log(P_Ci_given_vi / P_Bi_given_vi)
 
             # Regularization term
             reg_term = self.lambda_reg * torch.norm(torch.cat([p.view(-1) for p in theta]), p=2)
@@ -266,18 +264,23 @@ def trainWith_localAggLoss():
     local_aggregation_loss = LocalAggregationLoss(lambda_reg=0.001)
 
     # Set up optimizer
-    initial_learning_rate = 0.05
-    total_epochs = 2000
+    initial_learning_rate = 0.5
+    total_epochs = 200
     optimizer = optim.SGD(model.parameters(), lr=initial_learning_rate)
 
     # Initialize lists to store initial and final latent space points
     initial_v_points = []
     final_v_points = []
 
+    testMode = True
+    if testMode:
+        plot_neighborhood = True
+    else:
+        plot_neighborhood = False
+
     # Training loop
     loss_values = []
     for epoch in range(total_epochs):
-        plot_neighborhood = True
         # Record initial and final latent space points
         if epoch == 0:
             initial_v_points = model(input_data).detach().numpy()
@@ -357,7 +360,7 @@ def trainWith_localAggLoss():
             ax.scatter(vi[0], vi[1], c='red', marker='*', s=200, label='Chosen vi')
             ax.set_xlabel('X Label')
             ax.set_ylabel('Y Label')
-            ax.set_title(f'Epoch {epoch} after training')
+            ax.set_title(f'Epoch {epoch} after training, loss={loss.item()}')
             ax.legend()
             plt.show()
 
@@ -395,3 +398,71 @@ def trainWith_localAggLoss():
 
 # add another loss so that the latent space (aka v=model(x)) is encouraged to span 0-1.
 # layer norm versus batch norm
+
+def test():
+    import torch
+    import torch.nn as nn
+    import torch.optim as optim
+    import torch.nn.functional as F
+    from torch.utils.data import Dataset, DataLoader
+    import numpy as np
+
+    # Create a toy dataset
+    class ToyDataset(Dataset):
+        def __init__(self, num_samples, num_features):
+            self.num_samples = num_samples
+            self.num_features = num_features
+            self.data = torch.randn(num_samples, num_features)
+
+        def __len__(self):
+            return self.num_samples
+
+        def __getitem__(self, idx):
+            return self.data[idx]
+
+    # Define the local aggregation loss
+    class LocalAggregationLoss(nn.Module):
+        def __init__(self, tau):
+            super(LocalAggregationLoss, self).__init__()
+            self.tau = tau
+
+        def forward(self, embeddings, neighbors_indices):
+            # Compute the local aggregation loss
+            loss = 0
+            for i, neighbors in enumerate(neighbors_indices):
+                for j in neighbors:
+                    if i != j:
+                        loss += torch.exp(torch.dot(embeddings[i], embeddings[j]) / self.tau)
+                loss -= len(neighbors) - 1  # Subtract the number of neighbors
+            return loss
+
+    # Create the model
+    class Model(nn.Module):
+        def __init__(self, input_dim, output_dim):
+            super(Model, self).__init__()
+            self.fc = nn.Linear(input_dim, output_dim)
+
+        def forward(self, x):
+            return self.fc(x)
+
+    # Initialize the dataset and dataloader
+    toy_dataset = ToyDataset(num_samples=100, num_features=10)
+    dataloader = DataLoader(toy_dataset, batch_size=10, shuffle=True)
+
+    # Initialize the model, loss function, and optimizer
+    model = Model(input_dim=10, output_dim=5)
+    criterion = LocalAggregationLoss(tau=0.5)
+    optimizer = optim.SGD(model.parameters(), lr=0.01)
+
+    # Training loop
+    for epoch in range(10):
+        for batch_idx, data in enumerate(dataloader):
+            optimizer.zero_grad()
+            embeddings = model(data)
+            # For simplicity, assume neighbors_indices are precomputed
+            neighbors_indices = [np.random.choice(100, 5, replace=False) for _ in range(10)]
+            loss = criterion(embeddings, neighbors_indices)
+            loss.backward()
+            optimizer.step()
+            print('Epoch [{}/{}], Batch {}, Loss: {:.4f}'.format(epoch + 1, 10, batch_idx + 1, loss.item()))
+
