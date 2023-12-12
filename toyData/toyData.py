@@ -407,6 +407,12 @@ def test():
     import matplotlib.pyplot as plt
     import numpy as np
 
+    # set random seed
+    np.random.seed(42)
+    torch.manual_seed(42)
+    torch.cuda.manual_seed(42)
+    torch.cuda.manual_seed_all(42)
+
     # Define toy dataset
     class ToyDataset(Dataset):
         def __init__(self, data):
@@ -429,36 +435,37 @@ def test():
             return x
 
     # Define local aggregation loss function
-    def local_aggregation_loss(embeddings, close_neighbors, background_neighbors):
-        # Compute pairwise distances between embeddings and close neighbors  # embeddings(50,2) close_neighbors(50,10,2) -> (50,10)
-        expanded_embeddings = embeddings.unsqueeze(1).expand_as(
-            close_neighbors)  # Expand the embeddings to have the same dimensions as close_neighbors
-        close_distances = torch.norm(expanded_embeddings - close_neighbors,
-                                     dim=2)  # Calculate the Euclidean distance
+    def local_aggregation_loss(random_point, close_neighbors, background_neighbors):
+        # Compute pairwise distances between random_point and close neighbors
+        close_distances = torch.norm(random_point - close_neighbors, dim=1)
 
-        # Compute pairwise distances between embeddings and background neighbors
-        expanded_embeddings = embeddings.unsqueeze(1).expand_as(
-            background_neighbors)  # Expand the embeddings to have the same dimensions as background_neighbors
-        background_distances = torch.norm(expanded_embeddings - background_neighbors,
-                                          dim=2)  # Calculate the Euclidean distance
+        # Compute pairwise distances between random_point and background neighbors
+        background_distances = torch.norm(random_point - background_neighbors, dim=1)
 
         # Compute loss based on distances
         loss = torch.mean(torch.log(1 + torch.exp(close_distances - background_distances)))
         return loss
 
-    # Define close and background neighbors
-    def get_neighbors(embeddings, c=None, b=None):
-        # Compute pairwise distances between embeddings
-        distances = torch.cdist(embeddings, embeddings)
-        # Get indices of k closest neighbors for each example
-        _, indices = torch.topk(distances, c + b + 1, largest=False)
+    # Define close and background neighbors for a single random point
+    def get_neighbors_single_point(embeddings, c=None, b=None):
+        # Choose a random index within the batch
+        random_index = torch.randint(0, embeddings.size(0), (1,))
+        random_point = embeddings[random_index]
+
+        # Compute pairwise distances between embeddings and the random point
+        distances = torch.cdist(embeddings, random_point.unsqueeze(0))
+
+        # Get indices of k closest neighbors for the random point
+        _, indices = torch.topk(distances.view(-1), c + b + 1, largest=False)
         # Remove self from list of neighbors
-        indices = indices[:, 1:]
-        # Get embeddings of close neighbors
-        close_neighbors = embeddings[indices[:, :c]]
-        # Get embeddings of background neighbors
-        background_neighbors = embeddings[indices[:, c:]]
-        return close_neighbors, background_neighbors
+        indices = indices[indices != random_index.item()]
+
+        # Get embeddings of close neighbors for the random point
+        close_neighbors = embeddings[indices[:c]]
+        # Get embeddings of background neighbors for the random point
+        background_neighbors = embeddings[indices[c:]]
+
+        return close_neighbors, background_neighbors, random_point
 
     # Define toy dataset shaped [1000, 2]
     data = torch.tensor(np.random.rand(1000, 2), dtype=torch.float32)
@@ -480,12 +487,12 @@ def test():
             optimizer.zero_grad()
             # Forward pass
             embeddings = net(batch.float())
-            # Get close and background neighbors
+            # Get close and background neighbors for a single random point
             c = 10
             b = 10
-            close_neighbors, background_neighbors = get_neighbors(embeddings, c=c, b=b)
+            close_neighbors, background_neighbors, random_point = get_neighbors_single_point(embeddings, c=c, b=b)
             # Compute loss
-            loss = local_aggregation_loss(embeddings, close_neighbors, background_neighbors)
+            loss = local_aggregation_loss(random_point, close_neighbors, background_neighbors)
             # Backward pass
             loss.backward()
             # Update parameters
