@@ -50,88 +50,129 @@ def generate_3d_scatter_plot(display_plot=False):
     return points, labels
 
 
-# Call the function to get data and figure
-points_data, labels_data = generate_3d_scatter_plot(display_plot=True)
+def generate_2d_scatter_plot(display_plot=False):
+    # Example usage:
+    # points_2d, labels_2d = generate_2d_scatter_plot(display_plot=True)
+    np.random.seed(42)
+    points = np.random.rand(2000, 2)  # Generate 2D points
 
-# Split the data into training and testing sets (1000 points each)
-train_data, test_data = points_data[:1000], points_data[1000:]
-train_labels, test_labels = labels_data[:1000], labels_data[1000:]
+    # Define the boundaries for region division
+    boundaries = [1 / 3, 2 / 3]
+
+    # Assign labels to each point based on region
+    labels_x = np.digitize(points[:, 0], boundaries)
+    labels_y = np.digitize(points[:, 1], boundaries)
+
+    # Combine the indices of the regions in each dimension to get a unique label for each point
+    labels = labels_x + 3 * labels_y
+
+    if display_plot:
+        # Create a randomized rainbow colormap
+        rainbow_colormap = ListedColormap(np.random.rand(256, 3))
+
+        # Create a 2D scatter plot
+        plt.figure(figsize=(8, 8))
+        plt.scatter(points[:, 0], points[:, 1], c=labels, cmap=rainbow_colormap)
+
+        # Add colorbar to show label-color mapping
+        colorbar = plt.colorbar(orientation='vertical')
+        colorbar.set_label('Label')
+
+        # Set plot labels
+        plt.xlabel('X-axis')
+        plt.ylabel('Y-axis')
+        plt.title('2D Scatter Plot with Region Labels')
+
+        # Display the plot
+        plt.show()
+
+    # Return data
+    return points, labels
 
 
-# Define the neural network model
-class SimpleFeedforwardNN(nn.Module):
-    def __init__(self):
-        super(SimpleFeedforwardNN, self).__init__()
-        self.input_layer = nn.Linear(3, 64)  # 3D input layer
-        self.hidden_layer1 = nn.Linear(64, 32)  # First hidden layer
-        self.hidden_layer2 = nn.Linear(32, 2)  # Second-to-last layer is 2D
-        self.output_layer = nn.Linear(2, 27)  # Output layer, classifying into 27 categories
+def crossEntropyLoss():
+    # Call the function to get data and figure
+    points_data, labels_data = generate_3d_scatter_plot(display_plot=True)
 
-    def forward(self, x):
-        x = torch.relu(self.input_layer(x))
-        x = torch.relu(self.hidden_layer1(x))
-        x = torch.relu(self.hidden_layer2(x))
-        x = self.output_layer(x)
-        return x
+    # Split the data into training and testing sets (1000 points each)
+    train_data, test_data = points_data[:1000], points_data[1000:]
+    train_labels, test_labels = labels_data[:1000], labels_data[1000:]
 
 
-# Instantiate the neural network model
-model = SimpleFeedforwardNN()
+    # Define the neural network model
+    class SimpleFeedforwardNN(nn.Module):
+        def __init__(self):
+            super(SimpleFeedforwardNN, self).__init__()
+            self.input_layer = nn.Linear(3, 64)  # 3D input layer
+            self.hidden_layer1 = nn.Linear(64, 32)  # First hidden layer
+            self.hidden_layer2 = nn.Linear(32, 2)  # Second-to-last layer is 2D
+            self.output_layer = nn.Linear(2, 27)  # Output layer, classifying into 27 categories
 
-# Define training data for the 1000 points
-input_train = torch.tensor(train_data, dtype=torch.float32)
-labels_train = torch.tensor(train_labels, dtype=torch.long)
+        def forward(self, x):
+            x = torch.relu(self.input_layer(x))
+            x = torch.relu(self.hidden_layer1(x))
+            x = torch.relu(self.hidden_layer2(x))
+            x = self.output_layer(x)
+            return x
 
-# Define testing data for the 1000 points
-input_test = torch.tensor(test_data, dtype=torch.float32)
-labels_test = torch.tensor(test_labels, dtype=torch.long)
 
-# Define loss function and optimizer
-criterion = nn.CrossEntropyLoss()
-initial_learning_rate = 0.05
-optimizer = optim.SGD(model.parameters(), lr=initial_learning_rate)
-# Lists to store training loss values
-train_loss_history = []
-# Total number of epochs
-total_epochs = 10000
-# Training loop
-for epoch in range(total_epochs):
-    # Adjust learning rate if epoch passes 1/3 of the total epochs
-    if epoch > total_epochs / 3:
-        optimizer.param_groups[0]['lr'] = initial_learning_rate / 2.0
+    # Instantiate the neural network model
+    model = SimpleFeedforwardNN()
 
-    # Forward pass for training data
-    output_train = model(input_train)
-    loss_train = criterion(output_train, labels_train)
+    # Define training data for the 1000 points
+    input_train = torch.tensor(train_data, dtype=torch.float32)
+    labels_train = torch.tensor(train_labels, dtype=torch.long)
 
-    # Backward pass and optimization
-    optimizer.zero_grad()
-    loss_train.backward()
-    optimizer.step()
+    # Define testing data for the 1000 points
+    input_test = torch.tensor(test_data, dtype=torch.float32)
+    labels_test = torch.tensor(test_labels, dtype=torch.long)
 
-    # Append the training loss to the history list
-    train_loss_history.append(loss_train.item())
+    # Define loss function and optimizer
+    criterion = nn.CrossEntropyLoss()
+    initial_learning_rate = 0.05
+    optimizer = optim.SGD(model.parameters(), lr=initial_learning_rate)
+    # Lists to store training loss values
+    train_loss_history = []
+    # Total number of epochs
+    total_epochs = 10000
+    # Training loop
+    for epoch in range(total_epochs):
+        # Adjust learning rate if epoch passes 1/3 of the total epochs
+        if epoch > total_epochs / 3:
+            optimizer.param_groups[0]['lr'] = initial_learning_rate / 2.0
 
-    # Print the loss for every 10 epochs
-    if epoch % 100 == 0:
-        print(f'Epoch {epoch}, Training Loss: {loss_train.item()}')
+        # Forward pass for training data
+        output_train = model(input_train)
+        loss_train = criterion(output_train, labels_train)
 
-# Evaluate the model on the testing dataset and calculate accuracy
-with torch.no_grad():
-    output_test = model(input_test)
-    _, predicted_test = torch.max(output_test, 1)
-    accuracy = (predicted_test == labels_test).float().mean()
-    print(f'Testing Accuracy: {accuracy.item()}')
+        # Backward pass and optimization
+        optimizer.zero_grad()
+        loss_train.backward()
+        optimizer.step()
 
-# Plot the learning loss curve
-plt.figure(figsize=(10, 6))
-plt.plot(range(0, 10000), train_loss_history, label='Training Loss')
-plt.title('Learning Loss Curve')
-plt.xlabel('Epochs')
-plt.ylabel('Loss')
-plt.legend()
-plt.grid(True)
-plt.show()
+        # Append the training loss to the history list
+        train_loss_history.append(loss_train.item())
+
+        # Print the loss for every 10 epochs
+        if epoch % 100 == 0:
+            print(f'Epoch {epoch}, Training Loss: {loss_train.item()}')
+
+    # Evaluate the model on the testing dataset and calculate accuracy
+    with torch.no_grad():
+        output_test = model(input_test)
+        _, predicted_test = torch.max(output_test, 1)
+        accuracy = (predicted_test == labels_test).float().mean()
+        print(f'Testing Accuracy: {accuracy.item()}')
+
+    # Plot the learning loss curve
+    plt.figure(figsize=(10, 6))
+    plt.plot(range(0, 10000), train_loss_history, label='Training Loss')
+    plt.title('Learning Loss Curve')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
 
 
 def localAgg_test():
@@ -162,7 +203,7 @@ def localAgg_test():
         def similarity(A, v):
             # Calculate the similarity between set A and feature v using Gaussian kernel
             distance = torch.norm(A - v, dim=1)
-            _similarity_ = - distance.mean() + 1e-4
+            _similarity_ = - distance.mean() + 1e-6
             # torch.exp(-distance ** 2).mean()
 
             return _similarity_
@@ -191,9 +232,15 @@ def localAgg_test():
 
     # Define the neural network model
     class SimpleFeedforwardNN(nn.Module):
-        def __init__(self):
+        def __init__(self, inputSize=2):
+            # set random seed
+            np.random.seed(42)
+            torch.manual_seed(42)
+            torch.cuda.manual_seed(42)
+            torch.cuda.manual_seed_all(42)
+            torch.backends.cudnn.deterministic = True
             super(SimpleFeedforwardNN, self).__init__()
-            self.input_layer = nn.Linear(3, 64)  # 3D input layer
+            self.input_layer = nn.Linear(inputSize, 64)  # 3D input layer
             self.hidden_layer1 = nn.Linear(64, 32)  # First hidden layer
             self.hidden_layer2 = nn.Linear(32, 2)  # Second-to-last layer is 2D
 
@@ -201,10 +248,12 @@ def localAgg_test():
             x = torch.relu(self.input_layer(x))
             x = torch.relu(self.hidden_layer1(x))
             x = self.hidden_layer2(x)
+            # x = torch.sigmoid(self.hidden_layer2(x))  # Apply sigmoid to ensure values are between 0 and 1
             return x
 
     # Generate 1000 random 3D points
-    points_data, labels_data = generate_3d_scatter_plot(display_plot=True)
+    # points_data, labels_data = generate_3d_scatter_plot(display_plot=True)
+    points_data, labels_data = generate_2d_scatter_plot(display_plot=True)
 
     # Split the data into training and testing sets (1000 points each)
     train_data, test_data = points_data[:1000], points_data[1000:]
@@ -212,13 +261,13 @@ def localAgg_test():
     input_data = torch.tensor(train_data, dtype=torch.float32)
 
     # Instantiate the neural network model and the local aggregation loss
-    model = SimpleFeedforwardNN()
+    model = SimpleFeedforwardNN(inputSize=2)
     # local_aggregation_loss = LocalAggregationLoss(lambda_reg=0)
     local_aggregation_loss = LocalAggregationLoss(lambda_reg=0.001)
 
     # Set up optimizer
     initial_learning_rate = 0.05
-    total_epochs = 5000
+    total_epochs = 2000
     optimizer = optim.SGD(model.parameters(), lr=initial_learning_rate)
 
     # Initialize lists to store initial and final latent space points
@@ -228,6 +277,7 @@ def localAgg_test():
     # Training loop
     loss_values = []
     for epoch in range(total_epochs):
+        plot_neighborhood = True
         # Record initial and final latent space points
         if epoch == 0:
             initial_v_points = model(input_data).detach().numpy()
@@ -248,20 +298,19 @@ def localAgg_test():
         distances = torch.norm(model(input_data) - vi, dim=1)
 
         # Find the indices of the closest c and b points
-        c = 10
-        b = 20
+        c = 40
+        b = 40
         _, closest_c_indices = torch.topk(-distances, c)
         _, closest_b_indices = torch.topk(-distances, b+c)
         closest_b_indices = closest_b_indices[c:]
 
-        plot_neighborhood = False
         if plot_neighborhood:
             # plot in latent space, closest_c_indices as blue and closest_b_indices as black and the chosen vi as red
             latent_points = model(input_data).detach().numpy()
             fig = plt.figure(figsize=(20, 20))
-            ax = fig.add_subplot(111)  # , projection='3d')
+            ax = fig.add_subplot(111)
             ax.scatter(latent_points[:, 0], latent_points[:, 1], c='gray', marker='o',
-                       label='Other Points')
+                       label='Other Points', alpha=0.2)
             ax.scatter(latent_points[closest_c_indices, 0], latent_points[closest_c_indices, 1],
                        c='blue', marker='o', label='Closest C Points')
             ax.scatter(latent_points[closest_b_indices, 0], latent_points[closest_b_indices, 1],
@@ -269,6 +318,7 @@ def localAgg_test():
             ax.scatter(vi.detach().numpy()[0], vi.detach().numpy()[1], c='red', marker='*', s=200, label='Chosen vi')
             ax.set_xlabel('X Label')
             ax.set_ylabel('Y Label')
+            ax.set_title(f'Epoch {epoch} before training')
             ax.legend()
             plt.show()
 
@@ -291,6 +341,25 @@ def localAgg_test():
         if epoch % int(total_epochs/10) == 0:
             print(f'Epoch {epoch}, Loss: {loss.item()}')
         loss_values.append(loss.item())
+
+        if plot_neighborhood:
+            # plot in latent space, closest_c_indices as blue and closest_b_indices as black and the chosen vi as red
+            latent_points = model(input_data).detach().numpy()
+            fig = plt.figure(figsize=(20, 20))
+            ax = fig.add_subplot(111)
+            ax.scatter(latent_points[:, 0], latent_points[:, 1], c='gray', marker='o',
+                       label='Other Points', alpha=0.2)
+            ax.scatter(latent_points[closest_c_indices, 0], latent_points[closest_c_indices, 1],
+                       c='blue', marker='o', label='Closest C Points')
+            ax.scatter(latent_points[closest_b_indices, 0], latent_points[closest_b_indices, 1],
+                       c='black', marker='o', label='Closest B Points')
+            vi = model(xi).detach().numpy()  # in latent space
+            ax.scatter(vi[0], vi[1], c='red', marker='*', s=200, label='Chosen vi')
+            ax.set_xlabel('X Label')
+            ax.set_ylabel('Y Label')
+            ax.set_title(f'Epoch {epoch} after training')
+            ax.legend()
+            plt.show()
 
     # Plot the loss curve
     plt.figure(figsize=(10, 6))
@@ -324,4 +393,5 @@ def localAgg_test():
     plt.tight_layout()
     plt.show()
 
+# add another loss so that the latent space (aka v=model(x)) is encouraged to span 0-1.
 # layer norm versus batch norm
