@@ -405,6 +405,12 @@ def test_multiple_dotsNeighbotSIngleBatch():
     import matplotlib.pyplot as plt
     import numpy as np
 
+    # set random seed
+    np.random.seed(42)
+    torch.manual_seed(42)
+    torch.cuda.manual_seed(42)
+    torch.cuda.manual_seed_all(42)
+
     # Define toy dataset
     class ToyDataset(Dataset):
         def __init__(self, data):
@@ -422,8 +428,24 @@ def test_multiple_dotsNeighbotSIngleBatch():
             super(Net, self).__init__()
             self.embedding = nn.Linear(2, 2)
 
+
         def forward(self, x):
             x = self.embedding(x)
+            return x
+
+    class SimpleFeedforwardNN(nn.Module):
+        def __init__(self):
+            super(SimpleFeedforwardNN, self).__init__()
+            self.input_layer = nn.Linear(2, 64)  # 3D input layer
+            self.hidden_layer1 = nn.Linear(64, 32)  # First hidden layer
+            self.hidden_layer2 = nn.Linear(32, 2)  # Second-to-last layer is 2D
+            # self.output_layer = nn.Linear(2, 27)  # Output layer, classifying into 27 categories
+
+        def forward(self, x):
+            x = torch.relu(self.input_layer(x))
+            x = torch.relu(self.hidden_layer1(x))
+            x = self.hidden_layer2(x)
+            # x = self.output_layer(x)
             return x
 
     # Define local aggregation loss function
@@ -466,7 +488,8 @@ def test_multiple_dotsNeighbotSIngleBatch():
     dataloader = DataLoader(dataset, batch_size=50, shuffle=True)
 
     # Define neural network and optimizer
-    net = Net()
+    # net = Net()
+    net = SimpleFeedforwardNN()
     optimizer = optim.SGD(net.parameters(), lr=0.01)
 
     # Train network using local aggregation loss
@@ -478,7 +501,7 @@ def test_multiple_dotsNeighbotSIngleBatch():
     # record the final latent space
     final_v_points = []
 
-    total_epochs = 10
+    total_epochs = 100
 
     for epoch in range(total_epochs):
         epoch_loss = 0.0  # Variable to accumulate loss within each epoch
@@ -489,8 +512,8 @@ def test_multiple_dotsNeighbotSIngleBatch():
             # Forward pass
             embeddings = net(batch.float())
             # record initial and final latent space points
-            if epoch == 0 and curr_batch == 0:
-                initial_v_points = embeddings.detach().numpy()
+            if epoch == 0:
+                initial_v_points.append(embeddings)
 
             # Get close and background neighbors
             c = 10
@@ -506,18 +529,19 @@ def test_multiple_dotsNeighbotSIngleBatch():
             epoch_loss += loss.item()
 
             # record initial and final latent space points
-            if epoch == total_epochs-1 and curr_batch == len(dataloader)-1:
-                final_v_points = embeddings.detach().numpy()
+            if epoch == total_epochs-1:
+                final_v_points.append(embeddings)
 
         # Calculate average loss for the epoch
         average_epoch_loss = epoch_loss / len(dataloader)
         loss_values.append(average_epoch_loss)
 
-        # Print and record the average loss for the epoch
-        print(f'Epoch [{epoch + 1}/10], Loss: {average_epoch_loss}')
+        if epoch % int(total_epochs/10) == 0:
+            # Print and record the average loss for the epoch
+            print(f'Epoch [{epoch + 1}/{total_epochs}], Loss: {average_epoch_loss}')
 
     # Plot the loss curve
-    plt.plot(range(1, 11), loss_values, marker='o')
+    plt.plot(range(1, total_epochs+1), loss_values, marker='o')
     plt.title('Local Aggregation Loss Curve')
     plt.xlabel('Epochs')
     plt.ylabel('Average Loss')
@@ -528,6 +552,7 @@ def test_multiple_dotsNeighbotSIngleBatch():
     fig, axes = plt.subplots(1, 2, figsize=(12, 6))
 
     # Initial latent space points
+    initial_v_points = torch.cat(initial_v_points, dim=0).detach().numpy()
     scatter_initial = axes[0].scatter(initial_v_points[:, 0], initial_v_points[:, 1], c=range(len(initial_v_points)), cmap='rainbow', marker='o')
     axes[0].set_title('Initial Latent Space Points')
     axes[0].set_xlabel('Dimension 1')
@@ -535,6 +560,7 @@ def test_multiple_dotsNeighbotSIngleBatch():
     fig.colorbar(scatter_initial, ax=axes[0], label='Point Index')
 
     # Final latent space points
+    final_v_points = torch.cat(final_v_points, dim=0).detach().numpy()
     scatter_final = axes[1].scatter(final_v_points[:, 0], final_v_points[:, 1], c=range(len(final_v_points)), cmap='rainbow', marker='o')
     axes[1].set_title('Final Latent Space Points')
     axes[1].set_xlabel('Dimension 1')
