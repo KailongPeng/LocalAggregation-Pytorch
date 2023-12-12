@@ -399,70 +399,79 @@ def trainWith_localAggLoss():
 # add another loss so that the latent space (aka v=model(x)) is encouraged to span 0-1.
 # layer norm versus batch norm
 
+
 def test():
     import torch
     import torch.nn as nn
     import torch.optim as optim
-    import torch.nn.functional as F
-    from torch.utils.data import Dataset, DataLoader
-    import numpy as np
+    from torch.utils.data import DataLoader, Dataset
 
-    # Create a toy dataset
+    # Define toy dataset
     class ToyDataset(Dataset):
-        def __init__(self, num_samples, num_features):
-            self.num_samples = num_samples
-            self.num_features = num_features
-            self.data = torch.randn(num_samples, num_features)
+        def __init__(self, data):
+            self.data = data
 
         def __len__(self):
-            return self.num_samples
+            return len(self.data)
 
         def __getitem__(self, idx):
             return self.data[idx]
 
-    # Define the local aggregation loss
-    class LocalAggregationLoss(nn.Module):
-        def __init__(self, tau):
-            super(LocalAggregationLoss, self).__init__()
-            self.tau = tau
-
-        def forward(self, embeddings, neighbors_indices):
-            # Compute the local aggregation loss
-            loss = 0
-            for i, neighbors in enumerate(neighbors_indices):
-                for j in neighbors:
-                    if i != j:
-                        loss += torch.exp(torch.dot(embeddings[i], embeddings[j]) / self.tau)
-                loss -= len(neighbors) - 1  # Subtract the number of neighbors
-            return loss
-
-    # Create the model
-    class Model(nn.Module):
-        def __init__(self, input_dim, output_dim):
-            super(Model, self).__init__()
-            self.fc = nn.Linear(input_dim, output_dim)
+    # Define neural network architecture
+    class Net(nn.Module):
+        def __init__(self):
+            super(Net, self).__init__()
+            self.embedding = nn.Linear(2, 2)
 
         def forward(self, x):
-            return self.fc(x)
+            x = self.embedding(x)
+            return x
 
-    # Initialize the dataset and dataloader
-    toy_dataset = ToyDataset(num_samples=100, num_features=10)
-    dataloader = DataLoader(toy_dataset, batch_size=10, shuffle=True)
+    # Define local aggregation loss function
+    def local_aggregation_loss(embeddings, close_neighbors, background_neighbors):
+        # Compute distances between embeddings and close neighbors
+        close_distances = torch.cdist(embeddings, close_neighbors)
+        # Compute distances between embeddings and background neighbors
+        background_distances = torch.cdist(embeddings, background_neighbors)
+        # Compute loss based on distances
+        loss = torch.mean(torch.log(1 + torch.exp(close_distances - background_distances)))
+        return loss
 
-    # Initialize the model, loss function, and optimizer
-    model = Model(input_dim=10, output_dim=5)
-    criterion = LocalAggregationLoss(tau=0.5)
-    optimizer = optim.SGD(model.parameters(), lr=0.01)
+    # Define close and background neighbors
+    def get_neighbors(embeddings, k):
+        # Compute pairwise distances between embeddings
+        distances = torch.cdist(embeddings, embeddings)
+        # Get indices of k closest neighbors for each example
+        _, indices = torch.topk(distances, k + 1, largest=False)
+        # Remove self from list of neighbors
+        indices = indices[:, 1:]
+        # Get embeddings of close neighbors
+        close_neighbors = embeddings[indices]
+        # Get embeddings of background neighbors
+        background_neighbors = embeddings
+        return close_neighbors, background_neighbors
 
-    # Training loop
+    # Define toy dataset
+    data = torch.tensor([[1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9], [9, 10], [10, 11]])
+    dataset = ToyDataset(data)
+    dataloader = DataLoader(dataset, batch_size=5, shuffle=True)
+
+    # Define neural network and optimizer
+    net = Net()
+    optimizer = optim.SGD(net.parameters(), lr=0.01)
+
+    # Train network using local aggregation loss
     for epoch in range(10):
-        for batch_idx, data in enumerate(dataloader):
+        for batch in dataloader:
+            # Zero gradients
             optimizer.zero_grad()
-            embeddings = model(data)
-            # For simplicity, assume neighbors_indices are precomputed
-            neighbors_indices = [np.random.choice(100, 5, replace=False) for _ in range(10)]
-            loss = criterion(embeddings, neighbors_indices)
+            # Forward pass
+            embeddings = net(batch.float())
+            # Get close and background neighbors
+            close_neighbors, background_neighbors = get_neighbors(embeddings, k=2)
+            # Compute loss
+            loss = local_aggregation_loss(embeddings, close_neighbors, background_neighbors)
+            # Backward pass
             loss.backward()
+            # Update parameters
             optimizer.step()
-            print('Epoch [{}/{}], Batch {}, Loss: {:.4f}'.format(epoch + 1, 10, batch_idx + 1, loss.item()))
-
