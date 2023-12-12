@@ -210,12 +210,29 @@ def localAgg_test():
     optimizer = optim.SGD(model.parameters(), lr=0.01)
 
     # Training loop
-    for epoch in range(1000):
+    for epoch in range(100):
         # Zero gradients
         optimizer.zero_grad()
 
+        i = epoch
+        xi = input_data[i]
+        vi = model(xi) # in latent space
+
+        # Calculate Euclidean distances
+        distances = torch.norm(model(input_data) - vi, dim=1)
+
+        # Find the indices of the closest c and b points
+        c = 10
+        b = 20
+        _, closest_c_indices = torch.topk(-distances, c)
+        _, closest_b_indices = torch.topk(distances, b)
+
+        # Get the actual latent vectors for C_i and B_i
+        Ci = model(input_data[closest_c_indices])  # current closest c points in latent space as close neighbors (C_i)
+        Bi = model(input_data[closest_b_indices])  # current closest b points in latent space as background neighbors (B_i)
+        theta = model.parameters()
+
         # Forward pass
-        vi = model(input_data)
         loss = local_aggregation_loss(Ci, Bi, theta, xi, vi)
 
         # Backward pass
