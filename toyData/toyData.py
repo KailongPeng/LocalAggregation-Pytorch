@@ -490,7 +490,8 @@ def test_multiple_dotsNeighbotSIngleBatch():
     # Define neural network and optimizer
     # net = Net()
     net = SimpleFeedforwardNN()
-    optimizer = optim.SGD(net.parameters(), lr=0.01)
+    learning_rate = 0.05
+    optimizer = optim.SGD(net.parameters(), lr=learning_rate)
 
     # Train network using local aggregation loss
     loss_values = []  # List to store loss values for each epoch
@@ -501,9 +502,15 @@ def test_multiple_dotsNeighbotSIngleBatch():
     # record the final latent space
     final_v_points = []
 
-    total_epochs = 100
+    total_epochs = 1000
 
     for epoch in range(total_epochs):
+        if epoch == int(total_epochs / 3):
+            optimizer.param_groups[0]['lr'] = learning_rate / 2.0
+            print(f"learning rate changed to {learning_rate / 2.0}")
+        if epoch == int(total_epochs * 2 / 3):
+            optimizer.param_groups[0]['lr'] = learning_rate / 4.0
+            print(f"learning rate changed to {learning_rate / 4.0}")
         epoch_loss = 0.0  # Variable to accumulate loss within each epoch
 
         for curr_batch, batch in enumerate(dataloader):
