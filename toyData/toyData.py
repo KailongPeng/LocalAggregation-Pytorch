@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
+from tqdm import tqdm
 
 
 # Function to generate 3D scatter plot and return data
@@ -404,6 +405,7 @@ def test_multiple_dotsNeighbotSIngleBatch():
     from torch.utils.data import DataLoader, Dataset
     import matplotlib.pyplot as plt
     import numpy as np
+    from tqdm import tqdm
 
     # set random seed
     np.random.seed(42)
@@ -482,12 +484,16 @@ def test_multiple_dotsNeighbotSIngleBatch():
         return close_neighbors, background_neighbors
 
     # Define toy dataset shaped [1000, 2]
-    data = torch.tensor(np.random.rand(1000, 2), dtype=torch.float32)
-    dataset = ToyDataset(data)
+    points_data, labels_data = generate_2d_scatter_plot(display_plot=True)
+
+    # Split the data into training and testing sets (1000 points each)
+    train_data, test_data = points_data[:1000], points_data[1000:]
+    train_labels, test_labels = labels_data[:1000], labels_data[1000:]
+
+    dataset = ToyDataset(train_data)
     dataloader = DataLoader(dataset, batch_size=50, shuffle=True)
 
     # Define neural network and optimizer
-    # net = Net()
     net = SimpleFeedforwardNN()
     learning_rate = 0.05
     optimizer = optim.SGD(net.parameters(), lr=learning_rate)
@@ -501,9 +507,9 @@ def test_multiple_dotsNeighbotSIngleBatch():
     # record the final latent space
     final_v_points = []
 
-    total_epochs = 1000
+    total_epochs = 10000
 
-    for epoch in range(total_epochs):
+    for epoch in tqdm(range(total_epochs)):
         if epoch == int(total_epochs / 3):
             optimizer.param_groups[0]['lr'] = learning_rate / 2.0
             print(f"learning rate changed to {learning_rate / 2.0}")
