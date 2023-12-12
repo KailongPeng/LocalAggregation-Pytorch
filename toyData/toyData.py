@@ -178,7 +178,7 @@ def localAgg_test():
             loss_local_aggregation = -torch.log(P_Ci_given_vi / P_Bi_given_vi)
 
             # Regularization term
-            reg_term = self.lambda_reg * torch.norm(theta, p=2)
+            reg_term = self.lambda_reg * torch.norm(torch.cat([p.view(-1) for p in theta]), p=2)
 
             # Total loss
             total_loss = loss_local_aggregation + reg_term
@@ -200,13 +200,19 @@ def localAgg_test():
             return x
 
     # Generate 1000 random 3D points
-    input_data = torch.rand(1000, 3)
+    points_data, labels_data = generate_3d_scatter_plot(display_plot=True)
+
+    # Split the data into training and testing sets (1000 points each)
+    train_data, test_data = points_data[:1000], points_data[1000:]
+    train_labels, test_labels = labels_data[:1000], labels_data[1000:]
+    input_data = torch.tensor(train_data, dtype=torch.float32)
 
     # Instantiate the neural network model and the local aggregation loss
     model = SimpleFeedforwardNN()
     local_aggregation_loss = LocalAggregationLoss(lambda_reg=0.001)
 
     # Set up optimizer
+
     optimizer = optim.SGD(model.parameters(), lr=0.01)
 
     # Training loop
@@ -216,7 +222,7 @@ def localAgg_test():
 
         i = epoch
         xi = input_data[i]
-        vi = model(xi) # in latent space
+        vi = model(xi)  # in latent space
 
         # Calculate Euclidean distances
         distances = torch.norm(model(input_data) - vi, dim=1)
@@ -229,7 +235,8 @@ def localAgg_test():
 
         # Get the actual latent vectors for C_i and B_i
         Ci = model(input_data[closest_c_indices])  # current closest c points in latent space as close neighbors (C_i)
-        Bi = model(input_data[closest_b_indices])  # current closest b points in latent space as background neighbors (B_i)
+        Bi = model(
+            input_data[closest_b_indices])  # current closest b points in latent space as background neighbors (B_i)
         theta = model.parameters()
 
         # Forward pass
