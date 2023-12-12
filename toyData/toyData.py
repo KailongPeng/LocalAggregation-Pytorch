@@ -90,7 +90,7 @@ def generate_2d_scatter_plot(display_plot=False):
     return points, labels
 
 
-def crossEntropyLoss():
+def trainWith_crossEntropyLoss():
     # Call the function to get data and figure
     points_data, labels_data = generate_3d_scatter_plot(display_plot=True)
 
@@ -175,7 +175,7 @@ def crossEntropyLoss():
     plt.show()
 
 
-def localAgg_test():
+def trainWith_localAggLoss():
     """
         The definition of the local aggregation loss is as follows: for a specified data point
         x_i, identify c points as close neighbors (C_i) and b points as background neighbors (B_i). Then, the loss is defined as:
