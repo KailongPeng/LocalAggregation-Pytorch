@@ -221,9 +221,19 @@ def localAgg_test():
     total_epochs = 5000
     optimizer = optim.SGD(model.parameters(), lr=initial_learning_rate)
 
+    # Initialize lists to store initial and final latent space points
+    initial_v_points = []
+    final_v_points = []
+
     # Training loop
     loss_values = []
     for epoch in range(total_epochs):
+        # Record initial and final latent space points
+        if epoch == 0:
+            initial_v_points = model(input_data).detach().numpy()
+        if epoch == total_epochs - 1:
+            final_v_points = model(input_data).detach().numpy()
+
         # Adjust learning rate if epoch passes 1/3 of the total epochs
         if epoch > total_epochs / 3:
             optimizer.param_groups[0]['lr'] = initial_learning_rate / 2.0
@@ -273,3 +283,24 @@ def localAgg_test():
     plt.grid(True)
     plt.show()
 
+    # Plot initial and final latent space points with rainbow colormap
+    fig, axes = plt.subplots(1, 2, figsize=(12, 6))
+
+    # Initial latent space points
+    scatter_initial = axes[0].scatter(initial_v_points[:, 0], initial_v_points[:, 1], c=range(len(initial_v_points)),
+                                      cmap='rainbow', marker='o')
+    axes[0].set_title('Initial Latent Space Points')
+    axes[0].set_xlabel('Dimension 1')
+    axes[0].set_ylabel('Dimension 2')
+    fig.colorbar(scatter_initial, ax=axes[0], label='Point Index')
+
+    # Final latent space points
+    scatter_final = axes[1].scatter(final_v_points[:, 0], final_v_points[:, 1], c=range(len(final_v_points)),
+                                    cmap='rainbow', marker='o')
+    axes[1].set_title('Final Latent Space Points')
+    axes[1].set_xlabel('Dimension 1')
+    axes[1].set_ylabel('Dimension 2')
+    fig.colorbar(scatter_final, ax=axes[1], label='Point Index')
+
+    plt.tight_layout()
+    plt.show()
