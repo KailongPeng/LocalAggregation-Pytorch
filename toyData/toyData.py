@@ -398,7 +398,6 @@ def trainWith_localAggLoss():
 # add another loss so that the latent space (aka v=model(x)) is encouraged to span 0-1.
 # layer norm versus batch norm
 def test_multiple_dotsNeighbotSIngleBatch():
-
     import torch
     import torch.nn as nn
     import torch.optim as optim
