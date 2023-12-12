@@ -404,6 +404,8 @@ def test():
     import torch.nn as nn
     import torch.optim as optim
     from torch.utils.data import DataLoader, Dataset
+    import matplotlib.pyplot as plt
+    import numpy as np
 
     # Define toy dataset
     class ToyDataset(Dataset):
@@ -470,7 +472,11 @@ def test():
     optimizer = optim.SGD(net.parameters(), lr=0.01)
 
     # Train network using local aggregation loss
+    loss_values = []  # List to store loss values for each epoch
+
     for epoch in range(10):
+        epoch_loss = 0.0  # Variable to accumulate loss within each epoch
+
         for batch in dataloader:
             # Zero gradients
             optimizer.zero_grad()
@@ -486,3 +492,20 @@ def test():
             loss.backward()
             # Update parameters
             optimizer.step()
+
+            epoch_loss += loss.item()
+
+        # Calculate average loss for the epoch
+        average_epoch_loss = epoch_loss / len(dataloader)
+        loss_values.append(average_epoch_loss)
+
+        # Print and record the average loss for the epoch
+        print(f'Epoch [{epoch + 1}/10], Loss: {average_epoch_loss}')
+
+    # Plot the loss curve
+    plt.plot(range(1, 11), loss_values, marker='o')
+    plt.title('Local Aggregation Loss Curve')
+    plt.xlabel('Epochs')
+    plt.ylabel('Average Loss')
+    plt.grid(True)
+    plt.show()
