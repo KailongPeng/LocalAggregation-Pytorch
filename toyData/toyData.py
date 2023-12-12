@@ -415,14 +415,15 @@ def test_multiple_dotsNeighbotSIngleBatch():
 
     # Define toy dataset
     class ToyDataset(Dataset):
-        def __init__(self, data):
+        def __init__(self, data, labels):
             self.data = data
+            self.labels = labels
 
         def __len__(self):
             return len(self.data)
 
         def __getitem__(self, idx):
-            return self.data[idx]
+            return self.data[idx], self.labels[idx]
 
     # Define neural network architecture
     class Net(nn.Module):
@@ -463,8 +464,6 @@ def test_multiple_dotsNeighbotSIngleBatch():
         background_distances = torch.norm(expanded_embeddings - background_neighbors,
                                           dim=2)  # Calculate the Euclidean distance
 
-        # import pdb ; pdb.set_trace()
-
         # Compute loss based on distances
         loss = torch.mean(torch.log(1 + torch.exp(close_distances - background_distances)))
         return loss
@@ -490,7 +489,7 @@ def test_multiple_dotsNeighbotSIngleBatch():
     train_data, test_data = points_data[:1000], points_data[1000:]
     train_labels, test_labels = labels_data[:1000], labels_data[1000:]
 
-    dataset = ToyDataset(train_data)
+    dataset = ToyDataset(train_data, train_labels)
     dataloader = DataLoader(dataset, batch_size=50, shuffle=True)
 
     # Define neural network and optimizer
@@ -503,9 +502,11 @@ def test_multiple_dotsNeighbotSIngleBatch():
 
     # record the initial latent space
     initial_v_points = []
+    initial_v_labels = []
 
     # record the final latent space
     final_v_points = []
+    final_v_labels = []
 
     total_epochs = 1000
 
@@ -518,7 +519,7 @@ def test_multiple_dotsNeighbotSIngleBatch():
             print(f"learning rate changed to {learning_rate / 4.0}")
         epoch_loss = 0.0  # Variable to accumulate loss within each epoch
 
-        for curr_batch, batch in enumerate(dataloader):
+        for curr_batch, (batch, batch_labels) in enumerate(dataloader):
             # Zero gradients
             optimizer.zero_grad()
             # Forward pass
@@ -526,6 +527,7 @@ def test_multiple_dotsNeighbotSIngleBatch():
             # record initial and final latent space points
             if epoch == 0:
                 initial_v_points.append(embeddings)
+                initial_v_labels.append(batch_labels)
 
             # Get close and background neighbors
             c = 10
@@ -543,6 +545,7 @@ def test_multiple_dotsNeighbotSIngleBatch():
             # record initial and final latent space points
             if epoch == total_epochs - 1:
                 final_v_points.append(embeddings)
+                final_v_labels.append(batch_labels)
 
         # Calculate average loss for the epoch
         average_epoch_loss = epoch_loss / len(dataloader)
@@ -565,7 +568,9 @@ def test_multiple_dotsNeighbotSIngleBatch():
 
     # Initial latent space points
     initial_v_points = torch.cat(initial_v_points, dim=0).detach().numpy()
-    scatter_initial = axes[0].scatter(initial_v_points[:, 0], initial_v_points[:, 1], c=range(len(initial_v_points)),
+    initial_v_labels = torch.cat(initial_v_labels, dim=0).numpy().flatten()
+    scatter_initial = axes[0].scatter(initial_v_points[:, 0], initial_v_points[:, 1],
+                                      c=initial_v_labels,
                                       cmap='rainbow', marker='o')
     axes[0].set_title('Initial Latent Space Points')
     axes[0].set_xlabel('Dimension 1')
@@ -574,7 +579,9 @@ def test_multiple_dotsNeighbotSIngleBatch():
 
     # Final latent space points
     final_v_points = torch.cat(final_v_points, dim=0).detach().numpy()
-    scatter_final = axes[1].scatter(final_v_points[:, 0], final_v_points[:, 1], c=range(len(final_v_points)),
+    final_v_labels = torch.cat(final_v_labels, dim=0).numpy().flatten()
+    scatter_final = axes[1].scatter(final_v_points[:, 0], final_v_points[:, 1],
+                                    c=final_v_labels,
                                     cmap='rainbow', marker='o')
     axes[1].set_title('Final Latent Space Points')
     axes[1].set_xlabel('Dimension 1')
