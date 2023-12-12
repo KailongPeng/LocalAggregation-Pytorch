@@ -442,8 +442,6 @@ def test():
         background_distances = torch.norm(expanded_embeddings - background_neighbors,
                                           dim=2)  # Calculate the Euclidean distance
 
-        # import pdb ; pdb.set_trace()
-
         # Compute loss based on distances
         loss = torch.mean(torch.log(1 + torch.exp(close_distances - background_distances)))
         return loss
