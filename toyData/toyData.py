@@ -507,7 +507,7 @@ def test_multiple_dotsNeighbotSIngleBatch():
     # record the final latent space
     final_v_points = []
 
-    total_epochs = 10000
+    total_epochs = 1000
 
     for epoch in tqdm(range(total_epochs)):
         if epoch == int(total_epochs / 3):
