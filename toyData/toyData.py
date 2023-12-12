@@ -251,7 +251,26 @@ def localAgg_test():
         c = 10
         b = 20
         _, closest_c_indices = torch.topk(-distances, c)
-        _, closest_b_indices = torch.topk(distances, b)
+        _, closest_b_indices = torch.topk(-distances, b+c)
+        closest_b_indices = closest_b_indices[c:]
+
+        plot_neighborhood = False
+        if plot_neighborhood:
+            # plot in latent space, closest_c_indices as blue and closest_b_indices as black and the chosen vi as red
+            latent_points = model(input_data).detach().numpy()
+            fig = plt.figure(figsize=(20, 20))
+            ax = fig.add_subplot(111)  # , projection='3d')
+            ax.scatter(latent_points[:, 0], latent_points[:, 1], c='gray', marker='o',
+                       label='Other Points')
+            ax.scatter(latent_points[closest_c_indices, 0], latent_points[closest_c_indices, 1],
+                       c='blue', marker='o', label='Closest C Points')
+            ax.scatter(latent_points[closest_b_indices, 0], latent_points[closest_b_indices, 1],
+                       c='black', marker='o', label='Closest B Points')
+            ax.scatter(vi.detach().numpy()[0], vi.detach().numpy()[1], c='red', marker='*', s=200, label='Chosen vi')
+            ax.set_xlabel('X Label')
+            ax.set_ylabel('Y Label')
+            ax.legend()
+            plt.show()
 
         # Get the actual latent vectors for C_i and B_i
         Ci = model(input_data[closest_c_indices])  # current closest c points in latent space as close neighbors (C_i)
@@ -304,3 +323,5 @@ def localAgg_test():
 
     plt.tight_layout()
     plt.show()
+
+# layer norm versus batch norm
