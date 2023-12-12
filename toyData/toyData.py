@@ -136,105 +136,69 @@ plt.show()
 def localAgg_test():
     import torch
     import torch.nn as nn
-    import torch.nn.functional as F
-    import matplotlib.pyplot as plt
+    import torch.optim as optim
+    import numpy as np
 
-    class LocalAggregationLoss(nn.Module):
-        def __init__(self, alpha=1.0, beta=1.0):
-            super(LocalAggregationLoss, self).__init__()
-            self.alpha = alpha  # 全局损失的权重
-            self.beta = beta  # 局部损失的权重
+    # Generate 1000 random 3D points
+    points = np.random.rand(1000, 3)
 
-        def forward(self, predictions, targets, adjacency_matrix):
-            """
-            :param predictions: 模型的预测值张量（输出）
-            :param targets: 实际标签的张量
-            :param adjacency_matrix: 表示局部连接的邻接矩阵张量
-            :return: 局部聚合损失
-            """
-            # 全局损失（例如，交叉熵损失）
-            global_loss = F.cross_entropy(predictions, targets)
-
-            # 局部损失（聚合损失）
-            local_loss = self.local_aggregation_loss(predictions, adjacency_matrix)
-
-            # 组合全局和局部损失
-            loss = self.alpha * global_loss + self.beta * local_loss
-
-            return loss
-
-        def local_aggregation_loss(self, predictions, adjacency_matrix):
-            """
-            局部聚合损失函数
-            :param predictions: 模型的预测值张量（输出）
-            :param adjacency_matrix: 表示局部连接的邻接矩阵张量
-            :return: 局部聚合损失
-            """
-            # 计算每个局部邻域的平均预测值
-            local_predictions = torch.mm(adjacency_matrix, predictions)
-
-            # 计算局部聚合损失（例如，均方误差）
-            local_loss = F.mse_loss(local_predictions, predictions)
-
-            return local_loss
-
-    # Create a simple model with learnable parameters
-    class SimpleModel(nn.Module):
-        def __init__(self, input_size, output_size):
-            super(SimpleModel, self).__init__()
-            self.fc = nn.Linear(input_size, output_size)
+    # Define the neural network model
+    class FeedforwardNN(nn.Module):
+        def __init__(self):
+            super(FeedforwardNN, self).__init__()
+            self.input_layer = nn.Linear(3, 64)  # 3D input layer
+            self.hidden_layer1 = nn.Linear(64, 32)  # First hidden layer
+            self.output_layer = nn.Linear(32, 2)  # Output layer, 2D
 
         def forward(self, x):
-            return self.fc(x)
+            x = torch.relu(self.input_layer(x))
+            x = torch.relu(self.hidden_layer1(x))
+            x = self.output_layer(x)
+            return x
 
-    # Example usage:
-    input_size = 10
-    output_size = 1
+    # Local Aggregation Loss
+    class LocalAggregationLoss(nn.Module):
+        def __init__(self, lambda_reg):
+            super(LocalAggregationLoss, self).__init__()
+            self.lambda_reg = lambda_reg
+            self.cross_entropy_loss = nn.CrossEntropyLoss()
 
-    # Create an instance of the SimpleModel
-    model = SimpleModel(input_size, output_size)
-    loss_function = LocalAggregationLoss(alpha=1.0, beta=0.5)
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
+        def forward(self, Ci, Bi, vi):
+            # Compute the cross-entropy loss
+            loss = -torch.log(torch.exp(self.cross_entropy_loss(Ci, vi)) / torch.exp(self.cross_entropy_loss(Bi, vi)))
 
+            # Regularization term
+            reg_term = self.lambda_reg * torch.norm(vi)
 
-    # Assume you have model predictions (output), ground truth labels, and adjacency matrix
-    batch_size = 32
-    num_classes = 10
-    predictions = torch.rand((batch_size, num_classes), requires_grad=True)
-    targets = torch.randint(0, num_classes, (batch_size,))
-    adjacency_matrix = torch.rand((batch_size, batch_size), requires_grad=True)
+            return loss + reg_term
 
-    # Check unique values in the targets tensor
-    unique_targets = torch.unique(targets)
-    print("Unique target values:", unique_targets)
+    # Instantiate the neural network model
+    model = FeedforwardNN()
 
-    # Ensure target values are within the correct range [0, num_classes - 1]
-    if torch.min(targets) < 0 or torch.max(targets) >= num_classes:
-        # Adjust target values to be within the correct range
-        targets = torch.remainder(targets, num_classes)
+    # Instantiate the Local Aggregation Loss
+    lambda_reg = 0.001  # Adjust as needed
+    local_aggregation_loss = LocalAggregationLoss(lambda_reg)
 
-    # Record the loss values during training
-    num_epochs = 100
-    loss_values = []
+    # Define training data for the 1000 points
+    input_data = torch.tensor(points, dtype=torch.float32)
+    labels = torch.randint(0, 2, (1000,))
 
-    for epoch in range(num_epochs):
+    # Define loss function and optimizer
+    optimizer = optim.SGD(model.parameters(), lr=0.01)
+
+    # Training loop
+    for epoch in range(1000):
         # Forward pass
-        outputs = model(predictions)
+        output = model(input_data)
 
-        # Compute the loss
-        loss = loss_function(outputs, targets, adjacency_matrix)
+        # Compute local aggregation loss
+        local_loss = local_aggregation_loss(output, output, output)
 
-        # Backward and optimize
+        # Backward pass and optimization
         optimizer.zero_grad()
-        loss.backward()
+        local_loss.backward()
         optimizer.step()
 
-        # Record the loss value
-        loss_values.append(loss.item())
-
-    # Plot the loss values over time
-    plt.plot(loss_values, label='Training Loss')
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
-    plt.legend()
-    plt.show()
+        # Print the loss for every 100 epochs
+        if epoch % 100 == 0:
+            print(f'Epoch {epoch}, Local Aggregation Loss: {local_loss.item()}')
