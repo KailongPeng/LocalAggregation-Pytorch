@@ -227,16 +227,15 @@ def test_multiple_dotsNeighbotSIngleBatch(threeD_input=None):
             if threeD_input:
                 self.input_layer = nn.Linear(3, 64)
             else:
-                self.input_layer = nn.Linear(2, 64)  # 3D input layer
-            self.hidden_layer1 = nn.Linear(64, 32)  # First hidden layer
-            self.hidden_layer2 = nn.Linear(32, 2)  # Second-to-last layer is 2D
-            # self.output_layer = nn.Linear(2, 27)  # Output layer, classifying into 27 categories
+                self.input_layer = nn.Linear(2, 64)  # first layer weight
+            self.hidden_layer1 = nn.Linear(64, 32)  #  second layer weight
+            self.hidden_layer2 = nn.Linear(32, 2)  # final layer is 2D
 
         def forward(self, x):
-            x = torch.relu(self.input_layer(x))
-            x = torch.relu(self.hidden_layer1(x))
-            x = self.hidden_layer2(x)
-            # x = self.output_layer(x)
+            # x = (50,2)  input
+            x = torch.relu(self.input_layer(x))  # x = (50,64)  first layer activation
+            x = torch.relu(self.hidden_layer1(x))  # x = (50,32)  second layer activation (penultimate layer)
+            x = self.hidden_layer2(x)  # x = (50,2) final layer activation
             return x
 
     # Define local aggregation loss function
@@ -398,6 +397,7 @@ test_multiple_dotsNeighbotSIngleBatch(threeD_input=False)
     synaptic level
         for the connection between the penultimate layer and the final layer, record the weight before and after training and calculate the difference between them.
         record the activation of the penultimate layer and the final layer before and after training.
+        
         plot the weight difference against the co-activation as X and Y axes respectively. This should be the synaptic level NMPH curve.  
 """
 
