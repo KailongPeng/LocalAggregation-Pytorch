@@ -8,12 +8,12 @@ from tqdm import tqdm
 
 
 # Function to generate 3D scatter plot and return data
-def generate_3d_scatter_plot(display_plot=False):
+def generate_3d_scatter_plot(separator=1/3, display_plot=False):
     np.random.seed(42)
     points = np.random.rand(2000, 3)  # Increase the number of points to 2000
 
-    # Define the boundaries for region division
-    boundaries = [1 / 3, 2 / 3]
+    # Define the boundaries for region division based on the separator value
+    boundaries = [separator, 2 * separator]
 
     # Assign labels to each point based on region
     labels_x = np.digitize(points[:, 0], boundaries)
@@ -21,8 +21,12 @@ def generate_3d_scatter_plot(display_plot=False):
     labels_z = np.digitize(points[:, 2], boundaries)
 
     # Combine the indices of the regions in each dimension to get a unique label for each point
-    labels = labels_x + 3 * labels_y + 9 * labels_z
-
+    if separator == 1/3:
+        labels = labels_x + 3 * labels_y + 9 * labels_z
+    elif separator == 1/2:
+        labels = labels_x + 2 * labels_y + 4 * labels_z
+    else:
+        raise Exception("separator should be 1/3 or 1/2")
     if display_plot:
         # Create a randomized rainbow colormap
         rainbow_colormap = ListedColormap(np.random.rand(256, 3))
@@ -32,7 +36,8 @@ def generate_3d_scatter_plot(display_plot=False):
         ax = fig.add_subplot(111, projection='3d')
 
         # Scatter plot with colored points based on labels using the rainbow colormap
-        scatter = ax.scatter(points[:, 0], points[:, 1], points[:, 2], c=labels, cmap=rainbow_colormap)
+        # scatter = ax.scatter(points[:, 0], points[:, 1], points[:, 2], c=labels, cmap=rainbow_colormap)
+        scatter = ax.scatter(points[:, 0], points[:, 1], points[:, 2], c=labels, cmap = 'rainbow')
 
         # Add colorbar to show label-color mapping
         colorbar = plt.colorbar(scatter, ax=ax, orientation='vertical')
@@ -73,7 +78,8 @@ def generate_2d_scatter_plot(display_plot=False):
 
         # Create a 2D scatter plot
         plt.figure(figsize=(8, 8))
-        plt.scatter(points[:, 0], points[:, 1], c=labels, cmap=rainbow_colormap)
+        # plt.scatter(points[:, 0], points[:, 1], c=labels, cmap=rainbow_colormap)
+        plt.scatter(points[:, 0], points[:, 1], c=labels, cmap='rainbow')
 
         # Add colorbar to show label-color mapping
         colorbar = plt.colorbar(orientation='vertical')
@@ -398,7 +404,7 @@ def trainWith_localAggLoss():
 
 # add another loss so that the latent space (aka v=model(x)) is encouraged to span 0-1.
 # layer norm versus batch norm
-def test_multiple_dotsNeighbotSIngleBatch():
+def test_multiple_dotsNeighbotSIngleBatch(threeD_input=None):
     import torch
     import torch.nn as nn
     import torch.optim as optim
@@ -412,7 +418,11 @@ def test_multiple_dotsNeighbotSIngleBatch():
     torch.manual_seed(42)
     torch.cuda.manual_seed(42)
     torch.cuda.manual_seed_all(42)
-    threeD_input = True
+    torch.backends.cudnn.deterministic = True
+
+    if threeD_input is None:
+        threeD_input = True
+
     # Define toy dataset
     class ToyDataset(Dataset):
         def __init__(self, data, labels):
@@ -487,7 +497,7 @@ def test_multiple_dotsNeighbotSIngleBatch():
 
     # Define toy dataset shaped [1000, 2]
     if threeD_input:
-        points_data, labels_data = generate_3d_scatter_plot(display_plot=True)
+        points_data, labels_data = generate_3d_scatter_plot(separator=1/2, display_plot=True)  # separator should be 1/3 or 1/2
     else:
         points_data, labels_data = generate_2d_scatter_plot(display_plot=True)
 
