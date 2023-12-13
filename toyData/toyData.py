@@ -732,11 +732,16 @@ test_multiple_dotsNeighbotSingleBatch(threeD_input=False)  # this works as long 
 
 
 def synaptic_level():
+    import os
     import random
+    import numpy as np
+    import matplotlib.pyplot as plt
     from scipy.stats import pearsonr
     from scipy.optimize import curve_fit
-    testMode = False
-    directory_path = f"/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/toyData/synaptic_level/"
+    from tqdm import tqdm
+
+    test_mode = True
+    directory_path = "/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/toyData/synaptic_level/"
     os.makedirs(directory_path, exist_ok=True)
 
     def prepare_data():
@@ -795,25 +800,22 @@ def synaptic_level():
 
         return co_activations_flatten, weight_changes_flatten, pair_ids
 
-    co_activations_flatten_, weight_changes_flatten_, pairIDs_ = prepare_data()  # co_activations_flatten_ (64, 10000) weight_changes_flatten_ (64, 10000) pairIDs_ (64, 2)
+    co_activations_flatten_, weight_changes_flatten_, pair_ids_ = prepare_data()  # co_activations_flatten_ (64, 10000) weight_changes_flatten_ (64, 10000) pair_ids_ (64, 2)
 
     if not os.path.exists(f'{directory_path}/temp'):
         os.mkdir(f'{directory_path}/temp')
 
-    if not testMode:
+    if not test_mode:
         np.save(f'{directory_path}/temp/co_activations_flatten_.npy',
                 co_activations_flatten_)  # shape = [pair#, batch#]
         np.save(f'{directory_path}/temp/weight_changes_flatten_.npy',
                 weight_changes_flatten_)  # shape = [pair#, batch#]
-        np.save(f'{directory_path}/temp/pairIDs_.npy',
-                pairIDs_)  # shape = [pair#, [ID1, ID2]]
+        np.save(f'{directory_path}/temp/pair_ids_.npy',
+                pair_ids_)  # shape = [pair#, [ID1, ID2]]
 
-    # co_activations_flatten_ = np.load(f'{directory_path}/temp/co_activations_flatten_.npy',
-    #                                   allow_pickle=True)  # shape = [pair#, batch#]
-    # weight_changes_flatten_ = np.load(f'{directory_path}/temp/weight_changes_flatten_.npy',
-    #                                   allow_pickle=True)  # shape = [pair#, batch#]
-    # pairIDs_ = np.load(f'{directory_path}/temp/pairIDs_.npy',
-    #                    allow_pickle=True)  # shape = [pair#, [ID1, ID2]]
+    # co_activations_flatten_ = np.load(f'{directory_path}/temp/co_activations_flatten_.npy')  # shape = [pair#, batch#]
+    # weight_changes_flatten_ = np.load(f'{directory_path}/temp/weight_changes_flatten_.npy')  # shape = [pair#, batch#]
+    # pair_ids_ = np.load(f'{directory_path}/temp/pair_ids_.npy')  # shape = [pair#, [ID1, ID2]]
 
     def cubic_fit_correlation_with_params(x, y, n_splits=10, random_state=42, return_subset=True):
         def cubic_function(_x, a, b, c, d):
@@ -868,8 +870,8 @@ def synaptic_level():
         else:
             return mean_correlation, mean_params
 
-    def run_NMPH(co_activations_flatten, weight_changes_flatten, pairIDs, rows=None, cols=None, plotFig=False):
-        if plotFig:
+    def run_NMPH(co_activations_flatten, weight_changes_flatten, pair_ids, rows=None, cols=None, plot_fig=False):
+        if plot_fig:
             if rows is None:
                 rows = int(np.ceil(np.sqrt(len(co_activations_flatten))))
             if cols is None:
@@ -887,15 +889,15 @@ def synaptic_level():
         x_partials = []
         y_partials = []
         for i in tqdm(range(len(co_activations_flatten))):
-            if testMode:
-                testBatchNum = 50
-                x__ = co_activations_flatten[i][:testBatchNum]
-                y__ = weight_changes_flatten[i][:testBatchNum]
-                pairID = pairIDs[i]
+            if test_mode:
+                test_batch_num = 50
+                x__ = co_activations_flatten[i][:test_batch_num]
+                y__ = weight_changes_flatten[i][:test_batch_num]
+                pair_id = pair_ids[i]
             else:
                 x__ = co_activations_flatten[i]
                 y__ = weight_changes_flatten[i]
-                pairID = pairIDs[i]
+                pair_id = pair_ids[i]
             mean_correlation_coefficient, mean_parameter, x_partial, y_partial = cubic_fit_correlation_with_params(
                 x__, y__,
                 n_splits=10,
@@ -907,7 +909,7 @@ def synaptic_level():
             x_partials.append(x_partial)
             y_partials.append(y_partial)
 
-            if plotFig:
+            if plot_fig:
                 row = i // cols
                 col = i % cols
 
@@ -920,13 +922,13 @@ def synaptic_level():
                 ax.scatter(x__, y__, s=10, c=colors)  # 's' controls the size of the points, 'c' sets the colors
 
                 # Add labels and a title to each subplot
-                ax.set_title(f'pairID: {pairID}')
+                ax.set_title(f'pairID: {pair_id}')
 
-                # Hide x and y-axis ticks and tick labels
-                ax.set_xticks([])
-                ax.set_yticks([])
+                # # Hide x and y-axis ticks and tick labels
+                # ax.set_xticks([])
+                # ax.set_yticks([])
 
-        if plotFig:
+        if plot_fig:
             plt.tight_layout()  # Adjust subplot layout for better visualization
             plt.subplots_adjust(wspace=0, hspace=0)
             plt.show()
@@ -938,14 +940,14 @@ def synaptic_level():
         # Return mean_correlation_coefficients along with recorded_data
         return mean_correlation_coefficients, np.array(mean_parameters), np.array(x_partials), np.array(y_partials)
 
-    if testMode:
+    if test_mode:
         mean_correlation_coefficients_, mean_parameters_, x_partials_, y_partials_ = run_NMPH(
-            co_activations_flatten_[:4], weight_changes_flatten_[:4], pairIDs_[:4])
+            co_activations_flatten_[:9], weight_changes_flatten_[:9], pair_ids_[:9], plot_fig=True)
     else:
         mean_correlation_coefficients_, mean_parameters_, x_partials_, y_partials_ = run_NMPH(
-            co_activations_flatten_, weight_changes_flatten_, pairIDs_)
+            co_activations_flatten_, weight_changes_flatten_, pair_ids_)
 
-    if not testMode:
+    if not test_mode:
         np.save(f'{directory_path}/temp/mean_correlation_coefficients_.npy', mean_correlation_coefficients_)
         np.save(f'{directory_path}/temp/mean_parameters_.npy', mean_parameters_)
         np.save(f'{directory_path}/temp/x_partials_.npy', x_partials_)
@@ -981,7 +983,7 @@ def synaptic_level():
         # Show the plot
         plt.show()
 
-    plot_scatter_and_cubic(x_partials_, y_partials_, mean_parameters_avg)
+    # plot_scatter_and_cubic(x_partials_, y_partials_, mean_parameters_avg)
 
 
 def representational_level():
