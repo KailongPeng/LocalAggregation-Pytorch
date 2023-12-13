@@ -145,3 +145,19 @@ def toyData():  # 目的是为了理解表征层次的共激活和表征改变�
 #     subfolders = [folder for folder in os.listdir(self.imagenet_dir) if folder in class_labels]
 # else:
 #     subfolders = None
+
+
+def debug_pipeline():
+    """
+    interactive_gpu
+    nvidia-smi
+    cd /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/
+    . /gpfs/milgram/apps/hpc.rhel7/software/Python/Anaconda3/etc/profile.d/conda.sh
+    conda activate py36
+    python -u /gpfs/milgram/pi/turk-browne/projects/sandbox/sandbox/docker/hello.py
+
+    cd /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch
+    python -u ./scripts/instance.py  "/gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_la.json"
+    # CUDA_VISIBLE_DEVICES=0
+    """
+    "sbatch ./scripts/instance.sh /gpfs/milgram/project/turk-browne/projects/LocalAggregation-Pytorch/config/imagenet_la.json"
