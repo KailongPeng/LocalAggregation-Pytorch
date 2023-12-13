@@ -424,7 +424,7 @@ def test_single_dotsNeighbotSingleBatch():
     plt.show()
 
 
-# test_single_dotsNeighbotSingleBatch()  # this works as long as the number of close neighbors is small
+# test_single_dotsNeighbotSingleBatch()  # this works as long as the number of close neighbors is small ; later analysis is not based on the result of this function but on the result of test_multiple_dotsNeighbotSingleBatch()
 
 
 def test_multiple_dotsNeighbotSingleBatch(threeD_input=None):
@@ -449,9 +449,10 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None):
     # Define batch size, number of close neighbors, and number of background neighbors
     batch_size = 50
     total_epochs = 500
-    (c, b) = (1, 1)  # c: number of close neighbors, b: number of background neighbors
+    (c, b) = (0, 1)  # c: number of close neighbors, b: number of background neighbors
     """
         result: 
+        (0, 1) gets normal result,
         (1, 1) gets normal result,
         (2, 2) gets normal result,
         (5, 5) gets normal result,
@@ -466,6 +467,8 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None):
         1. the number of close neighbors and background neighbors should be small, otherwise the result will be collapsed.
         2. whether the result collapses or not most likely depends on the number of close neighbors, not the number of background neighbors.
         3. intuitively, this is determined by whether probabilistically speaking, the close neighbors of two neighboring center points overlap or not. If overlap, then the result will be collapsed.
+        4. it turns out that the close neighbors are not important, the background neighbors are important. This means that integration is not important.
+        5. one way to boost integration might be to increase the weight of close neighbor pulling force to enforce the formation of clusters.
     """
 
 
@@ -514,10 +517,13 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None):
     # Define local aggregation loss function
     def local_aggregation_loss(embeddings, close_neighbors, background_neighbors):
         # Compute pairwise distances between embeddings and close neighbors  # embeddings(50,2) close_neighbors(50,10,2) -> (50,10)
-        expanded_embeddings = embeddings.unsqueeze(1).expand_as(
-            close_neighbors)  # Expand the embeddings to have the same dimensions as close_neighbors
-        close_distances = torch.norm(expanded_embeddings - close_neighbors,
-                                     dim=2)  # Calculate the Euclidean distance
+        if close_neighbors.shape[1] == 0:
+            close_distances = torch.tensor(1e-6)
+        else:
+            expanded_embeddings = embeddings.unsqueeze(1).expand_as(
+                close_neighbors)  # Expand the embeddings to have the same dimensions as close_neighbors
+            close_distances = torch.norm(expanded_embeddings - close_neighbors,
+                                         dim=2)  # Calculate the Euclidean distance
 
         # Compute pairwise distances between embeddings and background neighbors
         expanded_embeddings = embeddings.unsqueeze(1).expand_as(
@@ -740,63 +746,32 @@ def synaptic_level():
         selected_channel_penultimate_layer.sort()
         selected_channel_last_layer.sort()
 
-        # epochBatchNum = {}
-        # startFromEpoch = 0
-        # totalEpochNum = 1
         weight_difference_folder = f"/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/toyData/weight_difference_folder/"
         weight_difference_history_input_layer = np.load(f'{weight_difference_folder}/weight_difference_history_input_layer.npy')
 
         totalBatchNum = weight_difference_history_input_layer.shape[0]
-        print(f"totalBatchNum={totalBatchNum}")
-        # layerA_activations = np.zeros(
-        #     (totalBatchNum, 50, len(selected_channel_penultimate_layer)))  # [#batch, batch size, #selected units]
-        # layerB_activations = np.zeros(
-        #     (totalBatchNum, 50, len(selected_channel_last_layer)))
-        # weight_changes = np.zeros(
-        #     (totalBatchNum, len(selected_channel_last_layer), len(selected_channel_penultimate_layer)))
+        print(f"totalBatchNum={totalBatchNum}")  # 10000
 
-        layerA_activations = np.load(f'{weight_difference_folder}/activation_history_penultimate_layer_before.npy')
-        layerB_activations = np.load(f'{weight_difference_folder}/activation_history_final_layer_before.npy')
-        weight_changes = np.load(f'{weight_difference_folder}/weight_difference_history_hidden_layer2.npy')
-
-        # currBatchNum = 0
-        # # for epoch in range(startFromEpoch, totalEpochNum):
-        # for batch_i in tqdm(range(0, epochBatchNum[epoch])):
-        #     # load activations and weights
-        #     activation_secondLastLayer = np.load(
-        #         f'{directory_path}/activation_secondLastLayer_epoch{epoch}_batch_i{batch_i}.npy')
-        #     activation_lastLayer = np.load(
-        #         f'{directory_path}/activation_lastLayer_epoch{epoch}_batch_i{batch_i}.npy')
-        #     weight_change = np.load(
-        #         f'{directory_path}/weights_difference_epoch{epoch}_batch_i{batch_i}.npy')  # .detach().numpy()
-        #
-        #     layerA_activations[currBatchNum, :, :] = activation_secondLastLayer[:,
-        #                                           selected_channel_penultimate_layer]  # (128 batch#, 512)
-        #     layerB_activations[currBatchNum, :, :] = activation_lastLayer[:,
-        #                                           selected_channel_last_layer]  # (128 batch#, 128)
-        #     weight_changes[currBatchNum, :, :] = weight_change[selected_channel_last_layer, :][:,
-        #                                          selected_channel_penultimate_layer]  # (128 channel#, 512 channel#)
-        #     currBatchNum += 1
-        # print(f"layerA_activations.shape={layerA_activations.shape}")
-        # print(f"layerB_activations.shape={layerB_activations.shape}")
-        # print(f"weight_changes.shape={weight_changes.shape}")
+        layerA_activations = np.load(f'{weight_difference_folder}/activation_history_penultimate_layer_before.npy')  # (10000, 50, 32)
+        layerB_activations = np.load(f'{weight_difference_folder}/activation_history_final_layer_before.npy')  # (10000, 50, 2 )
+        weight_changes = np.load(f'{weight_difference_folder}/weight_difference_history_hidden_layer2.npy')  # (10000, 2, 32)
 
         # obtain all the co-activation and changes.
         co_activations_flatten = []
         weight_changes_flatten = []
         pairIDs = []
-        for curr_fc1_feature in tqdm(range(len(selected_channel_penultimate_layer))):  # 512*128 = 65536 pairs
+        for curr_fc1_feature in tqdm(range(len(selected_channel_penultimate_layer))):  # 32*2 = 64 pairs
             for curr_fc2_feature in range(len(selected_channel_last_layer)):
-                activation_lastLayer = layerA_activations[:, :, curr_fc1_feature]  # [#batch, batch size， channel#]
-                activation_secondLastLayer = layerB_activations[:, :, curr_fc2_feature]
+                activation_B_layer = layerA_activations[:, :, curr_fc1_feature]  # [#batch, batch size， channel#]
+                activation_A_layer = layerB_activations[:, :, curr_fc2_feature]
                 weight_change = weight_changes[:, curr_fc2_feature, curr_fc1_feature]
                 weight_changes_flatten.append(weight_change)  # each batch has a single weight change
                 # Calculate the co-activation
-                co_activation = np.multiply(activation_lastLayer, activation_secondLastLayer)
-                # print(f"co_activation.shape={co_activation.shape}")
+                co_activation = np.multiply(activation_B_layer, activation_A_layer)
+
                 # each batch has a single weight change but multiple co-activations, average across the batch to obtain a batch specific co-activation
                 co_activation = np.mean(co_activation, axis=1)
-                # print(f"np.mean(co_activation, axis=1).shape={co_activation.shape}")
+
                 co_activations_flatten.append(co_activation)
                 pairIDs.append(
                     [selected_channel_penultimate_layer[curr_fc1_feature],

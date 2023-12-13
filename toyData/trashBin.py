@@ -221,13 +221,20 @@ def trainWith_localAggLoss():
     plt.tight_layout()
     plt.show()
 
-# add another loss so that the latent space (aka v=model(x)) is encouraged to span 0-1.
+"""
+instead of simple push-pull binary decision in the local aggregation loss definition, utilizing the complete U shaped curve would likely improve the result.
 
-# layer norm versus batch norm
+the link between synaptic and representational level of NMPH can be easily imagined when the representation is
+extremely sparsely coded, here the two levels are mostly equivalent, but when the representation is dense, the
+connection between the two levels is not that obvious.
 
-# maybe try different close and background neighbors number would lead to different results because
-# this simulate the BCM shifting threshold effect and also the NMPH curve scalling effect.
-# I found that different number of close or background neighbors makes the model collapse or not. Increasing b and c makes it easier to collapse. I don't know why.
 
-# instead of simple push pull binary decision in the local aggregation loss definition, utilizing the complete U shaped curve would likely improve the result.
-
+trash bin:
+    add another loss so that the latent space (aka v=model(x)) is encouraged to span 0-1.
+    
+    layer norm versus batch norm
+    
+    maybe try different close and background neighbors number would lead to different results because
+    this simulates the BCM shifting threshold effect and also the NMPH curve scaling effect.
+    I found that different number of close or background neighbors makes the model collapse or not. Increasing b and c makes it easier to collapse. I don't know why.
+"""
