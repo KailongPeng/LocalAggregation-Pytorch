@@ -795,8 +795,8 @@ def synaptic_level():
 
         return co_activations_flatten, weight_changes_flatten, pair_ids
 
-    co_activations_flatten_, weight_changes_flatten_, pairIDs_ = prepare_data()
-    # mkdir(f'{directory_path}/temp')
+    co_activations_flatten_, weight_changes_flatten_, pairIDs_ = prepare_data()  # co_activations_flatten_ (64, 10000) weight_changes_flatten_ (64, 10000) pairIDs_ (64, 2)
+
     if not os.path.exists(f'{directory_path}/temp'):
         os.mkdir(f'{directory_path}/temp')
 
@@ -883,7 +883,6 @@ def synaptic_level():
             cmap = None
 
         mean_correlation_coefficients = []
-        # recorded_data = []  # Store recorded data for visualization
         mean_parameters = []
         x_partials = []
         y_partials = []
