@@ -741,10 +741,10 @@ def synaptic_level():
     def dataPrepare():
         # seed
         random.seed(131)
-        selected_channel_penultimate_layer = random.sample(range(0, 32), 32)
-        selected_channel_last_layer = random.sample(range(0, 2), 2)
-        selected_channel_penultimate_layer.sort()
-        selected_channel_last_layer.sort()
+        selected_channelID_A_layer = random.sample(range(0, 32), 32)
+        selected_channelID_B_layer = random.sample(range(0, 2), 2)
+        selected_channelID_A_layer.sort()
+        selected_channelID_B_layer.sort()
 
         weight_difference_folder = f"/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/toyData/weight_difference_folder/"
         weight_difference_history_input_layer = np.load(f'{weight_difference_folder}/weight_difference_history_input_layer.npy')
@@ -760,22 +760,22 @@ def synaptic_level():
         co_activations_flatten = []
         weight_changes_flatten = []
         pairIDs = []
-        for curr_fc1_feature in tqdm(range(len(selected_channel_penultimate_layer))):  # 32*2 = 64 pairs
-            for curr_fc2_feature in range(len(selected_channel_last_layer)):
-                activation_B_layer = layerA_activations[:, :, curr_fc1_feature]  # [#batch, batch size， channel#]
-                activation_A_layer = layerB_activations[:, :, curr_fc2_feature]
-                weight_change = weight_changes[:, curr_fc2_feature, curr_fc1_feature]
+        for curr_layerA_feature in tqdm(range(len(selected_channelID_A_layer))):  # 32*2 = 64 pairs
+            for curr_layerB_feature in range(len(selected_channelID_B_layer)):
+                activation_A_layer = layerA_activations[:, :, curr_layerA_feature]  # [#batch, batch size， channel#]  # (10000, 50, 1)
+                activation_B_layer = layerB_activations[:, :, curr_layerB_feature]  # [#batch, batch size， channel#]  # (10000, 50, 1)
+                weight_change = weight_changes[:, curr_layerB_feature, curr_layerA_feature]  # (10000, 1, 1)
                 weight_changes_flatten.append(weight_change)  # each batch has a single weight change
                 # Calculate the co-activation
-                co_activation = np.multiply(activation_B_layer, activation_A_layer)
+                co_activation = np.multiply(activation_A_layer, activation_B_layer)
 
                 # each batch has a single weight change but multiple co-activations, average across the batch to obtain a batch specific co-activation
-                co_activation = np.mean(co_activation, axis=1)
+                co_activation = np.mean(co_activation, axis=1)  # (10000, 1, 1)
 
                 co_activations_flatten.append(co_activation)
                 pairIDs.append(
-                    [selected_channel_penultimate_layer[curr_fc1_feature],
-                     selected_channel_last_layer[curr_fc2_feature]])
+                    [selected_channelID_A_layer[curr_layerA_feature],
+                     selected_channelID_B_layer[curr_layerB_feature]])
         return co_activations_flatten, weight_changes_flatten, pairIDs
 
     co_activations_flatten_, weight_changes_flatten_, pairIDs_ = dataPrepare()
