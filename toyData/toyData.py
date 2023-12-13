@@ -738,47 +738,64 @@ def synaptic_level():
     testMode = False
     directory_path = f"/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/toyData/synaptic_level/"
     os.makedirs(directory_path, exist_ok=True)
-    def dataPrepare():
-        # seed
+
+    def prepare_data():
+        # Set seed
         random.seed(131)
-        selected_channelID_A_layer = random.sample(range(0, 32), 32)
-        selected_channelID_B_layer = random.sample(range(0, 2), 2)
-        selected_channelID_A_layer.sort()
-        selected_channelID_B_layer.sort()
 
-        weight_difference_folder = f"/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/toyData/weight_difference_folder/"
-        weight_difference_history_input_layer = np.load(f'{weight_difference_folder}/weight_difference_history_input_layer.npy')
+        # Randomly select channel IDs for layers A and B
+        selected_channel_ids_layer_a = random.sample(range(0, 32), 32)
+        selected_channel_ids_layer_b = random.sample(range(0, 2), 2)
 
-        totalBatchNum = weight_difference_history_input_layer.shape[0]
-        print(f"totalBatchNum={totalBatchNum}")  # 10000
+        # Sort the selected channel IDs
+        selected_channel_ids_layer_a.sort()
+        selected_channel_ids_layer_b.sort()
 
-        layerA_activations = np.load(f'{weight_difference_folder}/activation_history_penultimate_layer_before.npy')  # (10000, 50, 32)
-        layerB_activations = np.load(f'{weight_difference_folder}/activation_history_final_layer_before.npy')  # (10000, 50, 2 )
-        weight_changes = np.load(f'{weight_difference_folder}/weight_difference_history_hidden_layer2.npy')  # (10000, 2, 32)
+        # Define paths for data folders
+        weight_difference_folder = "/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/toyData/weight_difference_folder/"
 
-        # obtain all the co-activation and changes.
+        # Load data
+        weight_difference_history_input_layer = np.load(
+            f'{weight_difference_folder}/weight_difference_history_input_layer.npy')
+        total_batch_num = weight_difference_history_input_layer.shape[0]
+        print(f"Total Batch Num: {total_batch_num}")  # 10000
+
+        layer_a_activations = np.load(
+            f'{weight_difference_folder}/activation_history_penultimate_layer_before.npy')  # (10000, 50, 32)
+        layer_b_activations = np.load(
+            f'{weight_difference_folder}/activation_history_final_layer_before.npy')  # (10000, 50, 2)
+        weight_changes = np.load(
+            f'{weight_difference_folder}/weight_difference_history_hidden_layer2.npy')  # (10000, 2, 32)
+
+        # Obtain co-activations and weight changes
         co_activations_flatten = []
         weight_changes_flatten = []
-        pairIDs = []
-        for curr_layerA_feature in tqdm(range(len(selected_channelID_A_layer))):  # 32*2 = 64 pairs
-            for curr_layerB_feature in range(len(selected_channelID_B_layer)):
-                activation_A_layer = layerA_activations[:, :, curr_layerA_feature]  # [#batch, batch size， channel#]  # (10000, 50, 1)
-                activation_B_layer = layerB_activations[:, :, curr_layerB_feature]  # [#batch, batch size， channel#]  # (10000, 50, 1)
-                weight_change = weight_changes[:, curr_layerB_feature, curr_layerA_feature]  # (10000, 1, 1)
-                weight_changes_flatten.append(weight_change)  # each batch has a single weight change
-                # Calculate the co-activation
-                co_activation = np.multiply(activation_A_layer, activation_B_layer)
+        pair_ids = []
 
-                # each batch has a single weight change but multiple co-activations, average across the batch to obtain a batch specific co-activation
-                co_activation = np.mean(co_activation, axis=1)  # (10000, 1, 1)
+        for curr_channel_a_feature in tqdm(range(len(selected_channel_ids_layer_a))):  # 32*2 = 64 pairs
+            for curr_channel_b_feature in range(len(selected_channel_ids_layer_b)):
+                # Extract activations and weight changes for the current channel pair
+                activation_layer_a = layer_a_activations[:, :, curr_channel_a_feature]  # (10000, 50, 1)
+                activation_layer_b = layer_b_activations[:, :, curr_channel_b_feature]  # (10000, 50, 1)
+                weight_change = weight_changes[:, curr_channel_b_feature, curr_channel_a_feature]  # (10000, 1, 1)
+
+                weight_changes_flatten.append(weight_change)
+
+                # Calculate co-activation
+                co_activation = np.multiply(activation_layer_a, activation_layer_b)
+
+                # Average co-activation across the batch
+                co_activation = np.mean(co_activation, axis=1)  # (10000,)
 
                 co_activations_flatten.append(co_activation)
-                pairIDs.append(
-                    [selected_channelID_A_layer[curr_layerA_feature],
-                     selected_channelID_B_layer[curr_layerB_feature]])
-        return co_activations_flatten, weight_changes_flatten, pairIDs
+                pair_ids.append([
+                    selected_channel_ids_layer_a[curr_channel_a_feature],
+                    selected_channel_ids_layer_b[curr_channel_b_feature]
+                ])
 
-    co_activations_flatten_, weight_changes_flatten_, pairIDs_ = dataPrepare()
+        return co_activations_flatten, weight_changes_flatten, pair_ids
+
+    co_activations_flatten_, weight_changes_flatten_, pairIDs_ = prepare_data()
     # mkdir(f'{directory_path}/temp')
     if not os.path.exists(f'{directory_path}/temp'):
         os.mkdir(f'{directory_path}/temp')
