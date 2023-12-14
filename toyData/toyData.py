@@ -11,7 +11,14 @@ from tqdm import tqdm
 
 # Function to generate 3D scatter plot and return data
 def generate_3d_scatter_plot(separator=1 / 3, display_plot=False):
+
+    # set random seed
     np.random.seed(42)
+    torch.manual_seed(42)
+    torch.cuda.manual_seed(42)
+    torch.cuda.manual_seed_all(42)
+    torch.backends.cudnn.deterministic = True
+
     points = np.random.rand(2000, 3)  # Increase the number of points to 2000
 
     # Define the boundaries for region division based on the separator value
@@ -58,30 +65,56 @@ def generate_3d_scatter_plot(separator=1 / 3, display_plot=False):
     return points, labels
 
 
-def generate_2d_scatter_plot(display_plot=False):
+def generate_2d_scatter_plot(display_plot=True, remove_boundary_dots=False):
     # Example usage:
     # points_2d, labels_2d = generate_2d_scatter_plot(display_plot=True)
+
+    # set random seed
     np.random.seed(42)
-    points = np.random.rand(2000, 2)  # Generate 2D points
+    torch.manual_seed(42)
+    torch.cuda.manual_seed(42)
+    torch.cuda.manual_seed_all(42)
+    torch.backends.cudnn.deterministic = True
+
+    points = np.random.rand(2650, 2)  # Generate 2D points
 
     # Define the boundaries for region division
     boundaries = [1 / 3, 2 / 3]
 
-    # Assign labels to each point based on region
-    labels_x = np.digitize(points[:, 0], boundaries)
-    labels_y = np.digitize(points[:, 1], boundaries)
+    # Set the range for points to be removed around each boundary
+    boundary_range = 0.03
 
-    # Combine the indices of the regions in each dimension to get a unique label for each point
+    # Function to create a mask for points within the specified range around a boundary
+    def create_boundary_mask(coord, boundary, boundary_range):
+        return np.logical_or(coord < boundary - boundary_range, coord > boundary + boundary_range)
+
+    if remove_boundary_dots:
+        # Create masks for each boundary
+        mask_x_lower = ~ create_boundary_mask(points[:, 0], boundaries[0], boundary_range)
+        mask_x_upper = ~ create_boundary_mask(points[:, 0], boundaries[1], boundary_range)
+        mask_y_lower = ~ create_boundary_mask(points[:, 1], boundaries[0], boundary_range)
+        mask_y_upper = ~ create_boundary_mask(points[:, 1], boundaries[1], boundary_range)
+
+        # Combine masks to get a mask for points within the specified range around any boundary
+        mask_within_range = np.logical_or.reduce([mask_x_lower, mask_x_upper, mask_y_lower, mask_y_upper])
+
+        # Apply the mask to remove points within the specified range around any boundary
+        points_filtered = points[~mask_within_range]
+    else:
+        points_filtered = points
+
+    # Assign labels to each point based on region after filtering
+    labels_x = np.digitize(points_filtered[:, 0], boundaries)
+    labels_y = np.digitize(points_filtered[:, 1], boundaries)
     labels = labels_x + 3 * labels_y
 
     if display_plot:
         # Create a randomized rainbow colormap
         rainbow_colormap = ListedColormap(np.random.rand(256, 3))
 
-        # Create a 2D scatter plot
+        # Create a 2D scatter plot with filtered points
         plt.figure(figsize=(8, 8))
-        # plt.scatter(points[:, 0], points[:, 1], c=labels, cmap=rainbow_colormap)
-        plt.scatter(points[:, 0], points[:, 1], c=labels, cmap='rainbow')
+        plt.scatter(points_filtered[:, 0], points_filtered[:, 1], c=labels, cmap='rainbow')
 
         # Add colorbar to show label-color mapping
         colorbar = plt.colorbar(orientation='vertical')
@@ -90,18 +123,36 @@ def generate_2d_scatter_plot(display_plot=False):
         # Set plot labels
         plt.xlabel('X-axis')
         plt.ylabel('Y-axis')
-        plt.title('2D Scatter Plot with Region Labels')
+        plt.title('2D Scatter Plot with Region Labels (Points Removed within Range)')
 
         # Display the plot
         plt.show()
 
     # Return data
-    return points, labels
+    return points_filtered, labels
 
 
-def trainWith_crossEntropyLoss():
-    # Call the function to get data and figure
-    points_data, labels_data = generate_3d_scatter_plot(display_plot=True)
+
+def trainWith_crossEntropyLoss(threeD_input=False, remove_boundary_dots=False):
+    # Total number of epochs
+    total_epochs = 10000
+
+    if threeD_input is None:
+        threeD_input = True
+
+    # set random seed
+    np.random.seed(42)
+    torch.manual_seed(42)
+    torch.cuda.manual_seed(42)
+    torch.cuda.manual_seed_all(42)
+    torch.backends.cudnn.deterministic = True
+
+    if threeD_input:
+        # Call the function to get data and figure
+        points_data, labels_data = generate_3d_scatter_plot(display_plot=True)
+    else:
+        # Call the function to get data and figure
+        points_data, labels_data = generate_2d_scatter_plot(display_plot=True, remove_boundary_dots=remove_boundary_dots)
 
     # Split the data into training and testing sets (1000 points each)
     train_data, test_data = points_data[:1000], points_data[1000:]
@@ -111,16 +162,27 @@ def trainWith_crossEntropyLoss():
     class SimpleFeedforwardNN(nn.Module):
         def __init__(self):
             super(SimpleFeedforwardNN, self).__init__()
-            self.input_layer = nn.Linear(3, 64)  # 3D input layer
+            if threeD_input:
+                self.input_layer = nn.Linear(3, 64)  # 3D input layer
+            else:
+                self.input_layer = nn.Linear(2, 64)  # 2D input layer
+
             self.hidden_layer1 = nn.Linear(64, 32)  # First hidden layer
             self.hidden_layer2 = nn.Linear(32, 2)  # Second-to-last layer is 2D
-            self.output_layer = nn.Linear(2, 27)  # Output layer, classifying into 27 categories
+
+            if threeD_input:
+                self.output_layer = nn.Linear(2, 27)  # Output layer, classifying into 27 categories
+            else:
+                self.output_layer = nn.Linear(2, 9)  # Output layer, classifying into 9 categories
 
         def forward(self, x):
-            x = torch.relu(self.input_layer(x))
-            x = torch.relu(self.hidden_layer1(x))
-            x = torch.relu(self.hidden_layer2(x))
-            x = self.output_layer(x)
+            x = torch.relu(self.input_layer(x)) # First layer activation
+            x = torch.relu(self.hidden_layer1(x)) # Second layer activation
+
+            self.penultimate_layer_activation = self.hidden_layer2(x).detach().numpy()
+
+            x = torch.relu(self.hidden_layer2(x)) # Third layer activation
+            x = self.output_layer(x) # Output layer activation
             return x
 
     # Instantiate the neural network model
@@ -140,17 +202,38 @@ def trainWith_crossEntropyLoss():
     optimizer = optim.SGD(model.parameters(), lr=initial_learning_rate)
     # Lists to store training loss values
     train_loss_history = []
-    # Total number of epochs
-    total_epochs = 10000
+
+    # record the initial latent space
+    initial_v_points = []
+    initial_v_labels = []
+
+    # record the final latent space
+    final_v_points = []
+    final_v_labels = []
+
     # Training loop
-    for epoch in range(total_epochs):
+    for epoch in tqdm(range(total_epochs)):
         # Adjust learning rate if epoch passes 1/3 of the total epochs
-        if epoch > total_epochs / 3:
+        if epoch == int(total_epochs / 3):
             optimizer.param_groups[0]['lr'] = initial_learning_rate / 2.0
+            print(f"learning rate changed to {initial_learning_rate / 2.0}")
+        if epoch == int(total_epochs * 2 / 3):
+            optimizer.param_groups[0]['lr'] = initial_learning_rate / 4.0
+            print(f"learning rate changed to {initial_learning_rate / 4.0}")
 
         # Forward pass for training data
         output_train = model(input_train)
         loss_train = criterion(output_train, labels_train)
+
+        # record initial and final latent space points
+        if epoch == 0:
+            # record the penultimate layer activation
+            initial_v_points.append(model.penultimate_layer_activation)
+            initial_v_labels.append(labels_train)
+        if epoch == total_epochs - 1:
+            # record the penultimate layer activation
+            final_v_points.append(model.penultimate_layer_activation)
+            final_v_labels.append(labels_train)
 
         # Backward pass and optimization
         optimizer.zero_grad()
@@ -160,9 +243,9 @@ def trainWith_crossEntropyLoss():
         # Append the training loss to the history list
         train_loss_history.append(loss_train.item())
 
-        # Print the loss for every 10 epochs
-        if epoch % 100 == 0:
-            print(f'Epoch {epoch}, Training Loss: {loss_train.item()}')
+        # # Print the loss for every 10 epochs
+        # if epoch % 100 == 0:
+        #     print(f'Epoch {epoch}, Training Loss: {loss_train.item()}')
 
     # Evaluate the model on the testing dataset and calculate accuracy
     with torch.no_grad():
@@ -173,13 +256,40 @@ def trainWith_crossEntropyLoss():
 
     # Plot the learning loss curve
     plt.figure(figsize=(10, 6))
-    plt.plot(range(0, 10000), train_loss_history, label='Training Loss')
+    plt.plot(range(0, len(train_loss_history)), train_loss_history, label='Training Loss')
     plt.title('Learning Loss Curve')
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
     plt.legend()
     plt.grid(True)
     plt.show()
+
+    # Plot initial and final latent space points with rainbow colormap
+    fig, axes = plt.subplots(1, 2, figsize=(12, 6))
+
+    # Initial latent space points
+    initial_v_points = np.concatenate(initial_v_points, axis=0)
+    initial_v_labels = np.concatenate(initial_v_labels, axis=0)
+    scatter_initial = axes[0].scatter(initial_v_points[:, 0], initial_v_points[:, 1], c=initial_v_labels, cmap='rainbow', marker='o')
+    axes[0].set_title('Initial Latent Space Points')
+    axes[0].set_xlabel('Dimension 1')
+    axes[0].set_ylabel('Dimension 2')
+    fig.colorbar(scatter_initial, ax=axes[0], label='Point Index')
+
+    # Final latent space points
+    final_v_points = np.concatenate(final_v_points, axis=0)
+    final_v_labels = np.concatenate(final_v_labels, axis=0)
+    scatter_final = axes[1].scatter(final_v_points[:, 0], final_v_points[:, 1], c=final_v_labels, cmap='rainbow', marker='o')
+    axes[1].set_title('Final Latent Space Points')
+    axes[1].set_xlabel('Dimension 1')
+    axes[1].set_ylabel('Dimension 2')
+    fig.colorbar(scatter_final, ax=axes[1], label='Point Index')
+
+    plt.tight_layout()
+    plt.show()
+
+
+# trainWith_crossEntropyLoss(threeD_input=False, remove_boundary_dots=False)  # remove_boundary_dots=True/False: Both works, but not stably, need to run from line 1 somehow.
 
 
 def test_single_dotsNeighbotSingleBatch():
@@ -195,6 +305,7 @@ def test_single_dotsNeighbotSingleBatch():
     torch.manual_seed(42)
     torch.cuda.manual_seed(42)
     torch.cuda.manual_seed_all(42)
+    torch.backends.cudnn.deterministic = True
 
     # Define toy dataset
     class ToyDataset(Dataset):
@@ -449,7 +560,8 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None):
     # Define batch size, number of close neighbors, and number of background neighbors
     batch_size = 50
     total_epochs = 500
-    (c, b) = (0, 1)  # c: number of close neighbors, b: number of background neighbors
+    integrationForceScale = 2
+    (c, b) = (2, 2)  # c: number of close neighbors, b: number of background neighbors
     """
         result: 
         (0, 1) gets normal result,
@@ -467,7 +579,7 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None):
         1. the number of close neighbors and background neighbors should be small, otherwise the result will be collapsed.
         2. whether the result collapses or not most likely depends on the number of close neighbors, not the number of background neighbors.
         3. intuitively, this is determined by whether probabilistically speaking, the close neighbors of two neighboring center points overlap or not. If overlap, then the result will be collapsed.
-        4. it turns out that the close neighbors are not important, the background neighbors are important. This means that integration is not important.
+        4. it turns out that the close neighbors are not important, the background neighbors are important. This means that integration is not important while differentiation is important for representation learning.
         5. one way to boost integration might be to increase the weight of close neighbor pulling force to enforce the formation of clusters.
     """
 
@@ -532,7 +644,8 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None):
                                           dim=2)  # Calculate the Euclidean distance
 
         # Compute loss based on distances
-        loss = torch.mean(torch.log(1 + torch.exp(close_distances - background_distances)))
+        loss = torch.mean(torch.log(1 + torch.exp(integrationForceScale * close_distances - background_distances)))
+        # import pdb; pdb.set_trace()
         return loss
 
     # Define close and background neighbors
