@@ -222,11 +222,50 @@ def trainWith_localAggLoss():
     plt.show()
 
 """
-instead of simple push-pull binary decision in the local aggregation loss definition, utilizing the complete U shaped curve would likely improve the result.
+Instead of simple push-pull binary decision in the local aggregation loss definition, utilizing the complete U shaped curve would likely improve the result.
 
-the link between synaptic and representational level of NMPH can be easily imagined when the representation is
+The link between synaptic and representational level of NMPH can be easily imagined when the representation is
 extremely sparsely coded, here the two levels are mostly equivalent, but when the representation is dense, the
 connection between the two levels is not that obvious.
+
+somehow the growth of the area of the representation should be the net effect of learning as indicated by Haig's lecture. 
+This growth of the area of the representation is the result of integration or differentiation, this can be tested out by 
+changing the number/power(push-pull force) of close neighbors and background neighbors.
+It turns out that increasing the relative pulling force for close neighbors only leads to representation collapse.
+
+I found out that even the supervised learning is not resulting in a clustered representation, which means that the 
+representation learned by the local aggregation loss is good for now. They key is to reveal the original structure of
+the data, which is not necessarily clustered. However, in real cases, cats and dogs are clustered, so the representation
+should be clustered then.
+
+What is the correct analogy of BCM theory in this local aggregation loss? The push-pull force or the number of neighbors?
+Read "The BCM theory of synapse modification at 30: interaction of theory with experiment" to figure out.
+
+Next step is to implement the test_single_dotsNeighbotSingleBatch() function to test simpler effect.
+
+
+result: (c, b) # c: number of close neighbors, b: number of background neighbors 
+    (0, 1) gets normal result,
+    (1, 1) gets normal result,
+    (2, 2) gets normal result,
+    (5, 5) gets normal result,
+    (10, 10) gets normal result,
+    (15, 15) gets collapsed result, 
+    (20, 20) gets collapsed result
+    
+    (1, 20) gets normal result,        
+    (20, 1) gets collapsed result,
+    
+    conclusion:
+    1. the number of close neighbors and background neighbors should be small, otherwise the result will be collapsed.
+    2. whether the result collapses or not most likely depends on the number of close neighbors, not the number of 
+        background neighbors.
+    3. intuitively, this is determined by whether probabilistically speaking, the close neighbors of two neighboring 
+        center points overlap or not. If overlap, then the result will be collapsed.
+    4. it turns out that the close neighbors are not important, the background neighbors are important. This means that 
+        integration is not important while differentiation is important for representation learning.
+    5. one way to boost integration might be to increase the weight of close neighbor pulling force to enforce the 
+        formation of clusters.
 
 
 trash bin:

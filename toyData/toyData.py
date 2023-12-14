@@ -11,14 +11,7 @@ from tqdm import tqdm
 
 # Function to generate 3D scatter plot and return data
 def generate_3d_scatter_plot(separator=1 / 3, display_plot=False):
-
-    # set random seed
     np.random.seed(42)
-    torch.manual_seed(42)
-    torch.cuda.manual_seed(42)
-    torch.cuda.manual_seed_all(42)
-    torch.backends.cudnn.deterministic = True
-
     points = np.random.rand(2000, 3)  # Increase the number of points to 2000
 
     # Define the boundaries for region division based on the separator value
@@ -68,14 +61,7 @@ def generate_3d_scatter_plot(separator=1 / 3, display_plot=False):
 def generate_2d_scatter_plot(display_plot=True, remove_boundary_dots=False):
     # Example usage:
     # points_2d, labels_2d = generate_2d_scatter_plot(display_plot=True)
-
-    # set random seed
     np.random.seed(42)
-    torch.manual_seed(42)
-    torch.cuda.manual_seed(42)
-    torch.cuda.manual_seed_all(42)
-    torch.backends.cudnn.deterministic = True
-
     points = np.random.rand(2650, 2)  # Generate 2D points
 
     # Define the boundaries for region division
@@ -134,18 +120,20 @@ def generate_2d_scatter_plot(display_plot=True, remove_boundary_dots=False):
 
 
 def trainWith_crossEntropyLoss(threeD_input=False, remove_boundary_dots=False):
+
     # Total number of epochs
     total_epochs = 10000
 
     if threeD_input is None:
         threeD_input = True
 
-    # set random seed
-    np.random.seed(42)
-    torch.manual_seed(42)
-    torch.cuda.manual_seed(42)
-    torch.cuda.manual_seed_all(42)
-    torch.backends.cudnn.deterministic = True
+    # this random seed is preventing the model from training stably, thus this seed is removed.
+    # # set random seed
+    # np.random.seed(42)
+    # torch.manual_seed(42)
+    # torch.cuda.manual_seed(42)
+    # torch.cuda.manual_seed_all(42)
+    # torch.backends.cudnn.deterministic = True
 
     if threeD_input:
         # Call the function to get data and figure
@@ -289,7 +277,7 @@ def trainWith_crossEntropyLoss(threeD_input=False, remove_boundary_dots=False):
     plt.show()
 
 
-# trainWith_crossEntropyLoss(threeD_input=False, remove_boundary_dots=False)  # remove_boundary_dots=True/False: Both works, but not stably, need to run from line 1 somehow.
+# trainWith_crossEntropyLoss(threeD_input=False, remove_boundary_dots=True)  # remove_boundary_dots=True/False: Both works, but not stably, need to run from line 1 somehow.
 
 
 def test_single_dotsNeighbotSingleBatch():
@@ -538,7 +526,7 @@ def test_single_dotsNeighbotSingleBatch():
 # test_single_dotsNeighbotSingleBatch()  # this works as long as the number of close neighbors is small ; later analysis is not based on the result of this function but on the result of test_multiple_dotsNeighbotSingleBatch()
 
 
-def test_multiple_dotsNeighbotSingleBatch(threeD_input=None):
+def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dots=False, integrationForceScale=None):
     import torch
     import torch.nn as nn
     import torch.optim as optim
@@ -560,7 +548,8 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None):
     # Define batch size, number of close neighbors, and number of background neighbors
     batch_size = 50
     total_epochs = 500
-    integrationForceScale = 2
+    if integrationForceScale is None:
+        integrationForceScale = 1
     (c, b) = (2, 2)  # c: number of close neighbors, b: number of background neighbors
     """
         result: 
@@ -667,7 +656,7 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None):
         points_data, labels_data = generate_3d_scatter_plot(separator=1 / 2,
                                                             display_plot=True)  # separator should be 1/3 or 1/2
     else:
-        points_data, labels_data = generate_2d_scatter_plot(display_plot=True)
+        points_data, labels_data = generate_2d_scatter_plot(display_plot=True, remove_boundary_dots=remove_boundary_dots)
 
     # Split the data into training and testing sets (1000 points each)
     train_data, test_data = points_data[:1000], points_data[1000:]
@@ -825,7 +814,10 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None):
             np.asarray(activation_history['final_layer_after']))  # (20000, 50, 2)
 
 
-test_multiple_dotsNeighbotSingleBatch(threeD_input=False)  # this works as long as the number of close neighbors is small
+test_multiple_dotsNeighbotSingleBatch(
+    threeD_input=False,
+    remove_boundary_dots=False,
+    integrationForceScale=1)  # this works as long as the number of close neighbors is small  # both remove_boundary_dots True and False works.  # integrationForceScale=1.5 does not work.
 
 
 """
