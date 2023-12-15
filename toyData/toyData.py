@@ -545,12 +545,14 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
     if threeD_input is None:
         threeD_input = True
 
+    plot_neighborhood = False  # whether to plot the neighborhood of each point in latent space or not
+
     # Define batch size, number of close neighbors, and number of background neighbors
-    batch_size = 50
-    total_epochs = 500
+    batch_size = 1
+    total_epochs = 50
     if integrationForceScale is None:
         integrationForceScale = 1
-    (c, b) = (2, 2)  # c: number of close neighbors, b: number of background neighbors
+    (c, b) = (5, 5)  # c: number of close neighbors, b: number of background neighbors
     """
         result: 
         (0, 1) gets normal result,
@@ -574,7 +576,7 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
 
 
     print(f"number of close neighbors={c}, number of background neighbors={b}")
-    assert c + b + 1 <= batch_size, f"c + b + 1 should be less than or equal to {batch_size}"
+    # assert c + b + 1 <= batch_size, f"c + b + 1 should be less than or equal to {batch_size}"
 
     # Define toy dataset
     class ToyDataset(Dataset):
@@ -651,6 +653,37 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
         background_neighbors = embeddings[indices[:, c:]]
         return close_neighbors, background_neighbors
 
+    def get_close_and_background_neighbors(center_embeddings, all_embeddings, num_close=None, num_background=None):
+        """
+        Get close and background neighbors for each point in center_embeddings based on distances to all_embeddings.
+
+        Args:
+            center_embeddings (torch.Tensor): Embeddings of center points.
+            all_embeddings (torch.Tensor): Embeddings of all points.
+            num_close (int): Number of close neighbors to retrieve for each center point.
+            num_background (int): Number of background neighbors to retrieve for each center point.
+
+        Returns:
+            torch.Tensor: Embeddings of close neighbors.
+            torch.Tensor: Embeddings of background neighbors.
+        """
+        # Compute pairwise distances between center_embeddings and all_embeddings
+        distances = torch.cdist(center_embeddings, all_embeddings)  # (1, 2) (1000, 2) -> (1, 1000)  # This step is taking longer time.
+
+        # Get indices of k closest neighbors for each example
+        _, indices = torch.topk(distances, num_close + num_background + 1, largest=False)
+
+        # Remove self from list of neighbors
+        indices = indices[:, 1:]
+
+        # Get embeddings of close neighbors
+        close_neighbors = all_embeddings[indices[:, :num_close]]
+
+        # Get embeddings of background neighbors
+        background_neighbors = all_embeddings[indices[:, num_close:]]
+
+        return close_neighbors, background_neighbors
+
     # Define toy dataset shaped [1000, 2]
     if threeD_input:
         points_data, labels_data = generate_3d_scatter_plot(separator=1 / 2,
@@ -711,16 +744,51 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
             # Zero gradients
             optimizer.zero_grad()
             # Forward pass
-            embeddings = net(batch.float())
+            embeddings_ceterPoint = net(batch.float())
+            embeddings_all = net(torch.tensor(train_data, dtype=torch.float32))
             # record initial and final latent space points
             if epoch == 0:
-                initial_v_points.append(embeddings)
+                initial_v_points.append(embeddings_ceterPoint)
                 initial_v_labels.append(batch_labels)
 
             # Get close and background neighbors
-            close_neighbors, background_neighbors = get_neighbors(embeddings, c=c, b=b)
+            # close_neighbors, background_neighbors = get_neighbors(embeddings_ceterPoint, c=c, b=b)
+            close_neighbors, background_neighbors = get_close_and_background_neighbors(
+                embeddings_ceterPoint,
+                embeddings_all,
+                num_close=c,
+                num_background=b)
+
+            if plot_neighborhood:
+                assert batch_size == 1
+                # plot the current center point(red cross) and its close (blue dots) and background (black dots) neighbors in latent space
+                latent_points = embeddings_all.detach().numpy()
+                fig = plt.figure(figsize=(20, 20))
+                ax = fig.add_subplot(111)
+
+                import pdb ; pdb.set_trace()
+
+                # other points
+                ax.scatter(latent_points[:, 0], latent_points[:, 1], c='gray', marker='o',
+                           label='Other Points', alpha=0.2)
+                # close neighbors
+                ax.scatter(close_neighbors.detach().numpy()[0, :, 0], close_neighbors.detach().numpy()[0, :, 1],
+                           c='blue', marker='o', label='Closest C Points')
+                # background neighbors
+                ax.scatter(background_neighbors.detach().numpy()[0, :, 0], background_neighbors.detach().numpy()[0, :, 1],
+                            c='black', marker='o', label='Closest B Points')
+                # current center point
+                ax.scatter(embeddings_ceterPoint.detach().numpy()[:, 0], embeddings_ceterPoint.detach().numpy()[:, 1], c='red', marker='*',
+                            s=200, label='Chosen vi')
+                # ax.set_xlabel('X Label')
+                # ax.set_ylabel('Y Label')
+                # ax.set_title(f'Epoch {epoch} before training loss={epoch_loss}')
+                # ax.legend()
+                # plt.show()
+
+
             # Compute loss
-            loss = local_aggregation_loss(embeddings, close_neighbors, background_neighbors)
+            loss = local_aggregation_loss(embeddings_ceterPoint, close_neighbors, background_neighbors)
             # Backward pass
             loss.backward()
             # Update parameters
@@ -746,8 +814,32 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
 
             # record initial and final latent space points
             if epoch == total_epochs - 1:
-                final_v_points.append(embeddings)
+                final_v_points.append(embeddings_ceterPoint)
                 final_v_labels.append(batch_labels)
+
+            if plot_neighborhood:
+                # plot the current center point(red cross) and its close (blue dots) and background (black dots) neighbors in latent space
+                latent_points = embeddings_all.detach().numpy()
+                fig = plt.figure(figsize=(20, 20))
+                ax = fig.add_subplot(111)
+
+                # other points
+                ax.scatter(latent_points[:, 0], latent_points[:, 1], c='gray', marker='o',
+                           label='Other Points', alpha=0.2)
+                # close neighbors
+                ax.scatter(close_neighbors.detach().numpy()[0, :, 0], close_neighbors.detach().numpy()[0, :, 1],
+                           c='blue', marker='o', label='Closest C Points', alpha=0.5)
+                # background neighbors
+                ax.scatter(background_neighbors.detach().numpy()[0, :, 0], background_neighbors.detach().numpy()[0, :, 1],
+                            c='black', marker='o', label='Closest B Points', alpha=0.5)
+                # current center point
+                ax.scatter(embeddings_ceterPoint.detach().numpy()[:, 0], embeddings_ceterPoint.detach().numpy()[:, 1], c='red', marker='*',
+                            s=200, label='Chosen vi', alpha=0.5)
+                ax.set_xlabel('X Label')
+                ax.set_ylabel('Y Label')
+                ax.set_title(f'Epoch {epoch} after training loss={epoch_loss}')
+                ax.legend()
+                plt.show()
 
         # Calculate average loss for the epoch
         average_epoch_loss = epoch_loss / len(dataloader)
