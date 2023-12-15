@@ -281,6 +281,20 @@ def trainWith_crossEntropyLoss(threeD_input=False, remove_boundary_dots=False):
 
 
 def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dots=False, integrationForceScale=None):
+    """
+    design the output of test_single_dotsNeighbotSingleBatch should be
+        for each batch:
+            layer activation (A layer = penultimate layer, B layer = last layer)
+                A layer ; before training ; close neighbors
+                A layer ; after training ; close neighbors
+                A layer ; before training ; background neighbors
+                A layer ; after training ; background neighbors
+                B layer ; before training ; close neighbors
+                B layer ; after training ; close neighbors
+                B layer ; before training ; background neighbors
+                B layer ; after training ; background neighbors
+            weight change
+    """
     import torch
     import torch.nn as nn
     import torch.optim as optim
@@ -303,7 +317,7 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
 
     # Define batch size, number of close neighbors, and number of background neighbors
     batch_size = 1
-    total_epochs = 50
+    total_epochs = 5
     if integrationForceScale is None:
         integrationForceScale = 1
     (num_close, num_background) = (5, 5)  # c: number of close neighbors, b: number of background neighbors
@@ -367,8 +381,11 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
         def forward(self, x):
             # x = (50,2)  input
             x = torch.relu(self.input_layer(x))  # x = (50,64)  first layer activation
+            # self.penultimate_layer_activation = self.hidden_layer1(x).detach().numpy()
             x = torch.relu(self.hidden_layer1(x))  # x = (50,32)  second layer activation (penultimate layer)
+            self.penultimate_layer_activation = x.detach().numpy()
             x = self.hidden_layer2(x)  # x = (50,2) final layer activation
+            self.final_layer_activation = x.detach().numpy()
             return x
 
     # Define local aggregation loss function
@@ -480,8 +497,12 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
 
     # Record the weights, penultimate layer activations, and final layer activations
     weight_difference_history = {'input_layer': [], 'hidden_layer1': [], 'hidden_layer2': []}
-    activation_history = {'penultimate_layer_before': [], 'final_layer_before': [],
-                          'penultimate_layer_after': [], 'final_layer_after': []}
+    # activation_history = {'A layer ; ': [], 'final_layer_before': [],
+    #                       'penultimate_layer_after': [], 'final_layer_after': []}
+    activation_history = {'A layer ; before training ; close neighbors': [], 'A layer ; after training ; close neighbors': [],
+                          'A layer ; before training ; background neighbors': [], 'A layer ; after training ; background neighbors': [],
+                          'B layer ; before training ; close neighbors': [], 'B layer ; after training ; close neighbors': [],
+                          'B layer ; before training ; background neighbors': [], 'B layer ; after training ; background neighbors': []}
 
     for epoch in tqdm(range(total_epochs)):
         if epoch == int(total_epochs / 3):
@@ -498,12 +519,12 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
             hidden_layer1_before = net.hidden_layer1.weight.data.clone().detach().numpy()
             hidden_layer2_before = net.hidden_layer2.weight.data.clone().detach().numpy()
 
-            # Record activations
-            penultimate_activations = torch.relu(net.hidden_layer1(torch.relu(net.input_layer(batch.float()))))
-            final_activations = net.hidden_layer2(penultimate_activations)
-
-            activation_history['penultimate_layer_before'].append(penultimate_activations.detach().numpy())
-            activation_history['final_layer_before'].append(final_activations.detach().numpy())
+            # # Record activations
+            # penultimate_activations = torch.relu(net.hidden_layer1(torch.relu(net.input_layer(batch.float()))))
+            # final_activations = net.hidden_layer2(penultimate_activations)
+            #
+            # activation_history['penultimate_layer_before'].append(penultimate_activations.detach().numpy())
+            # activation_history['final_layer_before'].append(final_activations.detach().numpy())
 
             # Zero gradients
             optimizer.zero_grad()
@@ -522,6 +543,12 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
                 embeddings_all,
                 num_close=num_close,
                 num_background=num_background)
+
+            # record activations
+            activation_history['A layer ; before training ; close neighbors'].append(net.penultimate_layer_activation[close_indices])
+            activation_history['A layer ; before training ; background neighbors'].append(net.penultimate_layer_activation[background_indices])
+            activation_history['B layer ; before training ; close neighbors'].append(net.final_layer_activation[close_indices])
+            activation_history['B layer ; before training ; background neighbors'].append(net.final_layer_activation[background_indices])
 
             if plot_neighborhood:
                 assert batch_size == 1
@@ -556,6 +583,7 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
             epoch_loss += loss.item()
 
             # Record weights
+            latent_points = net(torch.tensor(train_data, dtype=torch.float32)).detach().numpy()
             input_layer_after = net.input_layer.weight.data.clone().detach().numpy()
             hidden_layer1_after = net.hidden_layer1.weight.data.clone().detach().numpy()
             hidden_layer2_after = net.hidden_layer2.weight.data.clone().detach().numpy()
@@ -564,12 +592,18 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
             weight_difference_history['hidden_layer1'].append(hidden_layer1_after - hidden_layer1_before)
             weight_difference_history['hidden_layer2'].append(hidden_layer2_after - hidden_layer2_before)
 
-            # Record activations
-            penultimate_activations = torch.relu(net.hidden_layer1(torch.relu(net.input_layer(batch.float()))))
-            final_activations = net.hidden_layer2(penultimate_activations)
+            # # Record activations
+            # penultimate_activations = torch.relu(net.hidden_layer1(torch.relu(net.input_layer(batch.float()))))
+            # final_activations = net.hidden_layer2(penultimate_activations)
+            #
+            # activation_history['penultimate_layer_after'].append(penultimate_activations.detach().numpy())
+            # activation_history['final_layer_after'].append(final_activations.detach().numpy())
 
-            activation_history['penultimate_layer_after'].append(penultimate_activations.detach().numpy())
-            activation_history['final_layer_after'].append(final_activations.detach().numpy())
+            # record activations
+            activation_history['A layer ; after training ; close neighbors'].append(net.penultimate_layer_activation[close_indices])
+            activation_history['A layer ; after training ; background neighbors'].append(net.penultimate_layer_activation[background_indices])
+            activation_history['B layer ; after training ; close neighbors'].append(net.final_layer_activation[close_indices])
+            activation_history['B layer ; after training ; background neighbors'].append(net.final_layer_activation[background_indices])
 
             # record initial and final latent space points
             if epoch == total_epochs - 1:
@@ -577,8 +611,6 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
                 final_v_labels.append(batch_labels)
 
             if plot_neighborhood:
-                latent_points = net(torch.tensor(train_data, dtype=torch.float32)).detach().numpy()
-
                 # other points
                 ax.scatter(latent_points[:, 0], latent_points[:, 1], c='gray', marker='o',
                            label='Other Points', alpha=0.1)
@@ -602,7 +634,7 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
         average_epoch_loss = epoch_loss / len(dataloader)
         loss_values.append(average_epoch_loss)
 
-        if epoch % int(total_epochs / 10) == 0:
+        if epoch % int(total_epochs / 3) == 0:
             # Print and record the average loss for the epoch
             print(f'Epoch [{epoch + 1}/{total_epochs}], Loss: {average_epoch_loss}')
 
@@ -653,14 +685,48 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
     np.save(f'{weight_difference_folder}/weight_difference_history_hidden_layer2.npy',
             np.asarray(weight_difference_history['hidden_layer2']))  # (20000, 2, 32)
 
-    np.save(f'{weight_difference_folder}/activation_history_penultimate_layer_before.npy',
-            np.asarray(activation_history['penultimate_layer_before']))  # (20000, 50, 32)
-    np.save(f'{weight_difference_folder}/activation_history_final_layer_before.npy',
-            np.asarray(activation_history['final_layer_before']))  # (20000, 50, 2)
-    np.save(f'{weight_difference_folder}/activation_history_penultimate_layer_after.npy',
-            np.asarray(activation_history['penultimate_layer_after']))  # (20000, 50, 32)
-    np.save(f'{weight_difference_folder}/activation_history_final_layer_after.npy',
-            np.asarray(activation_history['final_layer_after']))  # (20000, 50, 2)
+    # np.save(f'{weight_difference_folder}/activation_history_penultimate_layer_before.npy',
+    #         np.asarray(activation_history['penultimate_layer_before']))  # (20000, 50, 32)
+    # np.save(f'{weight_difference_folder}/activation_history_final_layer_before.npy',
+    #         np.asarray(activation_history['final_layer_before']))  # (20000, 50, 2)
+    # np.save(f'{weight_difference_folder}/activation_history_penultimate_layer_after.npy',
+    #         np.asarray(activation_history['penultimate_layer_after']))  # (20000, 50, 32)
+    # np.save(f'{weight_difference_folder}/activation_history_final_layer_after.npy',
+    #         np.asarray(activation_history['final_layer_after']))  # (20000, 50, 2)
+
+    np.save(f'{weight_difference_folder}/A_layer_before_training_close_neighbors.npy',
+            np.asarray(activation_history['A layer ; before training ; close neighbors']))  # (# batch, num_close, 32)
+    np.save(f'{weight_difference_folder}/A_layer_after_training_close_neighbors.npy',
+            np.asarray(activation_history['A layer ; after training ; close neighbors']))  # (# batch, num_close, 32)
+    np.save(f'{weight_difference_folder}/A_layer_before_training_background_neighbors.npy',
+            np.asarray(activation_history['A layer ; before training ; background neighbors']))  # (# batch, num_background, 32)
+    np.save(f'{weight_difference_folder}/A_layer_after_training_background_neighbors.npy',
+            np.asarray(activation_history['A layer ; after training ; background neighbors']))  # (# batch, num_background, 32)
+
+    np.save(f'{weight_difference_folder}/B_layer_before_training_close_neighbors.npy',
+            np.asarray(activation_history['B layer ; before training ; close neighbors']))  # (# batch, num_close, 2)
+    np.save(f'{weight_difference_folder}/B_layer_after_training_close_neighbors.npy',
+            np.asarray(activation_history['B layer ; after training ; close neighbors']))  # (# batch, num_close, 2)
+    np.save(f'{weight_difference_folder}/B_layer_before_training_background_neighbors.npy',
+            np.asarray(activation_history['B layer ; before training ; background neighbors']))  # (# batch, num_background, 2)
+    np.save(f'{weight_difference_folder}/B_layer_after_training_background_neighbors.npy',
+            np.asarray(activation_history['B layer ; after training ; background neighbors']))  # (# batch, num_background, 2)
+
+    # np.save(f'{weight_difference_folder}/activation_history_final_layer_before.npy',
+    #         np.asarray(activation_history['B layer ; before training ; close neighbors']))  # (# batch, num_close, 2)
+    # np.save(f'{weight_difference_folder}/activation_history_penultimate_layer_after.npy',
+    #         np.asarray(activation_history['A layer ; after training ; close neighbors']))  # (# batch, num_close, 32)
+    # np.save(f'{weight_difference_folder}/activation_history_final_layer_after.npy',
+    #         np.asarray(activation_history['B layer ; after training ; close neighbors']))  # (# batch, num_close, 2)
+    #
+    # np.save(f'{weight_difference_folder}/activation_history_penultimate_layer_before_background.npy',
+    #         np.asarray(activation_history['A layer ; before training ; background neighbors']))  # (# batch, num_background, 32)
+    # np.save(f'{weight_difference_folder}/activation_history_final_layer_before_background.npy',
+    #         np.asarray(activation_history['B layer ; before training ; background neighbors']))  # (# batch, num_background, 2)
+    # np.save(f'{weight_difference_folder}/activation_history_penultimate_layer_after_background.npy',
+    #         np.asarray(activation_history['A layer ; after training ; background neighbors']))  # (# batch, num_background, 32)
+    # np.save(f'{weight_difference_folder}/activation_history_final_layer_after_background.npy',
+    #         np.asarray(activation_history['B layer ; after training ; background neighbors']))  # (# batch, num_background, 2)
 
 
 test_multiple_dotsNeighbotSingleBatch(
@@ -686,6 +752,16 @@ test_multiple_dotsNeighbotSingleBatch(
 
 
 def synaptic_level():
+    """
+
+    design the input of NMPH_synaptic should be
+        A layer ; before training ; close neighbors
+        A layer ; before training ; background neighbors
+        B layer ; before training ; close neighbors
+        B layer ; before training ; background neighbors
+        weight change
+
+    """
     import os
     import random
     import numpy as np
@@ -941,7 +1017,19 @@ def synaptic_level():
 
 
 def representational_level():
-    import os
+    """
+
+    design the input of NMPH_representational should be
+        A layer ; before training ; close neighbors
+        A layer ; before training ; background neighbors
+        A layer ; after training ; close neighbors
+        A layer ; after training ; background neighbors
+        B layer ; before training ; close neighbors
+        B layer ; before training ; background neighbors
+        B layer ; after training ; close neighbors
+        B layer ; after training ; background neighbors
+
+    """
     import random
     import numpy as np
     import matplotlib.pyplot as plt
