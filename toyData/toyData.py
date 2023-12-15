@@ -524,6 +524,7 @@ def test_single_dotsNeighbotSingleBatch():
 
 
 # test_single_dotsNeighbotSingleBatch()  # this works as long as the number of close neighbors is small ; later analysis is not based on the result of this function but on the result of test_multiple_dotsNeighbotSingleBatch()
+# this function is integrated into test_multiple_dotsNeighbotSingleBatch() when batch_size=1
 
 
 def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dots=False, integrationForceScale=None):
@@ -552,7 +553,7 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
     total_epochs = 50
     if integrationForceScale is None:
         integrationForceScale = 1
-    (c, b) = (5, 5)  # c: number of close neighbors, b: number of background neighbors
+    (num_close, num_background) = (5, 5)  # c: number of close neighbors, b: number of background neighbors
     """
         result: 
         (0, 1) gets normal result,
@@ -575,7 +576,7 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
     """
 
 
-    print(f"number of close neighbors={c}, number of background neighbors={b}")
+    print(f"number of close neighbors={num_close}, number of background neighbors={num_background}")
     # assert c + b + 1 <= batch_size, f"c + b + 1 should be less than or equal to {batch_size}"
 
     # Define toy dataset
@@ -666,6 +667,9 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
         Returns:
             torch.Tensor: Embeddings of close neighbors.
             torch.Tensor: Embeddings of background neighbors.
+            torch.Tensor: Indices of center points.
+            torch.Tensor: Indices of close neighbors.
+            torch.Tensor: Indices of background neighbors.
         """
         # Compute pairwise distances between center_embeddings and all_embeddings
         distances = torch.cdist(center_embeddings, all_embeddings)  # (1, 2) (1000, 2) -> (1, 1000)  # This step is taking longer time.
@@ -673,16 +677,23 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
         # Get indices of k closest neighbors for each example
         _, indices = torch.topk(distances, num_close + num_background + 1, largest=False)
 
+        center_indices = indices[:, 0]
+
         # Remove self from list of neighbors
         indices = indices[:, 1:]
 
+        # # Get indices of center points
+        # center_indices = torch.arange(center_embeddings.size(0)).view(-1, 1).expand(-1, num_close + num_background)
+
         # Get embeddings of close neighbors
         close_neighbors = all_embeddings[indices[:, :num_close]]
+        close_indices = indices[:, :num_close]
 
         # Get embeddings of background neighbors
         background_neighbors = all_embeddings[indices[:, num_close:]]
+        background_indices = indices[:, num_close:]
 
-        return close_neighbors, background_neighbors
+        return close_neighbors, background_neighbors, close_indices, background_indices, center_indices
 
     # Define toy dataset shaped [1000, 2]
     if threeD_input:
@@ -753,11 +764,11 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
 
             # Get close and background neighbors
             # close_neighbors, background_neighbors = get_neighbors(embeddings_ceterPoint, c=c, b=b)
-            close_neighbors, background_neighbors = get_close_and_background_neighbors(
+            close_neighbors, background_neighbors, close_indices, background_indices, center_indices = get_close_and_background_neighbors(
                 embeddings_ceterPoint,
                 embeddings_all,
-                num_close=c,
-                num_background=b)
+                num_close=num_close,
+                num_background=num_background)
 
             if plot_neighborhood:
                 assert batch_size == 1
@@ -770,21 +781,18 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
 
                 # other points
                 ax.scatter(latent_points[:, 0], latent_points[:, 1], c='gray', marker='o',
-                           label='Other Points', alpha=0.2)
+                           label='Other Points', alpha=0.5)
                 # close neighbors
-                ax.scatter(close_neighbors.detach().numpy()[0, :, 0], close_neighbors.detach().numpy()[0, :, 1],
-                           c='blue', marker='o', label='Closest C Points')
+                ax.scatter(latent_points[close_indices, 0], latent_points[close_indices, 1],
+                            c='blue', marker='o', label='Closest C Points', alpha=1)
                 # background neighbors
-                ax.scatter(background_neighbors.detach().numpy()[0, :, 0], background_neighbors.detach().numpy()[0, :, 1],
-                            c='black', marker='o', label='Closest B Points')
+                ax.scatter(latent_points[background_indices, 0], latent_points[background_indices, 1],
+                            c='black', marker='o', label='Closest B Points', alpha=1)
                 # current center point
-                ax.scatter(embeddings_ceterPoint.detach().numpy()[:, 0], embeddings_ceterPoint.detach().numpy()[:, 1], c='red', marker='*',
-                            s=200, label='Chosen vi')
-                # ax.set_xlabel('X Label')
-                # ax.set_ylabel('Y Label')
-                # ax.set_title(f'Epoch {epoch} before training loss={epoch_loss}')
-                # ax.legend()
-                # plt.show()
+                ax.scatter(latent_points[center_indices, 0], latent_points[center_indices, 1], c='red', marker='*',
+                            s=200, label='Chosen vi', alpha=1)
+            else:
+                ax = None
 
 
             # Compute loss
@@ -818,26 +826,24 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
                 final_v_labels.append(batch_labels)
 
             if plot_neighborhood:
-                # plot the current center point(red cross) and its close (blue dots) and background (black dots) neighbors in latent space
-                latent_points = embeddings_all.detach().numpy()
-                fig = plt.figure(figsize=(20, 20))
-                ax = fig.add_subplot(111)
+                latent_points = net(torch.tensor(train_data, dtype=torch.float32)).detach().numpy()
 
                 # other points
                 ax.scatter(latent_points[:, 0], latent_points[:, 1], c='gray', marker='o',
-                           label='Other Points', alpha=0.2)
+                           label='Other Points', alpha=0.1)
                 # close neighbors
-                ax.scatter(close_neighbors.detach().numpy()[0, :, 0], close_neighbors.detach().numpy()[0, :, 1],
-                           c='blue', marker='o', label='Closest C Points', alpha=0.5)
+                ax.scatter(latent_points[close_indices, 0], latent_points[close_indices, 1],
+                            c='green', marker='o', label='Closest C Points', alpha=1)
                 # background neighbors
-                ax.scatter(background_neighbors.detach().numpy()[0, :, 0], background_neighbors.detach().numpy()[0, :, 1],
-                            c='black', marker='o', label='Closest B Points', alpha=0.5)
+                ax.scatter(latent_points[background_indices, 0], latent_points[background_indices, 1],
+                            c='purple', marker='o', label='Closest B Points', alpha=1)
                 # current center point
-                ax.scatter(embeddings_ceterPoint.detach().numpy()[:, 0], embeddings_ceterPoint.detach().numpy()[:, 1], c='red', marker='*',
+                ax.scatter(latent_points[center_indices, 0], latent_points[center_indices, 1], c='red', marker='*',
                             s=200, label='Chosen vi', alpha=0.5)
+
                 ax.set_xlabel('X Label')
                 ax.set_ylabel('Y Label')
-                ax.set_title(f'Epoch {epoch} after training loss={epoch_loss}')
+                ax.set_title(f'Epoch {epoch} after training loss=f{epoch_loss:.2f}')
                 ax.legend()
                 plt.show()
 
