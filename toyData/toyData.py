@@ -285,15 +285,20 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
     design the output of test_single_dotsNeighbotSingleBatch should be
         for each batch:
             layer activation (A layer = penultimate layer, B layer = last layer)
+                A layer ; before training ; center points
                 A layer ; before training ; close neighbors
-                A layer ; after training ; close neighbors
                 A layer ; before training ; background neighbors
-                A layer ; after training ; background neighbors
+                B layer ; before training ; center points
                 B layer ; before training ; close neighbors
-                B layer ; after training ; close neighbors
                 B layer ; before training ; background neighbors
+
+                A layer ; after training ; center points
+                A layer ; after training ; close neighbors
+                A layer ; after training ; background neighbors
+                B layer ; after training ; center points
+                B layer ; after training ; close neighbors
                 B layer ; after training ; background neighbors
-            weight change
+            weight change  
     """
     import torch
     import torch.nn as nn
@@ -317,7 +322,7 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
 
     # Define batch size, number of close neighbors, and number of background neighbors
     batch_size = 1
-    total_epochs = 5
+    total_epochs = 50
     if integrationForceScale is None:
         integrationForceScale = 1
     (num_close, num_background) = (5, 5)  # c: number of close neighbors, b: number of background neighbors
@@ -499,10 +504,22 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
     weight_difference_history = {'input_layer': [], 'hidden_layer1': [], 'hidden_layer2': []}
     # activation_history = {'A layer ; ': [], 'final_layer_before': [],
     #                       'penultimate_layer_after': [], 'final_layer_after': []}
-    activation_history = {'A layer ; before training ; close neighbors': [], 'A layer ; after training ; close neighbors': [],
-                          'A layer ; before training ; background neighbors': [], 'A layer ; after training ; background neighbors': [],
-                          'B layer ; before training ; close neighbors': [], 'B layer ; after training ; close neighbors': [],
-                          'B layer ; before training ; background neighbors': [], 'B layer ; after training ; background neighbors': []}
+    activation_history = {
+        'A layer ; before training ; center points': [],
+        'A layer ; before training ; close neighbors': [],
+        'A layer ; before training ; background neighbors': [],
+
+        'A layer ; after training ; center points': [],
+        'A layer ; after training ; close neighbors': [],
+        'A layer ; after training ; background neighbors': [],
+
+        'B layer ; before training ; center points': [],
+        'B layer ; before training ; close neighbors': [],
+        'B layer ; before training ; background neighbors': [],
+
+        'B layer ; after training ; center points': [],
+        'B layer ; after training ; close neighbors': [],
+        'B layer ; after training ; background neighbors': []}
 
     for epoch in tqdm(range(total_epochs)):
         if epoch == int(total_epochs / 3):
@@ -545,8 +562,10 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
                 num_background=num_background)
 
             # record activations
+            activation_history['A layer ; before training ; center points'].append(net.penultimate_layer_activation[center_indices])
             activation_history['A layer ; before training ; close neighbors'].append(net.penultimate_layer_activation[close_indices])
             activation_history['A layer ; before training ; background neighbors'].append(net.penultimate_layer_activation[background_indices])
+            activation_history['B layer ; before training ; center points'].append(net.final_layer_activation[center_indices])
             activation_history['B layer ; before training ; close neighbors'].append(net.final_layer_activation[close_indices])
             activation_history['B layer ; before training ; background neighbors'].append(net.final_layer_activation[background_indices])
 
@@ -600,8 +619,10 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
             # activation_history['final_layer_after'].append(final_activations.detach().numpy())
 
             # record activations
+            activation_history['A layer ; after training ; center points'].append(net.penultimate_layer_activation[center_indices])
             activation_history['A layer ; after training ; close neighbors'].append(net.penultimate_layer_activation[close_indices])
             activation_history['A layer ; after training ; background neighbors'].append(net.penultimate_layer_activation[background_indices])
+            activation_history['B layer ; after training ; center points'].append(net.final_layer_activation[center_indices])
             activation_history['B layer ; after training ; close neighbors'].append(net.final_layer_activation[close_indices])
             activation_history['B layer ; after training ; background neighbors'].append(net.final_layer_activation[background_indices])
 
@@ -677,6 +698,8 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
     # save the weight difference history
     weight_difference_folder = f"/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/toyData/weight_difference_folder/"
     os.makedirs(weight_difference_folder, exist_ok=True)
+
+    # save the weight difference history
     np.save(f'{weight_difference_folder}/weight_difference_history_input_layer.npy', np.asarray(
         weight_difference_history[
             'input_layer']))  # (20000, 64, 2)  1000points/50imagesPerBatch=20batchPerEpoch, in total there are 20*1000epoch=20000 batches
@@ -685,48 +708,34 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
     np.save(f'{weight_difference_folder}/weight_difference_history_hidden_layer2.npy',
             np.asarray(weight_difference_history['hidden_layer2']))  # (20000, 2, 32)
 
-    # np.save(f'{weight_difference_folder}/activation_history_penultimate_layer_before.npy',
-    #         np.asarray(activation_history['penultimate_layer_before']))  # (20000, 50, 32)
-    # np.save(f'{weight_difference_folder}/activation_history_final_layer_before.npy',
-    #         np.asarray(activation_history['final_layer_before']))  # (20000, 50, 2)
-    # np.save(f'{weight_difference_folder}/activation_history_penultimate_layer_after.npy',
-    #         np.asarray(activation_history['penultimate_layer_after']))  # (20000, 50, 32)
-    # np.save(f'{weight_difference_folder}/activation_history_final_layer_after.npy',
-    #         np.asarray(activation_history['final_layer_after']))  # (20000, 50, 2)
-
+    # save the activation history
+    np.save(f'{weight_difference_folder}/A_layer_before_training_center_points.npy',
+            np.asarray(activation_history['A layer ; before training ; center points']))  # (# batch, 1, 32)
     np.save(f'{weight_difference_folder}/A_layer_before_training_close_neighbors.npy',
             np.asarray(activation_history['A layer ; before training ; close neighbors']))  # (# batch, num_close, 32)
-    np.save(f'{weight_difference_folder}/A_layer_after_training_close_neighbors.npy',
-            np.asarray(activation_history['A layer ; after training ; close neighbors']))  # (# batch, num_close, 32)
     np.save(f'{weight_difference_folder}/A_layer_before_training_background_neighbors.npy',
             np.asarray(activation_history['A layer ; before training ; background neighbors']))  # (# batch, num_background, 32)
+
+    np.save(f'{weight_difference_folder}/B_layer_before_training_center_points.npy',
+            np.asarray(activation_history['B layer ; before training ; center points']))  # (# batch, 1, 2)
+    np.save(f'{weight_difference_folder}/B_layer_before_training_close_neighbors.npy',
+            np.asarray(activation_history['B layer ; before training ; close neighbors']))  # (# batch, num_close, 2)
+    np.save(f'{weight_difference_folder}/B_layer_before_training_background_neighbors.npy',
+            np.asarray(activation_history['B layer ; before training ; background neighbors']))  # (# batch, num_close, 2)
+
+    np.save(f'{weight_difference_folder}/A_layer_after_training_center_points.npy',
+            np.asarray(activation_history['A layer ; after training ; center points']))  # (# batch, 1, 32)
+    np.save(f'{weight_difference_folder}/A_layer_after_training_close_neighbors.npy',
+            np.asarray(activation_history['A layer ; after training ; close neighbors']))  # (# batch, num_close, 32)
     np.save(f'{weight_difference_folder}/A_layer_after_training_background_neighbors.npy',
             np.asarray(activation_history['A layer ; after training ; background neighbors']))  # (# batch, num_background, 32)
 
-    np.save(f'{weight_difference_folder}/B_layer_before_training_close_neighbors.npy',
-            np.asarray(activation_history['B layer ; before training ; close neighbors']))  # (# batch, num_close, 2)
+    np.save(f'{weight_difference_folder}/B_layer_after_training_center_points.npy',
+            np.asarray(activation_history['B layer ; after training ; center points']))  # (# batch, 1, 2)
     np.save(f'{weight_difference_folder}/B_layer_after_training_close_neighbors.npy',
             np.asarray(activation_history['B layer ; after training ; close neighbors']))  # (# batch, num_close, 2)
-    np.save(f'{weight_difference_folder}/B_layer_before_training_background_neighbors.npy',
-            np.asarray(activation_history['B layer ; before training ; background neighbors']))  # (# batch, num_background, 2)
     np.save(f'{weight_difference_folder}/B_layer_after_training_background_neighbors.npy',
             np.asarray(activation_history['B layer ; after training ; background neighbors']))  # (# batch, num_background, 2)
-
-    # np.save(f'{weight_difference_folder}/activation_history_final_layer_before.npy',
-    #         np.asarray(activation_history['B layer ; before training ; close neighbors']))  # (# batch, num_close, 2)
-    # np.save(f'{weight_difference_folder}/activation_history_penultimate_layer_after.npy',
-    #         np.asarray(activation_history['A layer ; after training ; close neighbors']))  # (# batch, num_close, 32)
-    # np.save(f'{weight_difference_folder}/activation_history_final_layer_after.npy',
-    #         np.asarray(activation_history['B layer ; after training ; close neighbors']))  # (# batch, num_close, 2)
-    #
-    # np.save(f'{weight_difference_folder}/activation_history_penultimate_layer_before_background.npy',
-    #         np.asarray(activation_history['A layer ; before training ; background neighbors']))  # (# batch, num_background, 32)
-    # np.save(f'{weight_difference_folder}/activation_history_final_layer_before_background.npy',
-    #         np.asarray(activation_history['B layer ; before training ; background neighbors']))  # (# batch, num_background, 2)
-    # np.save(f'{weight_difference_folder}/activation_history_penultimate_layer_after_background.npy',
-    #         np.asarray(activation_history['A layer ; after training ; background neighbors']))  # (# batch, num_background, 32)
-    # np.save(f'{weight_difference_folder}/activation_history_final_layer_after_background.npy',
-    #         np.asarray(activation_history['B layer ; after training ; background neighbors']))  # (# batch, num_background, 2)
 
 
 test_multiple_dotsNeighbotSingleBatch(
@@ -755,8 +764,10 @@ def synaptic_level():
     """
 
     design the input of NMPH_synaptic should be
+        A layer ; before training ; center points
         A layer ; before training ; close neighbors
         A layer ; before training ; background neighbors
+        B layer ; before training ; center points
         B layer ; before training ; close neighbors
         B layer ; before training ; background neighbors
         weight change
@@ -795,10 +806,42 @@ def synaptic_level():
         total_batch_num = weight_difference_history_input_layer.shape[0]
         print(f"Total Batch Num: {total_batch_num}")  # 10000
 
-        layer_a_activations = np.load(
-            f'{weight_difference_folder}/activation_history_penultimate_layer_before.npy')  # (10000, 50, 32)
-        layer_b_activations = np.load(
-            f'{weight_difference_folder}/activation_history_final_layer_before.npy')  # (10000, 50, 2)
+        # load
+        #         A layer ; before training ; center points
+        #         A layer ; before training ; close neighbors
+        #         A layer ; before training ; background neighbors
+        #         B layer ; before training ; center points
+        #         B layer ; before training ; close neighbors
+        #         B layer ; before training ; background neighbors
+        A_layer_before_training_center_points = np.load(
+            f'{weight_difference_folder}/A_layer_before_training_center_points.npy')  # shape = (50000, 32)
+        # Reshape A_layer_before_training_center_points to (50000, 1, 1, 32)
+        A_layer_before_training_center_points = A_layer_before_training_center_points.reshape((50000, 1, 1, 32))
+        A_layer_before_training_close_neighbors = np.load(
+                        f'{weight_difference_folder}/A_layer_before_training_close_neighbors.npy')  # shape = (50000, 1, 5, 32)
+        A_layer_before_training_background_neighbors = np.load(
+                        f'{weight_difference_folder}/A_layer_before_training_background_neighbors.npy')  # shape = (50000, 1, 5, 32)
+        layer_a_activations = np.concatenate([
+                A_layer_before_training_close_neighbors,
+                A_layer_before_training_background_neighbors,
+                A_layer_before_training_center_points
+            ], axis=2)  # shape = (50000, 1, 11, 32)
+        layer_a_activations = layer_a_activations.reshape((50000, 11, 32))  # shape = (50000, 11, 32)
+
+        B_layer_before_training_center_points = np.load(
+            f'{weight_difference_folder}/B_layer_before_training_center_points.npy')
+        B_layer_before_training_center_points = B_layer_before_training_center_points.reshape((50000, 1, 1, 2))
+        B_layer_before_training_close_neighbors =  np.load(
+                        f'{weight_difference_folder}/B_layer_before_training_close_neighbors.npy')
+        B_layer_before_training_background_neighbors = np.load(
+                        f'{weight_difference_folder}/B_layer_before_training_background_neighbors.npy')
+        layer_b_activations = np.concatenate([
+                B_layer_before_training_close_neighbors,
+                B_layer_before_training_background_neighbors,
+                B_layer_before_training_center_points
+            ], axis=2)
+        layer_b_activations = layer_b_activations.reshape((50000, 11, 2))
+
         weight_changes = np.load(
             f'{weight_difference_folder}/weight_difference_history_hidden_layer2.npy')  # (10000, 2, 32)
 
@@ -810,9 +853,9 @@ def synaptic_level():
         for curr_channel_a_feature in tqdm(range(len(selected_channel_ids_layer_a))):  # 32*2 = 64 pairs
             for curr_channel_b_feature in range(len(selected_channel_ids_layer_b)):
                 # Extract activations and weight changes for the current channel pair
-                activation_layer_a = layer_a_activations[:, :, curr_channel_a_feature]  # (10000, 50, 1)
-                activation_layer_b = layer_b_activations[:, :, curr_channel_b_feature]  # (10000, 50, 1)
-                weight_change = weight_changes[:, curr_channel_b_feature, curr_channel_a_feature]  # (10000, 1, 1)
+                activation_layer_a = layer_a_activations[:, :, curr_channel_a_feature]  # (50000, 11, 1)
+                activation_layer_b = layer_b_activations[:, :, curr_channel_b_feature]  # (50000, 11, 1)
+                weight_change = weight_changes[:, curr_channel_b_feature, curr_channel_a_feature]  # (10000,)
 
                 weight_changes_flatten.append(weight_change)
 
@@ -830,7 +873,7 @@ def synaptic_level():
 
         return co_activations_flatten, weight_changes_flatten, pair_ids
 
-    co_activations_flatten_, weight_changes_flatten_, pair_ids_ = prepare_data()  # co_activations_flatten_ (64, 10000) weight_changes_flatten_ (64, 10000) pair_ids_ (64, 2)
+    co_activations_flatten_, weight_changes_flatten_, pair_ids_ = prepare_data()  # co_activations_flatten_ (64, 50000) weight_changes_flatten_ (64, 50000) pair_ids_ (64, 2)
 
     if not os.path.exists(f'{directory_path}/temp'):
         os.mkdir(f'{directory_path}/temp')
@@ -842,10 +885,6 @@ def synaptic_level():
                 weight_changes_flatten_)  # shape = [pair#, batch#]
         np.save(f'{directory_path}/temp/pair_ids_.npy',
                 pair_ids_)  # shape = [pair#, [ID1, ID2]]
-
-    # co_activations_flatten_ = np.load(f'{directory_path}/temp/co_activations_flatten_.npy')  # shape = [pair#, batch#]
-    # weight_changes_flatten_ = np.load(f'{directory_path}/temp/weight_changes_flatten_.npy')  # shape = [pair#, batch#]
-    # pair_ids_ = np.load(f'{directory_path}/temp/pair_ids_.npy')  # shape = [pair#, [ID1, ID2]]
 
     def cubic_fit_correlation_with_params(x, y, n_splits=10, random_state=42, return_subset=True):
         def cubic_function(_x, a, b, c, d):
@@ -920,7 +959,7 @@ def synaptic_level():
         y_partials = []
         for i in tqdm(range(len(co_activations_flatten))):
             if test_mode:
-                test_batch_num = 50
+                test_batch_num = 5000
                 x__ = co_activations_flatten[i][:test_batch_num]
                 y__ = weight_changes_flatten[i][:test_batch_num]
                 pair_id = pair_ids[i]
@@ -1016,18 +1055,27 @@ def synaptic_level():
     # plot_scatter_and_cubic(x_partials_, y_partials_, mean_parameters_avg)
 
 
+synaptic_level()
+
+
 def representational_level():
     """
 
     design the input of NMPH_representational should be
+        A layer ; before training ; center points
         A layer ; before training ; close neighbors
         A layer ; before training ; background neighbors
-        A layer ; after training ; close neighbors
-        A layer ; after training ; background neighbors
+        B layer ; before training ; center points
         B layer ; before training ; close neighbors
         B layer ; before training ; background neighbors
+
+        A layer ; after training ; center points
+        A layer ; after training ; close neighbors
+        A layer ; after training ; background neighbors
+        B layer ; after training ; center points
         B layer ; after training ; close neighbors
         B layer ; after training ; background neighbors
+
 
     """
     import random
@@ -1038,10 +1086,10 @@ def representational_level():
     from tqdm import tqdm
     from matplotlib.cm import get_cmap
 
-    testMode = True
-    testBatchNum = 5
-    repChange_distanceType = 'jacard'  # 'cosine', 'L1', 'L2', 'dot' 'correlation' 'jacard'(slow)
-    coactivation_distanceType = 'jacard'  # 'cosine', 'L1', 'L2', 'dot' 'correlation' 'jacard'(slow)
+    testMode = False
+    testBatchNum = 50
+    repChange_distanceType = 'L2'  # 'cosine', 'L1', 'L2', 'dot' 'correlation' 'jacard'(slow)
+    coactivation_distanceType = 'L2'  # 'cosine', 'L1', 'L2', 'dot' 'correlation' 'jacard'(slow)
     co_activationType = 'before'  # 'before', 'after'
 
     # Define paths for data folders
@@ -1059,72 +1107,6 @@ def representational_level():
         bin_rep1 = binarize_representations(representation1)
         bin_rep2 = binarize_representations(representation2)
         return jaccard_score(bin_rep1, bin_rep2)
-
-    # def dataPrepare():
-    #     random.seed(131)
-    #     selected_channel_penultimate_layer = random.sample(range(0, 512), 512)
-    #     selected_channel_last_layer = random.sample(range(0, 128), 128)
-    #
-    #     totalBatchNum = 0
-    #     epochBatchNum = {}
-    #     startFromEpoch = 1
-    #     totalEpochNum = 2
-    #
-    #     # directory_path = '/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/weights_difference/numpy/'
-    #     for epoch in range(startFromEpoch, totalEpochNum):
-    #         print(f'{directory_path}/activation_lastLayer_epoch{epoch}_batch_i*.npy')
-    #         files = glob(f'{directory_path}/activation_lastLayer_epoch{epoch}_batch_i*.npy')
-    #         if testMode:
-    #             files = files[:testBatchNum]
-    #             epochBatchNum[epoch] = len(files)
-    #             totalBatchNum += len(files)
-    #         else:
-    #             epochBatchNum[epoch] = len(files) - 1
-    #             totalBatchNum += len(
-    #                 files) - 1  # minus 1 since the final batch usually has a different size, e.g. for batch size=128, the final batch only has 15 images
-    #     print(f"totalBatchNum={totalBatchNum}")
-    #     fc1_activations = np.zeros(
-    #         (totalBatchNum, 128, len(selected_channel_penultimate_layer)))  # [#batch, batch size, #selected units]
-    #     fc2_activations = np.zeros(
-    #         (totalBatchNum, 128, len(selected_channel_last_layer)))
-    #     weight_changes = np.zeros(
-    #         (totalBatchNum, len(selected_channel_last_layer), len(selected_channel_penultimate_layer)))
-    #
-    #     currBatchNum = 0
-    #     for epoch in range(startFromEpoch, totalEpochNum):
-    #         for batch_i in tqdm(range(0, epochBatchNum[epoch])):
-    #             # torch.save(weights_difference,
-    #             #            f'{weights_difference_folder}/weights_difference_epoch{self.current_epoch}_batch_i{batch_i}.pth.tar')
-    #             # torch.save(activation_lastLayer,
-    #             #            f'{weights_difference_folder}/activation_lastLayer_epoch{self.current_epoch}_batch_i{batch_i}.pth.tar')
-    #             # torch.save(activation_secondLastLayer,
-    #             #            f'{weights_difference_folder}/activation_secondLastLayer_epoch{self.current_epoch}_batch_i{batch_i}.pth.tar')
-    #             # load activations and weights
-    #             activation_secondLastLayer = np.load(
-    #                 f'{directory_path}/activation_secondLastLayer_epoch{epoch}_batch_i{batch_i}.npy')
-    #             activation_lastLayer = np.load(
-    #                 f'{directory_path}/activation_lastLayer_epoch{epoch}_batch_i{batch_i}.npy')
-    #             weight_change = np.load(
-    #                 f'{directory_path}/weights_difference_epoch{epoch}_batch_i{batch_i}.npy')  # .detach().numpy()
-    #
-    #             fc1_activations[currBatchNum, :, :] = activation_secondLastLayer[:,
-    #                                                   selected_channel_penultimate_layer]  # (128 batch#, 512)
-    #             fc2_activations[currBatchNum, :, :] = activation_lastLayer[:,
-    #                                                   selected_channel_last_layer]  # (128 batch#, 128)
-    #             weight_changes[currBatchNum, :, :] = weight_change[selected_channel_last_layer, :][:,
-    #                                                  selected_channel_penultimate_layer]  # (128 channel#, 512 channel#)
-    #             currBatchNum += 1
-    #     print(f"fc1_activations.shape={fc1_activations.shape}")
-    #     print(f"fc2_activations.shape={fc2_activations.shape}")
-    #     print(f"weight_changes.shape={weight_changes.shape}")
-    #     # fc1_activations.shape=(50, 128, 512)  # (#batch, batch size, #selected units)
-    #     # fc2_activations.shape=(50, 128, 128)
-    #     # weight_changes.shape=(50, 128, 512)
-    #
-    #     return fc2_activations
-    #
-    # fc2_activations_ = dataPrepare()
-
 
     def prepare_data():
         # Set seed
@@ -1144,22 +1126,87 @@ def representational_level():
         total_batch_num = weight_difference_history_input_layer.shape[0]
         print(f"Total Batch Num: {total_batch_num}")  # 10000
 
-        layer_b_activations_before = np.load(
-            f'{weight_difference_folder}/activation_history_final_layer_before.npy')  # (10000, 50, 2)
-        layer_b_activations_after = np.load(
-            f'{weight_difference_folder}/activation_history_final_layer_after.npy')  # (10000, 50, 2)
+        """load         
+                A layer ; before training ; center points
+                A layer ; before training ; close neighbors
+                A layer ; before training ; background neighbors
+                B layer ; before training ; center points
+                B layer ; before training ; close neighbors
+                B layer ; before training ; background neighbors
+
+                A layer ; after training ; center points
+                A layer ; after training ; close neighbors
+                A layer ; after training ; background neighbors
+                B layer ; after training ; center points
+                B layer ; after training ; close neighbors
+                B layer ; after training ; background neighbors
+        """
+        # A_layer_before_training_center_points = np.load(
+        #     f'{weight_difference_folder}/A_layer_before_training_center_points.npy')
+        # A_layer_before_training_center_points = A_layer_before_training_center_points.reshape((50000, 1, 1, 32))
+        # A_layer_before_training_close_neighbors = np.load(
+        #     f'{weight_difference_folder}/A_layer_before_training_close_neighbors.npy')
+        # A_layer_before_training_background_neighbors = np.load(
+        #     f'{weight_difference_folder}/A_layer_before_training_background_neighbors.npy')
+        # layer_a_activations_before = np.concatenate([
+        #     A_layer_before_training_close_neighbors,
+        #     A_layer_before_training_background_neighbors,
+        #     A_layer_before_training_center_points
+        # ], axis=2)
+        # layer_a_activations_before = layer_a_activations_before.reshape((50000, 11, 32))
+
+        B_layer_before_training_center_points = np.load(
+            f'{weight_difference_folder}/B_layer_before_training_center_points.npy')
+        B_layer_before_training_center_points = B_layer_before_training_center_points.reshape((50000, 1, 1, 2))
+        B_layer_before_training_close_neighbors = np.load(
+            f'{weight_difference_folder}/B_layer_before_training_close_neighbors.npy')
+        B_layer_before_training_background_neighbors = np.load(
+            f'{weight_difference_folder}/B_layer_before_training_background_neighbors.npy')
+        layer_b_activations_before = np.concatenate([
+            B_layer_before_training_close_neighbors,
+            B_layer_before_training_background_neighbors,
+            B_layer_before_training_center_points
+        ], axis=2)
+        layer_b_activations_before = layer_b_activations_before.reshape((50000, 11, 2))
+
+        # A_layer_after_training_center_points = np.load(
+        #     f'{weight_difference_folder}/A_layer_after_training_center_points.npy')
+        # A_layer_after_training_center_points = A_layer_after_training_center_points.reshape((50000, 1, 1, 32))
+        # A_layer_after_training_close_neighbors = np.load(
+        #     f'{weight_difference_folder}/A_layer_after_training_close_neighbors.npy')
+        # A_layer_after_training_background_neighbors = np.load(
+        #     f'{weight_difference_folder}/A_layer_after_training_background_neighbors.npy')
+        # layer_a_activations_after = np.concatenate([
+        #     A_layer_after_training_close_neighbors,
+        #     A_layer_after_training_background_neighbors,
+        #     A_layer_after_training_center_points
+        # ], axis=2)
+
+        B_layer_after_training_center_points = np.load(
+            f'{weight_difference_folder}/B_layer_after_training_center_points.npy')
+        B_layer_after_training_center_points = B_layer_after_training_center_points.reshape((50000, 1, 1, 2))
+        B_layer_after_training_close_neighbors = np.load(
+            f'{weight_difference_folder}/B_layer_after_training_close_neighbors.npy')
+        B_layer_after_training_background_neighbors = np.load(
+            f'{weight_difference_folder}/B_layer_after_training_background_neighbors.npy')
+        layer_b_activations_after = np.concatenate([
+            B_layer_after_training_close_neighbors,
+            B_layer_after_training_background_neighbors,
+            B_layer_after_training_center_points
+        ], axis=2)
+        layer_b_activations_after = layer_b_activations_after.reshape((50000, 11, 2))
 
         return layer_b_activations_before, layer_b_activations_after
 
     layer_b_activations_before, layer_b_activations_after = prepare_data()  # layer_b_activations_before (10000, 50, 2) layer_b_activations_after (10000, 50, 2)
-    if testMode:
-        layer_b_activations_before = layer_b_activations_before[:testBatchNum]
-        layer_b_activations_after = layer_b_activations_after[:testBatchNum]
-    # fc2_activations_
+
+    # if testMode:
+    #     layer_b_activations_before = layer_b_activations_before[:testBatchNum]  # (5, 11, 2) (batch#, 1+5+5, 2 dimensions)
+    #     layer_b_activations_after = layer_b_activations_after[:testBatchNum]  # (5, 11, 2) (batch#, 1+5+5, 2 dimensions)
+
     if not os.path.exists(f'{directory_path}/temp'):
         os.mkdir(f'{directory_path}/temp')
 
-    #
     # if not testMode:
     #     np.save(f'{directory_path}/temp/co_activations_flatten_.npy',
     #             co_activations_flatten_)  # shape = [pair#, batch#]
@@ -1210,6 +1257,7 @@ def representational_level():
             y_pred = cubic_function(x_test, *params)
 
             # Compute correlation coefficient and store it
+            # import pdb ; pdb.set_trace()
             correlation_coefficient = compute_correlation(y_test, y_pred)
             correlation_coefficients.append(correlation_coefficient)
 
@@ -1367,20 +1415,106 @@ def representational_level():
         representationChange_flatten = representationalChange.reshape(-1)
         return co_activations_flatten, representationChange_flatten
 
-    co_activations_flatten__ = []
-    representationChange_flatten__ = []
+
+    def prepare_data_for_NMPH_only_between_centerPoint(
+            curr_batch_=None,
+            layer_activations_before=None,
+            layer_activations_after=None,
+            repChange_distanceType_=None,
+            coactivation_distanceType_=None):
+        def isolate_axis(matrix):
+            """
+            Isolate the first axis of a matrix into three separate matrices.
+
+            Parameters:
+            - matrix: Input matrix with shape (11, 2)
+
+            Returns:
+            - center: Matrix with shape (1, 2)
+            - close: Matrix with shape (5, 2)
+            - background: Matrix with shape (5, 2)
+            """
+            center = matrix[:1, :]
+            close = matrix[1:6, :]
+            background = matrix[6:, :]
+            neighbor = np.concatenate([close, background], axis=0)
+
+            return center, close, background, neighbor
+
+        layer_activations_before = layer_activations_before[curr_batch_, :, :]  # (11, 2)
+        layer_activations_after = layer_activations_after[curr_batch_, :, :]  # (11, 2)
+
+        center_before, close_before, background_before, neighbor_before = isolate_axis(layer_activations_before)
+        center_after, close_after, background_after, neighbor_after = isolate_axis(layer_activations_after)
+
+        pairImg_similarity_before_repChange = np.zeros((1, 10))
+        pairImg_similarity_before_coactivation = np.zeros((1, 10))
+        def distance_between_center_and_neighbors(center, neighbor, distanceType):
+            if distanceType == 'cosine':
+                return (np.dot(center, neighbor.T) / (np.linalg.norm(center) * np.linalg.norm(neighbor, axis=1))).reshape((1, -1))
+            elif distanceType == 'dot':
+                return (np.dot(center, neighbor.T)).reshape((1, -1))
+            elif distanceType == 'correlation':
+                return (pearsonr(center, neighbor)[0]).reshape((1, -1))
+            elif distanceType == 'L1':
+                return (- np.linalg.norm(center - neighbor, ord=1)).reshape((1, -1))
+            elif distanceType == 'L2':  # euclidean
+                return (- np.linalg.norm(center - neighbor, ord=2)).reshape((1, -1))
+            elif distanceType == 'jacard':
+                return calculate_jaccard_similarity(center, neighbor)
+            else:
+                raise Exception("distanceType not found")
+
+        # between the center and each neighbors, calculate the cosine similarity of the activations before weight change
+        for curr_image in range(10): # 10 = 5 close + 5 background
+            pairImg_similarity_before_repChange[0, curr_image] = distance_between_center_and_neighbors(center_before, neighbor_before[curr_image, :], repChange_distanceType_)
+            pairImg_similarity_before_coactivation[0, curr_image] = distance_between_center_and_neighbors(center_before, neighbor_before[curr_image, :], coactivation_distanceType_)
+
+        pairImg_similarity_after_repChange = np.zeros((1, 10))
+        pairImg_similarity_after_coactivation = np.zeros((1, 10))
+        for curr_image in range(10):
+            pairImg_similarity_after_repChange[0, curr_image] = distance_between_center_and_neighbors(
+                center_after, neighbor_after[curr_image, :], repChange_distanceType_)
+            pairImg_similarity_after_coactivation[0, curr_image] = distance_between_center_and_neighbors(
+                center_after, neighbor_after[curr_image, :], coactivation_distanceType_)
+
+        # for each pair of images, calculate distance between the activations before and after weight change
+        representationalChange = pairImg_similarity_after_repChange - pairImg_similarity_before_repChange
+
+        # prepare the data for NMPH
+        if co_activationType == 'before':
+            co_activations_flatten = pairImg_similarity_before_coactivation.reshape(-1)
+        elif co_activationType == 'after':
+            co_activations_flatten = pairImg_similarity_after_coactivation.reshape(-1)
+        else:
+            raise Exception("co_activationType not found")
+        representationChange_flatten = representationalChange.reshape(-1)
+
+        return co_activations_flatten, representationChange_flatten
+
+    co_activations_flatten__ = []  # shape = [pair#, batch#]
+    representationChange_flatten__ = []  # shape = [pair#, batch#]
+    assert len(layer_b_activations_before) == 50000
     for curr_batch in tqdm(range(len(layer_b_activations_before))):
-        co_activations_flatten_, representationChange_flatten_ = prepare_data_for_NMPH(
+        # co_activations_flatten_, representationChange_flatten_ = prepare_data_for_NMPH(
+        #     curr_batch_=curr_batch,
+        #     layer_activations_before=layer_b_activations_before,
+        #     layer_activations_after=layer_b_activations_after,
+        #     repChange_distanceType_=repChange_distanceType,
+        #     coactivation_distanceType_=coactivation_distanceType
+        # )
+        co_activations_flatten_, representationChange_flatten_ = prepare_data_for_NMPH_only_between_centerPoint(
             curr_batch_=curr_batch,
             layer_activations_before=layer_b_activations_before,
             layer_activations_after=layer_b_activations_after,
             repChange_distanceType_=repChange_distanceType,
             coactivation_distanceType_=coactivation_distanceType
         )
+
         co_activations_flatten__.append(co_activations_flatten_)
         representationChange_flatten__.append(representationChange_flatten_)
 
-    def run_NMPH(co_activations_flatten, rep_changes_flatten, rows=None, cols=None, plotFig=False):
+    def run_NMPH(co_activations_flatten, rep_changes_flatten, rows=1, cols=1, plotFig=False):
         if plotFig:
             if rows is None:
                 rows = int(np.ceil(np.sqrt(len(co_activations_flatten))))
@@ -1390,6 +1524,7 @@ def representational_level():
             fig, axs = plt.subplots(rows, cols, figsize=(15, 15))  # Create a subplot matrix
             cmap = get_cmap('viridis')  # Choose a colormap (you can change 'viridis' to your preferred one)
         else:
+            fig = None
             axs = None
             cmap = None
 
@@ -1398,63 +1533,56 @@ def representational_level():
         mean_parameters = []
         x_partials = []
         y_partials = []
-        for i in tqdm(range(len(co_activations_flatten))):
-            x__ = co_activations_flatten[i]
-            y__ = rep_changes_flatten[i]
+        # for i in tqdm(range(len(co_activations_flatten))):
+        x__ = np.asarray(co_activations_flatten).reshape(-1)
+        y__ = np.asarray(rep_changes_flatten).reshape(-1)
 
-            mean_correlation_coefficient, mean_parameter, x_partial, y_partial = cubic_fit_correlation_with_params(
-                x__, y__,
-                n_splits=10,
-                random_state=42,
-                return_subset=True
-            )
-            mean_correlation_coefficients.append(mean_correlation_coefficient)
-            mean_parameters.append(mean_parameter)
-            x_partials.append(x_partial)
-            y_partials.append(y_partial)
-
-            if plotFig:
-                row = i // cols
-                col = i % cols
-
-                ax = axs[row, col]  # Select the appropriate subplot
-
-                # Color the dots based on a sequence
-                sequence = np.linspace(0, 1, len(x__))  # Create a sequence of values from 0 to 1
-                colors = cmap(sequence)  # Map the sequence to colors using the chosen colormap
-
-                ax.scatter(x__, y__, s=10, c=colors)  # 's' controls the size of the points, 'c' sets the colors
-
-                # # Add labels and a title to each subplot
-                # ax.set_title(f'pairID: {pairID}')
-
-                # Hide x and y-axis ticks and tick labels
-                # ax.set_xticks([])
-                # ax.set_yticks([])
+        mean_correlation_coefficient, mean_parameter, x_partial, y_partial = cubic_fit_correlation_with_params(
+            x__, y__,
+            n_splits=3,
+            random_state=42,
+            return_subset=True
+        )
+        mean_correlation_coefficients.append(mean_correlation_coefficient)
+        mean_parameters.append(mean_parameter)
+        x_partials.append(x_partial)
+        y_partials.append(y_partial)
 
         if plotFig:
-            plt.tight_layout()  # Adjust subplot layout for better visualization
-            plt.subplots_adjust(wspace=0, hspace=0)
-            plt.show()
+            row = 0
+            col = 0
+
+            ax = axs  #[row, col]  # Select the appropriate subplot
+
+            # Color the dots based on a sequence
+            sequence = np.linspace(0, 1, len(x__))  # Create a sequence of values from 0 to 1
+            colors = cmap(sequence)  # Map the sequence to colors using the chosen colormap
+
+            ax.scatter(x__, y__, s=10, c=colors)  # 's' controls the size of the points, 'c' sets the colors
+
+            # Create a ScalarMappable for the colorbar
+            sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=1))
+            sm.set_array([])  # Set an empty array to the ScalarMappable
+
+            colorbar = fig.colorbar(sm, ax=ax)
+            # colorbar = fig.colorbar(colors, ax=ax)
 
         mean_correlation_coefficients = np.array(mean_correlation_coefficients)
         p_value = np.nanmean(mean_correlation_coefficients < 0)
         print(f"p value = {p_value}")
 
         if plotFig:
-            fig, axs = plt.subplots(rows, cols, figsize=(15, 15))  # Create a subplot matrix
+            fig, axs = plt.subplots(1, 1, figsize=(15, 15))  # Create a subplot matrix
             cmap = get_cmap('viridis')  # Choose a colormap (you can change 'viridis' to your preferred one)
-            for i in tqdm(range(len(co_activations_flatten))):
-                row = i // cols
-                col = i % cols
+            # for i in tqdm(range(len(co_activations_flatten))):
 
-                ax = axs[row, col]  # Select the appropriate subplot
+            ax = axs  # [row, col]  # Select the appropriate subplot
 
-                x__ = co_activations_flatten[i]
-                y__ = rep_changes_flatten[i]
-                # ax.hist2d(x__, y__, bins=100, cmap=cmap)
-                # ax.hist(x__, bins=100, color='blue', alpha=0.5)
-                ax.hist(y__, bins=100, color='blue', alpha=0.5)
+            # x__ = co_activations_flatten[i]
+            # y__ = rep_changes_flatten[i]
+            # ax.hist2d(x__, y__, bins=100, cmap=cmap)
+            # ax.hist(x__, bins=100, color='blue', alpha=0.5)
+            ax.hist(y__, bins=100, color='blue', alpha=0.5)
 
         # Return mean_correlation_coefficients along with recorded_data
         return mean_correlation_coefficients, np.array(mean_parameters), np.array(x_partials), np.array(y_partials)
@@ -1465,6 +1593,152 @@ def representational_level():
             plotFig=True)
     else:
         mean_correlation_coefficients_, mean_parameters_, x_partials_, y_partials_ = run_NMPH(
-            co_activations_flatten__, representationChange_flatten__)
+            co_activations_flatten__, representationChange_flatten__,
+            plotFig=True)
 
 
+representational_level()
+
+# if repChange_distanceType_ == 'cosine':
+#     pairImg_similarity_before_repChange[0, curr_image] = (np.dot(center_before, neighbor_before[curr_image, :]) / (np.linalg.norm(center_before) * np.linalg.norm(neighbor_before[curr_image, :])))
+# elif repChange_distanceType_ == 'dot':
+#     # pairImg_similarity_before_repChange[i, j] = np.dot(layer_activations_before[i, :],
+#     #                                                    layer_activations_before[j, :])
+#     pairImg_similarity_before_repChange[0, curr_image] = np.dot(center_before, neighbor_before[curr_image, :])
+# elif repChange_distanceType_ == 'correlation':
+#     # pairImg_similarity_before_repChange[i, j] = \
+#     # pearsonr(layer_activations_before[i, :], layer_activations_before[j, :])[0]
+#     pairImg_similarity_before_repChange[0, curr_image] = pearsonr(center_before, neighbor_before[curr_image, :])[0]
+#
+# elif repChange_distanceType_ == 'L1':
+#     # pairImg_similarity_before_repChange[i, j] = - np.linalg.norm(
+#     #     layer_activations_before[i, :] - layer_activations_before[j, :],
+#     #     ord=1)
+#     pairImg_similarity_before_repChange[0, curr_image] = - np.linalg.norm(center_before - neighbor_before[curr_image, :], ord=1)
+#
+# elif repChange_distanceType_ == 'L2':  # euclidean
+#     # pairImg_similarity_before_repChange[i, j] = - np.linalg.norm(
+#     #     layer_activations_before[i, :] - layer_activations_before[j, :],
+#     #     ord=2)
+#     pairImg_similarity_before_repChange[0, curr_image] = - np.linalg.norm(center_before - neighbor_before[curr_image, :], ord=2)
+# elif repChange_distanceType_ == 'jacard':
+#     # pairImg_similarity_before_repChange[i, j] = calculate_jaccard_similarity(
+#     #     layer_activations_before[i, :], layer_activations_before[j, :])
+#     pairImg_similarity_before_repChange[0, curr_image] = calculate_jaccard_similarity(center_before, neighbor_before[curr_image, :])
+# else:
+#     raise Exception("distanceType not found")
+# batchSize = layer_activations_before.shape[0]
+#
+# # for each pair of images, calculate the cosine similarity of the activations before weight change
+# pairImg_similarity_before_repChange = np.zeros((batchSize, batchSize))
+# pairImg_similarity_before_coactivation = np.zeros((batchSize, batchSize))
+# for i in range(batchSize):
+#     for j in range(batchSize):
+#         if repChange_distanceType_ == 'cosine':
+#             pairImg_similarity_before_repChange[i, j] = np.dot(layer_activations_before[i, :],
+#                                                                layer_activations_before[j, :]) / (
+#                                                                 np.linalg.norm(layer_activations_before[i,
+#                                                                                :]) * np.linalg.norm(
+#                                                             layer_activations_before[j, :]))
+#         elif repChange_distanceType_ == 'dot':
+#             pairImg_similarity_before_repChange[i, j] = np.dot(layer_activations_before[i, :],
+#                                                                layer_activations_before[j, :])
+#         elif repChange_distanceType_ == 'correlation':
+#             pairImg_similarity_before_repChange[i, j] = \
+#             pearsonr(layer_activations_before[i, :], layer_activations_before[j, :])[0]
+#         elif repChange_distanceType_ == 'L1':
+#             pairImg_similarity_before_repChange[i, j] = - np.linalg.norm(
+#                 layer_activations_before[i, :] - layer_activations_before[j, :],
+#                 ord=1)
+#         elif repChange_distanceType_ == 'L2':  # euclidean
+#             pairImg_similarity_before_repChange[i, j] = - np.linalg.norm(
+#                 layer_activations_before[i, :] - layer_activations_before[j, :],
+#                 ord=2)
+#         elif repChange_distanceType_ == 'jacard':
+#             pairImg_similarity_before_repChange[i, j] = calculate_jaccard_similarity(
+#                 layer_activations_before[i, :], layer_activations_before[j, :])
+#         else:
+#             raise Exception("distanceType not found")
+#
+#         if coactivation_distanceType_ == 'cosine':
+#             pairImg_similarity_before_coactivation[i, j] = np.dot(layer_activations_before[i, :],
+#                                                                   layer_activations_before[j, :]) / (
+#                                                                    np.linalg.norm(layer_activations_before[i,
+#                                                                                   :]) * np.linalg.norm(
+#                                                                layer_activations_before[j, :]))
+#         elif coactivation_distanceType_ == 'dot':
+#             pairImg_similarity_before_coactivation[i, j] = np.dot(layer_activations_before[i, :],
+#                                                                   layer_activations_before[j, :])
+#         elif coactivation_distanceType_ == 'L1':
+#             pairImg_similarity_before_coactivation[i, j] = - np.linalg.norm(
+#                 layer_activations_before[i, :] - layer_activations_before[j, :],
+#                 ord=1)
+#         elif coactivation_distanceType_ == 'L2':  # euclidean
+#             pairImg_similarity_before_coactivation[i, j] = - np.linalg.norm(
+#                 layer_activations_before[i, :] - layer_activations_before[j, :],
+#                 ord=2)
+#         elif coactivation_distanceType_ == 'jacard':
+#             pairImg_similarity_before_coactivation[i, j] = calculate_jaccard_similarity(
+#                 layer_activations_before[i, :], layer_activations_before[j, :])
+#         elif coactivation_distanceType_ == 'correlation':
+#             pairImg_similarity_before_coactivation[i, j] = \
+#             pearsonr(layer_activations_before[i, :], layer_activations_before[j, :])[0]
+#         else:
+#             raise Exception("distanceType not found")
+#
+# # for each pair of images, calculate the cosine similarity of the activations after weight change
+# pairImg_similarity_after_repChange = np.zeros((batchSize, batchSize))
+# pairImg_similarity_after_coactivation = np.zeros((batchSize, batchSize))
+# for i in range(batchSize):
+#     for j in range(batchSize):
+#         if repChange_distanceType_ == 'cosine':
+#             pairImg_similarity_after_repChange[i, j] = np.dot(layer_activations_after[i, :],
+#                                                               layer_activations_after[j, :]) / (
+#                                                                np.linalg.norm(layer_activations_after[i,
+#                                                                               :]) * np.linalg.norm(
+#                                                            layer_activations_after[j, :]))
+#         elif repChange_distanceType_ == 'dot':
+#             pairImg_similarity_after_repChange[i, j] = np.dot(layer_activations_after[i, :],
+#                                                               layer_activations_after[j, :])
+#         elif repChange_distanceType_ == 'correlation':
+#             pairImg_similarity_after_repChange[i, j] = \
+#             pearsonr(layer_activations_after[i, :], layer_activations_after[j, :])[0]
+#         elif repChange_distanceType_ == 'L1':
+#             pairImg_similarity_after_repChange[i, j] = - np.linalg.norm(
+#                 layer_activations_after[i, :] - layer_activations_after[j, :],
+#                 ord=1)
+#         elif repChange_distanceType_ == 'L2':  # euclidean
+#             pairImg_similarity_after_repChange[i, j] = - np.linalg.norm(
+#                 layer_activations_after[i, :] - layer_activations_after[j, :],
+#                 ord=2)
+#         elif repChange_distanceType_ == 'jacard':
+#             pairImg_similarity_after_repChange[i, j] = calculate_jaccard_similarity(
+#                 layer_activations_after[i, :], layer_activations_after[j, :])
+#         else:
+#             raise Exception("distanceType not found")
+#
+#         if coactivation_distanceType_ == 'cosine':
+#             pairImg_similarity_after_coactivation[i, j] = np.dot(layer_activations_after[i, :],
+#                                                                  layer_activations_after[j, :]) / (
+#                                                                   np.linalg.norm(layer_activations_after[i,
+#                                                                                  :]) * np.linalg.norm(
+#                                                               layer_activations_after[j, :]))
+#         elif coactivation_distanceType_ == 'dot':
+#             pairImg_similarity_after_coactivation[i, j] = np.dot(layer_activations_after[i, :],
+#                                                                  layer_activations_after[j, :])
+#         elif coactivation_distanceType_ == 'L1':
+#             pairImg_similarity_after_coactivation[i, j] = - np.linalg.norm(
+#                 layer_activations_after[i, :] - layer_activations_after[j, :],
+#                 ord=1)
+#         elif coactivation_distanceType_ == 'L2':  # euclidean
+#             pairImg_similarity_after_coactivation[i, j] = - np.linalg.norm(
+#                 layer_activations_after[i, :] - layer_activations_after[j, :],
+#                 ord=2)
+#         elif coactivation_distanceType_ == 'jacard':
+#             pairImg_similarity_after_coactivation[i, j] = calculate_jaccard_similarity(
+#                 layer_activations_after[i, :], layer_activations_after[j, :])
+#         elif coactivation_distanceType_ == 'correlation':
+#             pairImg_similarity_after_coactivation[i, j] = \
+#             pearsonr(layer_activations_after[i, :], layer_activations_after[j, :])[0]
+#         else:
+#             raise Exception("distanceType not found")

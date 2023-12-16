@@ -490,34 +490,50 @@ Next step is to implement the test_single_dotsNeighbotSingleBatch() function to 
     design the output of test_single_dotsNeighbotSingleBatch should be
         for each batch:
             layer activation (A layer = penultimate layer, B layer = last layer)
+                A layer ; before training ; center points                
                 A layer ; before training ; close neighbors
-                A layer ; after training ; close neighbors
                 A layer ; before training ; background neighbors
-                A layer ; after training ; background neighbors                
+                B layer ; before training ; center points
                 B layer ; before training ; close neighbors
-                B layer ; after training ; close neighbors
                 B layer ; before training ; background neighbors
+                
+                A layer ; after training ; center points
+                A layer ; after training ; close neighbors
+                A layer ; after training ; background neighbors
+                B layer ; after training ; center points                
+                B layer ; after training ; close neighbors
                 B layer ; after training ; background neighbors
             weight change  
         
     design the input of NMPH_synaptic should be
+        A layer ; before training ; center points
         A layer ; before training ; close neighbors
         A layer ; before training ; background neighbors
+        B layer ; before training ; center points
         B layer ; before training ; close neighbors
         B layer ; before training ; background neighbors
         weight change
         
     design the input of NMPH_representational should be
+        A layer ; before training ; center points
         A layer ; before training ; close neighbors
         A layer ; before training ; background neighbors
-        A layer ; after training ; close neighbors
-        A layer ; after training ; background neighbors
+        B layer ; before training ; center points        
         B layer ; before training ; close neighbors
         B layer ; before training ; background neighbors
+        
+        A layer ; after training ; center points
+        A layer ; after training ; close neighbors
+        A layer ; after training ; background neighbors
+        B layer ; after training ; center points
         B layer ; after training ; close neighbors
         B layer ; after training ; background neighbors
         
 
+The relative distance is always scalling up since manifold expansion is always happening right now.
+    Would weight regularization help?
+    Would increasing power of the pull force help?
+    Would increasing the number of close neighbors help?
 
 result: (c, b) # c: number of close neighbors, b: number of background neighbors 
     (0, 1) gets normal result,
@@ -552,3 +568,5 @@ trash bin:
     this simulates the BCM shifting threshold effect and also the NMPH curve scaling effect.
     I found that different number of close or background neighbors makes the model collapse or not. Increasing b and c makes it easier to collapse. I don't know why.
 """
+
+
