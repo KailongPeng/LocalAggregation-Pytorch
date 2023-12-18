@@ -579,3 +579,149 @@ trash bin:
 """
 
 
+# def prepare_data_for_NMPH(
+#         curr_batch_=None,
+#         layer_activations_before=None,
+#         layer_activations_after=None,
+#         repChange_distanceType_=None,
+#         coactivation_distanceType_=None):
+#     layer_activations_before = layer_activations_before[curr_batch_, :, :]  # (50, 2)
+#     layer_activations_after = layer_activations_after[curr_batch_, :, :]  # (50, 2)
+#
+#     batchSize = layer_activations_before.shape[0]
+#
+#     # for each pair of images, calculate the cosine similarity of the activations before weight change
+#     pairImg_similarity_before_repChange = np.zeros((batchSize, batchSize))
+#     pairImg_similarity_before_coactivation = np.zeros((batchSize, batchSize))
+#     for i in range(batchSize):
+#         for j in range(batchSize):
+#             if repChange_distanceType_ == 'cosine':
+#                 pairImg_similarity_before_repChange[i, j] = np.dot(layer_activations_before[i, :],
+#                                                                    layer_activations_before[j, :]) / (
+#                                                                     np.linalg.norm(layer_activations_before[i,
+#                                                                                    :]) * np.linalg.norm(
+#                                                                 layer_activations_before[j, :]))
+#             elif repChange_distanceType_ == 'dot':
+#                 pairImg_similarity_before_repChange[i, j] = np.dot(layer_activations_before[i, :],
+#                                                                    layer_activations_before[j, :])
+#             elif repChange_distanceType_ == 'correlation':
+#                 pairImg_similarity_before_repChange[i, j] = \
+#                     pearsonr(layer_activations_before[i, :], layer_activations_before[j, :])[0]
+#             elif repChange_distanceType_ == 'L1':
+#                 pairImg_similarity_before_repChange[i, j] = - np.linalg.norm(
+#                     layer_activations_before[i, :] - layer_activations_before[j, :],
+#                     ord=1)
+#             elif repChange_distanceType_ == 'L2':  # euclidean
+#                 pairImg_similarity_before_repChange[i, j] = - np.linalg.norm(
+#                     layer_activations_before[i, :] - layer_activations_before[j, :],
+#                     ord=2)
+#             elif repChange_distanceType_ == 'jacard':
+#                 pairImg_similarity_before_repChange[i, j] = calculate_jaccard_similarity(
+#                     layer_activations_before[i, :], layer_activations_before[j, :])
+#             else:
+#                 raise Exception("distanceType not found")
+#
+#             if coactivation_distanceType_ == 'cosine':
+#                 pairImg_similarity_before_coactivation[i, j] = np.dot(layer_activations_before[i, :],
+#                                                                       layer_activations_before[j, :]) / (
+#                                                                        np.linalg.norm(layer_activations_before[i,
+#                                                                                       :]) * np.linalg.norm(
+#                                                                    layer_activations_before[j, :]))
+#             elif coactivation_distanceType_ == 'dot':
+#                 pairImg_similarity_before_coactivation[i, j] = np.dot(layer_activations_before[i, :],
+#                                                                       layer_activations_before[j, :])
+#             elif coactivation_distanceType_ == 'L1':
+#                 pairImg_similarity_before_coactivation[i, j] = - np.linalg.norm(
+#                     layer_activations_before[i, :] - layer_activations_before[j, :],
+#                     ord=1)
+#             elif coactivation_distanceType_ == 'L2':  # euclidean
+#                 pairImg_similarity_before_coactivation[i, j] = - np.linalg.norm(
+#                     layer_activations_before[i, :] - layer_activations_before[j, :],
+#                     ord=2)
+#             elif coactivation_distanceType_ == 'jacard':
+#                 pairImg_similarity_before_coactivation[i, j] = calculate_jaccard_similarity(
+#                     layer_activations_before[i, :], layer_activations_before[j, :])
+#             elif coactivation_distanceType_ == 'correlation':
+#                 pairImg_similarity_before_coactivation[i, j] = \
+#                     pearsonr(layer_activations_before[i, :], layer_activations_before[j, :])[0]
+#             else:
+#                 raise Exception("distanceType not found")
+#
+#     # for each pair of images, calculate the cosine similarity of the activations after weight change
+#     pairImg_similarity_after_repChange = np.zeros((batchSize, batchSize))
+#     pairImg_similarity_after_coactivation = np.zeros((batchSize, batchSize))
+#     for i in range(batchSize):
+#         for j in range(batchSize):
+#             if repChange_distanceType_ == 'cosine':
+#                 pairImg_similarity_after_repChange[i, j] = np.dot(layer_activations_after[i, :],
+#                                                                   layer_activations_after[j, :]) / (
+#                                                                    np.linalg.norm(layer_activations_after[i,
+#                                                                                   :]) * np.linalg.norm(
+#                                                                layer_activations_after[j, :]))
+#             elif repChange_distanceType_ == 'dot':
+#                 pairImg_similarity_after_repChange[i, j] = np.dot(layer_activations_after[i, :],
+#                                                                   layer_activations_after[j, :])
+#             elif repChange_distanceType_ == 'correlation':
+#                 pairImg_similarity_after_repChange[i, j] = \
+#                     pearsonr(layer_activations_after[i, :], layer_activations_after[j, :])[0]
+#             elif repChange_distanceType_ == 'L1':
+#                 pairImg_similarity_after_repChange[i, j] = - np.linalg.norm(
+#                     layer_activations_after[i, :] - layer_activations_after[j, :],
+#                     ord=1)
+#             elif repChange_distanceType_ == 'L2':  # euclidean
+#                 pairImg_similarity_after_repChange[i, j] = - np.linalg.norm(
+#                     layer_activations_after[i, :] - layer_activations_after[j, :],
+#                     ord=2)
+#             elif repChange_distanceType_ == 'jacard':
+#                 pairImg_similarity_after_repChange[i, j] = calculate_jaccard_similarity(
+#                     layer_activations_after[i, :], layer_activations_after[j, :])
+#             else:
+#                 raise Exception("distanceType not found")
+#
+#             if coactivation_distanceType_ == 'cosine':
+#                 pairImg_similarity_after_coactivation[i, j] = np.dot(layer_activations_after[i, :],
+#                                                                      layer_activations_after[j, :]) / (
+#                                                                       np.linalg.norm(layer_activations_after[i,
+#                                                                                      :]) * np.linalg.norm(
+#                                                                   layer_activations_after[j, :]))
+#             elif coactivation_distanceType_ == 'dot':
+#                 pairImg_similarity_after_coactivation[i, j] = np.dot(layer_activations_after[i, :],
+#                                                                      layer_activations_after[j, :])
+#             elif coactivation_distanceType_ == 'L1':
+#                 pairImg_similarity_after_coactivation[i, j] = - np.linalg.norm(
+#                     layer_activations_after[i, :] - layer_activations_after[j, :],
+#                     ord=1)
+#             elif coactivation_distanceType_ == 'L2':  # euclidean
+#                 pairImg_similarity_after_coactivation[i, j] = - np.linalg.norm(
+#                     layer_activations_after[i, :] - layer_activations_after[j, :],
+#                     ord=2)
+#             elif coactivation_distanceType_ == 'jacard':
+#                 pairImg_similarity_after_coactivation[i, j] = calculate_jaccard_similarity(
+#                     layer_activations_after[i, :], layer_activations_after[j, :])
+#             elif coactivation_distanceType_ == 'correlation':
+#                 pairImg_similarity_after_coactivation[i, j] = \
+#                     pearsonr(layer_activations_after[i, :], layer_activations_after[j, :])[0]
+#             else:
+#                 raise Exception("distanceType not found")
+#
+#     # for each pair of images, calculate distance between the activations before and after weight change
+#     representationalChange = pairImg_similarity_after_repChange - pairImg_similarity_before_repChange
+#
+#     # prepare the data for NMPH
+#     if co_activationType == 'before':
+#         co_activations_flatten = pairImg_similarity_before_coactivation.reshape(-1)
+#     elif co_activationType == 'after':
+#         co_activations_flatten = pairImg_similarity_after_coactivation.reshape(-1)
+#     else:
+#         raise Exception("co_activationType not found")
+#     representationChange_flatten = representationalChange.reshape(-1)
+#     return co_activations_flatten, representationChange_flatten
+#
+
+# co_activations_flatten_, representationChange_flatten_ = prepare_data_for_NMPH(
+#     curr_batch_=curr_batch,
+#     layer_activations_before=layer_b_activations_before,
+#     layer_activations_after=layer_b_activations_after,
+#     repChange_distanceType_=repChange_distanceType,
+#     coactivation_distanceType_=coactivation_distanceType
+# )
