@@ -531,9 +531,18 @@ Next step is to implement the test_single_dotsNeighbotSingleBatch() function to 
         
 
 The relative distance is always scalling up since manifold expansion is always happening right now.
-    Would weight regularization help?
+    Would weight regularization help? Force weight to be small.
+        weight regularization help, but it is hard to control the degree.
+    invent a new loss to control the range explicitly. This works perfectly.
+        range_loss
+    Batch Norm ? Layer norm
+        Neithor of them helps.
+    
     Would increasing power of the pull force help?
     Would increasing the number of close neighbors help?
+    
+    
+Next step is to look into the behavior of the cross entropy loss synaptic and representational level NMPH result.
 
 result: (c, b) # c: number of close neighbors, b: number of background neighbors 
     (0, 1) gets normal result,

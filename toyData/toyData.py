@@ -307,6 +307,7 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
     import matplotlib.pyplot as plt
     import numpy as np
     from tqdm import tqdm
+    import torch.nn.init as init
 
     # set random seed
     np.random.seed(42)
@@ -374,45 +375,109 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
             return x
 
     class SimpleFeedforwardNN(nn.Module):
-        def __init__(self):
+        def __init__(self, threeD_input=False, use_batch_norm=False, use_layer_norm=False, init_zero_weights=False):
             super(SimpleFeedforwardNN, self).__init__()
+            self.use_batch_norm = use_batch_norm
+            self.use_layer_norm = use_layer_norm
+
             if threeD_input:
                 self.input_layer = nn.Linear(3, 64)
             else:
                 self.input_layer = nn.Linear(2, 64)  # first layer weight
+            if init_zero_weights:
+                init.zeros_(self.input_layer.weight)  # Initialize input layer weights to zero
+                init.zeros_(self.input_layer.bias)  # Initialize input layer biases to zero
+
             self.hidden_layer1 = nn.Linear(64, 32)  #  second layer weight
+            if init_zero_weights:
+                init.zeros_(self.hidden_layer1.weight)  # Initialize hidden layer weights to zero
+                init.zeros_(self.hidden_layer1.bias)  # Initialize hidden layer biases to zero
             self.hidden_layer2 = nn.Linear(32, 2)  # final layer is 2D
+            if init_zero_weights:
+                init.zeros_(self.hidden_layer2.weight)  # Initialize hidden layer weights to zero
+                init.zeros_(self.hidden_layer2.bias)  # Initialize hidden layer biases to zero
+
+            if self.use_batch_norm:
+                self.batch_norm1 = nn.BatchNorm1d(64)
+                self.batch_norm2 = nn.BatchNorm1d(32)
+            elif self.use_layer_norm:
+                self.layer_norm1 = nn.LayerNorm(64)
+                self.layer_norm2 = nn.LayerNorm(32)
 
         def forward(self, x):
             # x = (50,2)  input
             x = torch.relu(self.input_layer(x))  # x = (50,64)  first layer activation
+            if self.use_batch_norm:
+                x = self.batch_norm1(x)
+            elif self.use_layer_norm:
+                x = self.layer_norm1(x)
+
             # self.penultimate_layer_activation = self.hidden_layer1(x).detach().numpy()
             x = torch.relu(self.hidden_layer1(x))  # x = (50,32)  second layer activation (penultimate layer)
+
+            if self.use_batch_norm:
+                x = self.batch_norm2(x)
+            elif self.use_layer_norm:
+                x = self.layer_norm2(x)
+
             self.penultimate_layer_activation = x.detach().numpy()
             x = self.hidden_layer2(x)  # x = (50,2) final layer activation
             self.final_layer_activation = x.detach().numpy()
             return x
 
     # Define local aggregation loss function
-    def local_aggregation_loss(embeddings, close_neighbors, background_neighbors):
+    def local_aggregation_loss(embeddings_center, close_neighbors, background_neighbors, weight_decay_rate=None, model=None,
+                               embeddings_all=None,
+                               initial_x_range_0=None, initial_y_range_0=None):
         # Compute pairwise distances between embeddings and close neighbors  # embeddings(50,2) close_neighbors(50,10,2) -> (50,10)
         if close_neighbors.shape[1] == 0:
             close_distances = torch.tensor(1e-6)
         else:
-            expanded_embeddings = embeddings.unsqueeze(1).expand_as(
+            expanded_embeddings = embeddings_center.unsqueeze(1).expand_as(
                 close_neighbors)  # Expand the embeddings to have the same dimensions as close_neighbors
             close_distances = torch.norm(expanded_embeddings - close_neighbors,
                                          dim=2)  # Calculate the Euclidean distance
 
         # Compute pairwise distances between embeddings and background neighbors
-        expanded_embeddings = embeddings.unsqueeze(1).expand_as(
+        expanded_embeddings = embeddings_center.unsqueeze(1).expand_as(
             background_neighbors)  # Expand the embeddings to have the same dimensions as background_neighbors
         background_distances = torch.norm(expanded_embeddings - background_neighbors,
                                           dim=2)  # Calculate the Euclidean distance
 
         # Compute loss based on distances
         loss = torch.mean(torch.log(1 + torch.exp(integrationForceScale * close_distances - background_distances)))
-        # import pdb; pdb.set_trace()
+
+        if weight_decay_rate is not None and model is not None:
+            # Weight decay
+            weight_decay_loss = 0
+            for param in model.parameters():
+                weight_decay_loss += torch.sum(param ** 2)
+
+            loss += weight_decay_rate * weight_decay_loss
+
+        if initial_x_range_0 is not None and initial_y_range_0 is not None and embeddings_all is not None:
+            # Compute current range
+            current_x_range = (torch.min(embeddings_all[:, 0]), torch.max(embeddings_all[:, 0]))
+            current_y_range = (torch.min(embeddings_all[:, 1]), torch.max(embeddings_all[:, 1]))
+            # Compute loss with (current_x_range, current_y_range) and initial_range_0
+            # rang_loss = torch.mean(
+            #     torch.log(1 + torch.exp((current_x_range[0] - initial_x_range_0[0]) - (
+            #             current_x_range[1] - initial_x_range_0[1])))) + torch.mean(
+            #                 torch.log(1 + torch.exp((current_y_range[0] - initial_y_range_0[0]) - (
+            #                           current_y_range[1] - initial_y_range_0[1]))))  # y range
+
+
+            # range_loss = (current_x_range[0] - initial_x_range_0[0])**2 + (current_x_range[1] - initial_x_range_0[1])**2 + \
+            #             (current_y_range[0] - initial_y_range_0[0])**2 + (current_y_range[1] - initial_y_range_0[1])**2
+
+            # Assuming initial_x_range_0 and initial_y_range_0 are tensors
+            range_loss = torch.mean((current_x_range[0] - initial_x_range_0[0]) ** 2 +
+                                    (current_x_range[1] - initial_x_range_0[1]) ** 2 +
+                                    (current_y_range[0] - initial_y_range_0[0]) ** 2 +
+                                    (current_y_range[1] - initial_y_range_0[1]) ** 2)
+            # import pdb; pdb.set_trace()
+            loss += range_loss
+
         return loss
 
     # Define close and background neighbors
@@ -485,7 +550,9 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
     # Define neural network and optimizer
-    net = SimpleFeedforwardNN()
+    net = SimpleFeedforwardNN(threeD_input=threeD_input,
+                              init_zero_weights=False,
+                              use_batch_norm=False, use_layer_norm=False)  # It was found that layer norm is much better than batch norm.
     learning_rate = 0.05
     optimizer = optim.SGD(net.parameters(), lr=learning_rate)
 
@@ -591,9 +658,19 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
             else:
                 ax = None
 
-
+            if epoch == 0 and curr_batch == 0:
+                # import pdb ; pdb.set_trace()
+                initial_x_range_0 = (torch.min(embeddings_all[:, 0]).item(),
+                                     torch.max(embeddings_all[:, 0]).item())
+                initial_y_range_0 = (torch.min(embeddings_all[:, 1]).item(),
+                                     torch.max(embeddings_all[:, 1]).item())
+            else:
+                pass
             # Compute loss
-            loss = local_aggregation_loss(embeddings_ceterPoint, close_neighbors, background_neighbors)
+            loss = local_aggregation_loss(embeddings_ceterPoint, close_neighbors, background_neighbors,
+                                          weight_decay_rate=0.001,
+                                          model=net, embeddings_all=embeddings_all,
+                                          initial_x_range_0=initial_x_range_0, initial_y_range_0=initial_y_range_0)
             # Backward pass
             loss.backward()
             # Update parameters
