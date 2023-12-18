@@ -167,11 +167,30 @@ def trainWith_crossEntropyLoss(threeD_input=False, remove_boundary_dots=False):
             x = torch.relu(self.input_layer(x)) # First layer activation
             x = torch.relu(self.hidden_layer1(x)) # Second layer activation
 
-            self.penultimate_layer_activation = self.hidden_layer2(x).detach().numpy()
+            self.penultimate_layer_activation = self.hidden_layer2(x)
 
             x = torch.relu(self.hidden_layer2(x)) # Third layer activation
             x = self.output_layer(x) # Output layer activation
             return x
+
+    # Define weight decay loss function
+    def weight_decay_loss(model, weight_decay_rate=None):
+        loss = 0
+        for param in model.parameters():
+            loss += torch.sum(param ** 2)
+        return weight_decay_rate * loss
+
+    # Define range loss function
+    def range_loss(embeddings_all, initial_x_range_0, initial_y_range_0):
+        current_x_range = (torch.min(embeddings_all[:, 0]), torch.max(embeddings_all[:, 0]))
+        current_y_range = (torch.min(embeddings_all[:, 1]), torch.max(embeddings_all[:, 1]))
+
+        loss = torch.mean((current_x_range[0] - initial_x_range_0[0]) ** 2 +
+                          (current_x_range[1] - initial_x_range_0[1]) ** 2 +
+                          (current_y_range[0] - initial_y_range_0[0]) ** 2 +
+                          (current_y_range[1] - initial_y_range_0[1]) ** 2)
+
+        return loss
 
     # Instantiate the neural network model
     model = SimpleFeedforwardNN()
@@ -211,16 +230,35 @@ def trainWith_crossEntropyLoss(threeD_input=False, remove_boundary_dots=False):
 
         # Forward pass for training data
         output_train = model(input_train)
-        loss_train = criterion(output_train, labels_train)
+        loss_crossEntropy = criterion(output_train, labels_train)
+
+        embeddings_all = model.penultimate_layer_activation
+
+        if epoch == 0:
+            initial_x_range_0 = (torch.min(embeddings_all[:, 0]).item(),
+                                 torch.max(embeddings_all[:, 0]).item())
+            initial_y_range_0 = (torch.min(embeddings_all[:, 1]).item(),
+                                 torch.max(embeddings_all[:, 1]).item())
+        else:
+            pass
+
+        # Compute weight decay loss
+        loss_weightDecay = weight_decay_loss(model, weight_decay_rate=0.0001)
+
+        # Compute range loss
+        loss_range = range_loss(embeddings_all, initial_x_range_0, initial_y_range_0)
+
+        # Compute total loss
+        loss_train = loss_crossEntropy #+ loss_weightDecay + loss_range
 
         # record initial and final latent space points
         if epoch == 0:
             # record the penultimate layer activation
-            initial_v_points.append(model.penultimate_layer_activation)
+            initial_v_points.append(model.penultimate_layer_activation.detach().numpy())
             initial_v_labels.append(labels_train)
         if epoch == total_epochs - 1:
             # record the penultimate layer activation
-            final_v_points.append(model.penultimate_layer_activation)
+            final_v_points.append(model.penultimate_layer_activation.detach().numpy())
             final_v_labels.append(labels_train)
 
         # Backward pass and optimization
@@ -277,10 +315,13 @@ def trainWith_crossEntropyLoss(threeD_input=False, remove_boundary_dots=False):
     plt.show()
 
 
-# trainWith_crossEntropyLoss(threeD_input=False, remove_boundary_dots=True)  # remove_boundary_dots=True/False: Both works, but not stably, need to run from line 1 somehow.
+# trainWith_crossEntropyLoss(threeD_input=False, remove_boundary_dots=False)  # remove_boundary_dots=True/False: Both works, but not stably, need to run from line 1 somehow.
 
 
-def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dots=False, integrationForceScale=None):
+def test_multiple_dotsNeighbotSingleBatch(threeD_input=None,
+                                          remove_boundary_dots=False,
+                                          integrationForceScale=None,
+                                          total_epochs=50):
     """
     design the output of test_single_dotsNeighbotSingleBatch should be
         for each batch:
@@ -323,7 +364,7 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
 
     # Define batch size, number of close neighbors, and number of background neighbors
     batch_size = 1
-    total_epochs = 50
+
     if integrationForceScale is None:
         integrationForceScale = 1
     (num_close, num_background) = (5, 5)  # c: number of close neighbors, b: number of background neighbors
@@ -426,9 +467,11 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
             return x
 
     # Define local aggregation loss function
-    def local_aggregation_loss(embeddings_center, close_neighbors, background_neighbors, weight_decay_rate=None, model=None,
-                               embeddings_all=None,
-                               initial_x_range_0=None, initial_y_range_0=None):
+    def local_aggregation_loss(embeddings_center, close_neighbors, background_neighbors, integrationForceScale=1.0,
+                               # weight_decay_rate=None, model=None,
+                               # embeddings_all=None,
+                               # initial_x_range_0=None, initial_y_range_0=None
+                               ):
         # Compute pairwise distances between embeddings and close neighbors  # embeddings(50,2) close_neighbors(50,10,2) -> (50,10)
         if close_neighbors.shape[1] == 0:
             close_distances = torch.tensor(1e-6)
@@ -447,36 +490,45 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
         # Compute loss based on distances
         loss = torch.mean(torch.log(1 + torch.exp(integrationForceScale * close_distances - background_distances)))
 
-        if weight_decay_rate is not None and model is not None:
-            # Weight decay
-            weight_decay_loss = 0
-            for param in model.parameters():
-                weight_decay_loss += torch.sum(param ** 2)
+        # if weight_decay_rate is not None and model is not None:
+        #     # Weight decay
+        #     weight_decay_loss = 0
+        #     for param in model.parameters():
+        #         weight_decay_loss += torch.sum(param ** 2)
+        #
+        #     loss += weight_decay_rate * weight_decay_loss
+        #
+        # if initial_x_range_0 is not None and initial_y_range_0 is not None and embeddings_all is not None:
+        #     # Compute current range
+        #     current_x_range = (torch.min(embeddings_all[:, 0]), torch.max(embeddings_all[:, 0]))
+        #     current_y_range = (torch.min(embeddings_all[:, 1]), torch.max(embeddings_all[:, 1]))
+        #
+        #     # Assuming initial_x_range_0 and initial_y_range_0 are tensors
+        #     range_loss = torch.mean((current_x_range[0] - initial_x_range_0[0]) ** 2 +
+        #                             (current_x_range[1] - initial_x_range_0[1]) ** 2 +
+        #                             (current_y_range[0] - initial_y_range_0[0]) ** 2 +
+        #                             (current_y_range[1] - initial_y_range_0[1]) ** 2)
+        #
+        #     loss += range_loss
 
-            loss += weight_decay_rate * weight_decay_loss
+        return loss
 
-        if initial_x_range_0 is not None and initial_y_range_0 is not None and embeddings_all is not None:
-            # Compute current range
-            current_x_range = (torch.min(embeddings_all[:, 0]), torch.max(embeddings_all[:, 0]))
-            current_y_range = (torch.min(embeddings_all[:, 1]), torch.max(embeddings_all[:, 1]))
-            # Compute loss with (current_x_range, current_y_range) and initial_range_0
-            # rang_loss = torch.mean(
-            #     torch.log(1 + torch.exp((current_x_range[0] - initial_x_range_0[0]) - (
-            #             current_x_range[1] - initial_x_range_0[1])))) + torch.mean(
-            #                 torch.log(1 + torch.exp((current_y_range[0] - initial_y_range_0[0]) - (
-            #                           current_y_range[1] - initial_y_range_0[1]))))  # y range
+    # Define weight decay loss function
+    def weight_decay_loss(model, weight_decay_rate=None):
+        loss = 0
+        for param in model.parameters():
+            loss += torch.sum(param ** 2)
+        return weight_decay_rate * loss
 
+    # Define range loss function
+    def range_loss(embeddings_all, initial_x_range_0, initial_y_range_0):
+        current_x_range = (torch.min(embeddings_all[:, 0]), torch.max(embeddings_all[:, 0]))
+        current_y_range = (torch.min(embeddings_all[:, 1]), torch.max(embeddings_all[:, 1]))
 
-            # range_loss = (current_x_range[0] - initial_x_range_0[0])**2 + (current_x_range[1] - initial_x_range_0[1])**2 + \
-            #             (current_y_range[0] - initial_y_range_0[0])**2 + (current_y_range[1] - initial_y_range_0[1])**2
-
-            # Assuming initial_x_range_0 and initial_y_range_0 are tensors
-            range_loss = torch.mean((current_x_range[0] - initial_x_range_0[0]) ** 2 +
-                                    (current_x_range[1] - initial_x_range_0[1]) ** 2 +
-                                    (current_y_range[0] - initial_y_range_0[0]) ** 2 +
-                                    (current_y_range[1] - initial_y_range_0[1]) ** 2)
-            # import pdb; pdb.set_trace()
-            loss += range_loss
+        loss = torch.mean((current_x_range[0] - initial_x_range_0[0]) ** 2 +
+                          (current_x_range[1] - initial_x_range_0[1]) ** 2 +
+                          (current_y_range[0] - initial_y_range_0[0]) ** 2 +
+                          (current_y_range[1] - initial_y_range_0[1]) ** 2)
 
         return loss
 
@@ -659,24 +711,38 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
                 ax = None
 
             if epoch == 0 and curr_batch == 0:
-                # import pdb ; pdb.set_trace()
                 initial_x_range_0 = (torch.min(embeddings_all[:, 0]).item(),
                                      torch.max(embeddings_all[:, 0]).item())
                 initial_y_range_0 = (torch.min(embeddings_all[:, 1]).item(),
                                      torch.max(embeddings_all[:, 1]).item())
             else:
                 pass
-            # Compute loss
-            loss = local_aggregation_loss(embeddings_ceterPoint, close_neighbors, background_neighbors,
-                                          weight_decay_rate=0.001,
-                                          model=net, embeddings_all=embeddings_all,
-                                          initial_x_range_0=initial_x_range_0, initial_y_range_0=initial_y_range_0)
+
+            # Call local_aggregation_loss, weight_decay_loss, and range_loss functions
+            loss_local_aggregation  = local_aggregation_loss(
+                embeddings_ceterPoint, close_neighbors, background_neighbors
+            )
+                # weight_decay_rate=0.001,
+                # model=net, embeddings_all=embeddings_all,
+                # initial_x_range_0=initial_x_range_0, initial_y_range_0=initial_y_range_0
+
+            loss_weight_decay = weight_decay_loss(net, weight_decay_rate=0.001)  # Adjust weight decay rate as needed
+
+            loss_range = range_loss(
+                embeddings_all=embeddings_all,  # Provide actual embeddings_all
+                initial_x_range_0=initial_x_range_0,  # Provide actual initial_x_range_0
+                initial_y_range_0=initial_y_range_0  # Provide actual initial_y_range_0
+            )
+
+            # Combine losses
+            total_loss = loss_local_aggregation + loss_weight_decay + loss_range
+
             # Backward pass
-            loss.backward()
+            total_loss.backward()
             # Update parameters
             optimizer.step()
 
-            epoch_loss += loss.item()
+            epoch_loss += total_loss.item()
 
             # Record weights
             latent_points = net(torch.tensor(train_data, dtype=torch.float32)).detach().numpy()
@@ -818,7 +884,9 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None, remove_boundary_dot
 test_multiple_dotsNeighbotSingleBatch(
     threeD_input=False,
     remove_boundary_dots=False,
-    integrationForceScale=1)  # this works as long as the number of close neighbors is small  # both remove_boundary_dots True and False works.  # integrationForceScale=1.5 does not work.
+    integrationForceScale=1,
+    total_epochs=50
+)  # this works as long as the number of close neighbors is small  # both remove_boundary_dots True and False works.  # integrationForceScale=1.5 does not work.
 
 
 """
@@ -1165,8 +1233,8 @@ def representational_level():
 
     testMode = False
     testBatchNum = 50
-    repChange_distanceType = 'L2'  # 'cosine', 'L1', 'L2', 'dot' 'correlation' 'jacard'(slow)
-    coactivation_distanceType = 'L2'  # 'cosine', 'L1', 'L2', 'dot' 'correlation' 'jacard'(slow)
+    repChange_distanceType = 'cosine'  # 'cosine', 'L1', 'L2', 'dot' 'correlation' 'jacard'(slow)
+    coactivation_distanceType = 'cosine'  # 'cosine', 'L1', 'L2', 'dot' 'correlation' 'jacard'(slow)
     co_activationType = 'before'  # 'before', 'after'
 
     # Define paths for data folders
@@ -1189,21 +1257,14 @@ def representational_level():
         # Set seed
         random.seed(131)
 
-        # Randomly select channel IDs for layers A and B
-        selected_channel_ids_layer_a = random.sample(range(0, 32), 32)
-        selected_channel_ids_layer_b = random.sample(range(0, 2), 2)
-
-        # Sort the selected channel IDs
-        selected_channel_ids_layer_a.sort()
-        selected_channel_ids_layer_b.sort()
-
         # Load data
         weight_difference_history_input_layer = np.load(
             f'{weight_difference_folder}/weight_difference_history_input_layer.npy')
         total_batch_num = weight_difference_history_input_layer.shape[0]
         print(f"Total Batch Num: {total_batch_num}")  # 10000
 
-        """load         
+        """
+            load         
                 A layer ; before training ; center points
                 A layer ; before training ; close neighbors
                 A layer ; before training ; background neighbors
@@ -1240,11 +1301,14 @@ def representational_level():
         B_layer_before_training_background_neighbors = np.load(
             f'{weight_difference_folder}/B_layer_before_training_background_neighbors.npy')
         layer_b_activations_before = np.concatenate([
+            B_layer_before_training_center_points,
             B_layer_before_training_close_neighbors,
             B_layer_before_training_background_neighbors,
-            B_layer_before_training_center_points
         ], axis=2)
-        layer_b_activations_before = layer_b_activations_before.reshape((50000, 11, 2))
+
+        # Remove the axis with size 1
+        # layer_b_activations_before = layer_b_activations_before.reshape((50000, 11, 2))
+        layer_b_activations_before = np.squeeze(layer_b_activations_before, axis=1)
 
         # A_layer_after_training_center_points = np.load(
         #     f'{weight_difference_folder}/A_layer_after_training_center_points.npy')
@@ -1267,11 +1331,14 @@ def representational_level():
         B_layer_after_training_background_neighbors = np.load(
             f'{weight_difference_folder}/B_layer_after_training_background_neighbors.npy')
         layer_b_activations_after = np.concatenate([
+            B_layer_after_training_center_points,
             B_layer_after_training_close_neighbors,
             B_layer_after_training_background_neighbors,
-            B_layer_after_training_center_points
         ], axis=2)
-        layer_b_activations_after = layer_b_activations_after.reshape((50000, 11, 2))
+
+        # Remove the axis with size 1
+        # layer_b_activations_after = layer_b_activations_after.reshape((50000, 11, 2))
+        layer_b_activations_after = np.squeeze(layer_b_activations_after, axis=1)
 
         return layer_b_activations_before, layer_b_activations_after
 
@@ -1334,7 +1401,6 @@ def representational_level():
             y_pred = cubic_function(x_test, *params)
 
             # Compute correlation coefficient and store it
-            # import pdb ; pdb.set_trace()
             correlation_coefficient = compute_correlation(y_test, y_pred)
             correlation_coefficients.append(correlation_coefficient)
 
@@ -1352,146 +1418,6 @@ def representational_level():
             return mean_correlation, mean_params, x[subset_indices], y[subset_indices]
         else:
             return mean_correlation, mean_params
-
-    def prepare_data_for_NMPH(
-            curr_batch_=None,
-            layer_activations_before=None,
-            layer_activations_after=None,
-            repChange_distanceType_=None,
-            coactivation_distanceType_=None):
-
-        layer_activations_before = layer_activations_before[curr_batch_, :, :]  # (50, 2)
-        layer_activations_after = layer_activations_after[curr_batch_, :, :]  # (50, 2)
-
-        batchSize = layer_activations_before.shape[0]
-
-        # for each pair of images, calculate the cosine similarity of the activations before weight change
-        pairImg_similarity_before_repChange = np.zeros((batchSize, batchSize))
-        pairImg_similarity_before_coactivation = np.zeros((batchSize, batchSize))
-        for i in range(batchSize):
-            for j in range(batchSize):
-                if repChange_distanceType_ == 'cosine':
-                    pairImg_similarity_before_repChange[i, j] = np.dot(layer_activations_before[i, :],
-                                                                       layer_activations_before[j, :]) / (
-                                                                        np.linalg.norm(layer_activations_before[i,
-                                                                                       :]) * np.linalg.norm(
-                                                                    layer_activations_before[j, :]))
-                elif repChange_distanceType_ == 'dot':
-                    pairImg_similarity_before_repChange[i, j] = np.dot(layer_activations_before[i, :],
-                                                                       layer_activations_before[j, :])
-                elif repChange_distanceType_ == 'correlation':
-                    pairImg_similarity_before_repChange[i, j] = \
-                    pearsonr(layer_activations_before[i, :], layer_activations_before[j, :])[0]
-                elif repChange_distanceType_ == 'L1':
-                    pairImg_similarity_before_repChange[i, j] = - np.linalg.norm(
-                        layer_activations_before[i, :] - layer_activations_before[j, :],
-                        ord=1)
-                elif repChange_distanceType_ == 'L2':  # euclidean
-                    pairImg_similarity_before_repChange[i, j] = - np.linalg.norm(
-                        layer_activations_before[i, :] - layer_activations_before[j, :],
-                        ord=2)
-                elif repChange_distanceType_ == 'jacard':
-                    pairImg_similarity_before_repChange[i, j] = calculate_jaccard_similarity(
-                        layer_activations_before[i, :], layer_activations_before[j, :])
-                else:
-                    raise Exception("distanceType not found")
-
-                if coactivation_distanceType_ == 'cosine':
-                    pairImg_similarity_before_coactivation[i, j] = np.dot(layer_activations_before[i, :],
-                                                                          layer_activations_before[j, :]) / (
-                                                                           np.linalg.norm(layer_activations_before[i,
-                                                                                          :]) * np.linalg.norm(
-                                                                       layer_activations_before[j, :]))
-                elif coactivation_distanceType_ == 'dot':
-                    pairImg_similarity_before_coactivation[i, j] = np.dot(layer_activations_before[i, :],
-                                                                          layer_activations_before[j, :])
-                elif coactivation_distanceType_ == 'L1':
-                    pairImg_similarity_before_coactivation[i, j] = - np.linalg.norm(
-                        layer_activations_before[i, :] - layer_activations_before[j, :],
-                        ord=1)
-                elif coactivation_distanceType_ == 'L2':  # euclidean
-                    pairImg_similarity_before_coactivation[i, j] = - np.linalg.norm(
-                        layer_activations_before[i, :] - layer_activations_before[j, :],
-                        ord=2)
-                elif coactivation_distanceType_ == 'jacard':
-                    pairImg_similarity_before_coactivation[i, j] = calculate_jaccard_similarity(
-                        layer_activations_before[i, :], layer_activations_before[j, :])
-                elif coactivation_distanceType_ == 'correlation':
-                    pairImg_similarity_before_coactivation[i, j] = \
-                    pearsonr(layer_activations_before[i, :], layer_activations_before[j, :])[0]
-                else:
-                    raise Exception("distanceType not found")
-
-        # for each pair of images, calculate the cosine similarity of the activations after weight change
-        pairImg_similarity_after_repChange = np.zeros((batchSize, batchSize))
-        pairImg_similarity_after_coactivation = np.zeros((batchSize, batchSize))
-        for i in range(batchSize):
-            for j in range(batchSize):
-                if repChange_distanceType_ == 'cosine':
-                    pairImg_similarity_after_repChange[i, j] = np.dot(layer_activations_after[i, :],
-                                                                      layer_activations_after[j, :]) / (
-                                                                       np.linalg.norm(layer_activations_after[i,
-                                                                                      :]) * np.linalg.norm(
-                                                                   layer_activations_after[j, :]))
-                elif repChange_distanceType_ == 'dot':
-                    pairImg_similarity_after_repChange[i, j] = np.dot(layer_activations_after[i, :],
-                                                                      layer_activations_after[j, :])
-                elif repChange_distanceType_ == 'correlation':
-                    pairImg_similarity_after_repChange[i, j] = \
-                    pearsonr(layer_activations_after[i, :], layer_activations_after[j, :])[0]
-                elif repChange_distanceType_ == 'L1':
-                    pairImg_similarity_after_repChange[i, j] = - np.linalg.norm(
-                        layer_activations_after[i, :] - layer_activations_after[j, :],
-                        ord=1)
-                elif repChange_distanceType_ == 'L2':  # euclidean
-                    pairImg_similarity_after_repChange[i, j] = - np.linalg.norm(
-                        layer_activations_after[i, :] - layer_activations_after[j, :],
-                        ord=2)
-                elif repChange_distanceType_ == 'jacard':
-                    pairImg_similarity_after_repChange[i, j] = calculate_jaccard_similarity(
-                        layer_activations_after[i, :], layer_activations_after[j, :])
-                else:
-                    raise Exception("distanceType not found")
-
-                if coactivation_distanceType_ == 'cosine':
-                    pairImg_similarity_after_coactivation[i, j] = np.dot(layer_activations_after[i, :],
-                                                                         layer_activations_after[j, :]) / (
-                                                                          np.linalg.norm(layer_activations_after[i,
-                                                                                         :]) * np.linalg.norm(
-                                                                      layer_activations_after[j, :]))
-                elif coactivation_distanceType_ == 'dot':
-                    pairImg_similarity_after_coactivation[i, j] = np.dot(layer_activations_after[i, :],
-                                                                         layer_activations_after[j, :])
-                elif coactivation_distanceType_ == 'L1':
-                    pairImg_similarity_after_coactivation[i, j] = - np.linalg.norm(
-                        layer_activations_after[i, :] - layer_activations_after[j, :],
-                        ord=1)
-                elif coactivation_distanceType_ == 'L2':  # euclidean
-                    pairImg_similarity_after_coactivation[i, j] = - np.linalg.norm(
-                        layer_activations_after[i, :] - layer_activations_after[j, :],
-                        ord=2)
-                elif coactivation_distanceType_ == 'jacard':
-                    pairImg_similarity_after_coactivation[i, j] = calculate_jaccard_similarity(
-                        layer_activations_after[i, :], layer_activations_after[j, :])
-                elif coactivation_distanceType_ == 'correlation':
-                    pairImg_similarity_after_coactivation[i, j] = \
-                    pearsonr(layer_activations_after[i, :], layer_activations_after[j, :])[0]
-                else:
-                    raise Exception("distanceType not found")
-
-        # for each pair of images, calculate distance between the activations before and after weight change
-        representationalChange = pairImg_similarity_after_repChange - pairImg_similarity_before_repChange
-
-        # prepare the data for NMPH
-        if co_activationType == 'before':
-            co_activations_flatten = pairImg_similarity_before_coactivation.reshape(-1)
-        elif co_activationType == 'after':
-            co_activations_flatten = pairImg_similarity_after_coactivation.reshape(-1)
-        else:
-            raise Exception("co_activationType not found")
-        representationChange_flatten = representationalChange.reshape(-1)
-        return co_activations_flatten, representationChange_flatten
-
 
     def prepare_data_for_NMPH_only_between_centerPoint(
             curr_batch_=None,
@@ -1526,33 +1452,37 @@ def representational_level():
 
         pairImg_similarity_before_repChange = np.zeros((1, 10))
         pairImg_similarity_before_coactivation = np.zeros((1, 10))
-        def distance_between_center_and_neighbors(center, neighbor, distanceType):
+        def similarity_between_center_and_neighbors(center, neighbor, distanceType):
+            center = center.reshape((1, -1))  # (1, 2)
+            neighbor = neighbor.reshape((1, -1))  # (1, 2)
             if distanceType == 'cosine':
                 return (np.dot(center, neighbor.T) / (np.linalg.norm(center) * np.linalg.norm(neighbor, axis=1))).reshape((1, -1))
             elif distanceType == 'dot':
                 return (np.dot(center, neighbor.T)).reshape((1, -1))
             elif distanceType == 'correlation':
-                return (pearsonr(center, neighbor)[0]).reshape((1, -1))
+                return (pearsonr(center.reshape(-1), neighbor.reshape(-1))[0]).reshape((1, -1))
             elif distanceType == 'L1':
                 return (- np.linalg.norm(center - neighbor, ord=1)).reshape((1, -1))
             elif distanceType == 'L2':  # euclidean
                 return (- np.linalg.norm(center - neighbor, ord=2)).reshape((1, -1))
             elif distanceType == 'jacard':
-                return calculate_jaccard_similarity(center, neighbor)
+                return calculate_jaccard_similarity(center.reshape(-1), neighbor.reshape(-1))
             else:
                 raise Exception("distanceType not found")
 
         # between the center and each neighbors, calculate the cosine similarity of the activations before weight change
         for curr_image in range(10): # 10 = 5 close + 5 background
-            pairImg_similarity_before_repChange[0, curr_image] = distance_between_center_and_neighbors(center_before, neighbor_before[curr_image, :], repChange_distanceType_)
-            pairImg_similarity_before_coactivation[0, curr_image] = distance_between_center_and_neighbors(center_before, neighbor_before[curr_image, :], coactivation_distanceType_)
+            pairImg_similarity_before_repChange[0, curr_image] = similarity_between_center_and_neighbors(
+                center_before, neighbor_before[curr_image, :], repChange_distanceType_)
+            pairImg_similarity_before_coactivation[0, curr_image] = similarity_between_center_and_neighbors(
+                center_before, neighbor_before[curr_image, :], coactivation_distanceType_)
 
         pairImg_similarity_after_repChange = np.zeros((1, 10))
         pairImg_similarity_after_coactivation = np.zeros((1, 10))
         for curr_image in range(10):
-            pairImg_similarity_after_repChange[0, curr_image] = distance_between_center_and_neighbors(
+            pairImg_similarity_after_repChange[0, curr_image] = similarity_between_center_and_neighbors(
                 center_after, neighbor_after[curr_image, :], repChange_distanceType_)
-            pairImg_similarity_after_coactivation[0, curr_image] = distance_between_center_and_neighbors(
+            pairImg_similarity_after_coactivation[0, curr_image] = similarity_between_center_and_neighbors(
                 center_after, neighbor_after[curr_image, :], coactivation_distanceType_)
 
         # for each pair of images, calculate distance between the activations before and after weight change
@@ -1573,13 +1503,6 @@ def representational_level():
     representationChange_flatten__ = []  # shape = [pair#, batch#]
     assert len(layer_b_activations_before) == 50000
     for curr_batch in tqdm(range(len(layer_b_activations_before))):
-        # co_activations_flatten_, representationChange_flatten_ = prepare_data_for_NMPH(
-        #     curr_batch_=curr_batch,
-        #     layer_activations_before=layer_b_activations_before,
-        #     layer_activations_after=layer_b_activations_after,
-        #     repChange_distanceType_=repChange_distanceType,
-        #     coactivation_distanceType_=coactivation_distanceType
-        # )
         co_activations_flatten_, representationChange_flatten_ = prepare_data_for_NMPH_only_between_centerPoint(
             curr_batch_=curr_batch,
             layer_activations_before=layer_b_activations_before,
