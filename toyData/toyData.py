@@ -318,11 +318,15 @@ def trainWith_crossEntropyLoss(threeD_input=False, remove_boundary_dots=False):
 # trainWith_crossEntropyLoss(threeD_input=False, remove_boundary_dots=False)  # remove_boundary_dots=True/False: Both works, but not stably, need to run from line 1 somehow.
 
 
-def test_multiple_dotsNeighbotSingleBatch(threeD_input=None,
-                                          remove_boundary_dots=False,
-                                          integrationForceScale=None,
-                                          total_epochs=50,
-                                          rep_shrink=None):
+def train_multiple_dotsNeighbotSingleBatch(
+        threeD_input=None,
+        remove_boundary_dots=False,
+        integrationForceScale=None,
+        total_epochs=50,
+        rep_shrink=None,
+        num_iterations_per_batch=1,
+        plot_neighborhood = False  # whether to plot the neighborhood of each point in latent space or not):
+    ):
     """
     design the output of test_single_dotsNeighbotSingleBatch should be
         for each batch:
@@ -360,8 +364,6 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None,
 
     if threeD_input is None:
         threeD_input = True
-
-    plot_neighborhood = False  # whether to plot the neighborhood of each point in latent space or not
 
     # Define batch size, number of close neighbors, and number of background neighbors
     batch_size = 1
