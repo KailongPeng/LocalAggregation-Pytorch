@@ -321,7 +321,8 @@ def trainWith_crossEntropyLoss(threeD_input=False, remove_boundary_dots=False):
 def test_multiple_dotsNeighbotSingleBatch(threeD_input=None,
                                           remove_boundary_dots=False,
                                           integrationForceScale=None,
-                                          total_epochs=50):
+                                          total_epochs=50,
+                                          rep_shrink=None):
     """
     design the output of test_single_dotsNeighbotSingleBatch should be
         for each batch:
@@ -522,6 +523,12 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None,
 
     # Define range loss function
     def range_loss(embeddings_all, initial_x_range_0, initial_y_range_0):
+        # current_x_range = torch.max(embeddings_all[:, 0]) - torch.min(embeddings_all[:, 0])
+        # current_y_range = torch.max(embeddings_all[:, 1]) - torch.min(embeddings_all[:, 1])
+        #
+        # loss = ((current_x_range - initial_x_range_0) ** 2 +
+        #         (current_y_range - initial_y_range_0) ** 2)
+
         current_x_range = (torch.min(embeddings_all[:, 0]), torch.max(embeddings_all[:, 0]))
         current_y_range = (torch.min(embeddings_all[:, 1]), torch.max(embeddings_all[:, 1]))
 
@@ -708,14 +715,22 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None,
                             s=200, label='Chosen vi', alpha=1)
             else:
                 ax = None
+            if rep_shrink is not None:
+                if epoch == 0 and curr_batch == 0:
+                    print(f"rep_shrink={rep_shrink}")
+                    # initial_x_range_0 = rep_shrink * (torch.max(embeddings_all[:, 0]).item() -
+                    #                                   torch.min(embeddings_all[:, 0]).item())
+                    # initial_y_range_0 = rep_shrink * (torch.min(embeddings_all[:, 1]).item() -
+                    #                                   torch.max(embeddings_all[:, 1]).item())
 
-            if epoch == 0 and curr_batch == 0:
-                initial_x_range_0 = (torch.min(embeddings_all[:, 0]).item(),
-                                     torch.max(embeddings_all[:, 0]).item())
-                initial_y_range_0 = (torch.min(embeddings_all[:, 1]).item(),
-                                     torch.max(embeddings_all[:, 1]).item())
-            else:
-                pass
+                    initial_x_range_0 = (
+                        rep_shrink * torch.min(embeddings_all[:, 0]).item(),
+                        rep_shrink * torch.max(embeddings_all[:, 0]).item())
+                    initial_y_range_0 = (
+                        rep_shrink * torch.min(embeddings_all[:, 1]).item(),
+                        rep_shrink * torch.max(embeddings_all[:, 1]).item())
+                else:
+                    pass
 
             # Call local_aggregation_loss, weight_decay_loss, and range_loss functions
             loss_local_aggregation  = local_aggregation_loss(
@@ -727,11 +742,14 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None,
 
             loss_weight_decay = weight_decay_loss(net, weight_decay_rate=0.001)  # Adjust weight decay rate as needed
 
-            loss_range = range_loss(
-                embeddings_all=embeddings_all,  # Provide actual embeddings_all
-                initial_x_range_0=initial_x_range_0,  # Provide actual initial_x_range_0
-                initial_y_range_0=initial_y_range_0  # Provide actual initial_y_range_0
-            )
+            if rep_shrink is None:
+                loss_range = 0
+            else:
+                loss_range = range_loss(
+                    embeddings_all=embeddings_all,  # Provide actual embeddings_all
+                    initial_x_range_0=initial_x_range_0,  # Provide actual initial_x_range_0
+                    initial_y_range_0=initial_y_range_0  # Provide actual initial_y_range_0
+                )
 
             # Combine losses
             total_loss = loss_local_aggregation + loss_weight_decay + loss_range
@@ -884,7 +902,8 @@ test_multiple_dotsNeighbotSingleBatch(
     threeD_input=False,
     remove_boundary_dots=False,
     integrationForceScale=1,
-    total_epochs=total_epochs
+    total_epochs=total_epochs,
+    rep_shrink=0.9  # rep_shrink can be None, 1, 0.9, 0.85, 0.8
 )  # this works as long as the number of close neighbors is small  # both remove_boundary_dots True and False works.  # integrationForceScale=1.5 does not work.
 
 """
@@ -1731,7 +1750,10 @@ def representational_level(total_epochs=50, batch_num_per_epoch=1000):
             # y__ = rep_changes_flatten[i]
             # ax.hist2d(x__, y__, bins=100, cmap=cmap)
             # ax.hist(x__, bins=100, color='blue', alpha=0.5)
-            ax.hist(y__, bins=100, color='blue', alpha=0.5)
+            ax.hist(y__, bins=500, color='blue', alpha=0.5)
+            # set ylim
+            ax.set_ylim([0, 400])
+            ax.set_title(f"histogram of representational change aka y axis")
 
         # Return mean_correlation_coefficients along with recorded_data
         return mean_correlation_coefficients, np.array(mean_parameters), np.array(x_partials), np.array(y_partials)
