@@ -516,6 +516,7 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None,
 
     # Define weight decay loss function
     def weight_decay_loss(model, weight_decay_rate=None):
+        # loss_weight_decay = weight_decay_loss(net, weight_decay_rate=0.001)  # Adjust weight decay rate as needed
         loss = 0
         for param in model.parameters():
             loss += torch.sum(param ** 2)
@@ -613,7 +614,7 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None,
                               init_zero_weights=False,
                               use_batch_norm=False, use_layer_norm=False)  # It was found that layer norm is much better than batch norm.
     learning_rate = 0.05
-    optimizer = optim.SGD(net.parameters(), lr=learning_rate)
+    optimizer = optim.SGD(net.parameters(), lr=learning_rate, weight_decay=0.001)
 
     # Train network using local aggregation loss
     loss_values = []  # List to store loss values for each epoch
@@ -707,8 +708,11 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None,
                             s=200, label='Chosen vi', alpha=1)
             else:
                 ax = None
-            if rep_shrink is not None:
-                if epoch == 0 and curr_batch == 0:
+
+
+            # update weight begin
+            if epoch == 0 and curr_batch == 0:
+                if rep_shrink is not None:
                     print(f"rep_shrink={rep_shrink}")
                     # initial_x_range_0 = rep_shrink * (torch.max(embeddings_all[:, 0]).item() -
                     #                                   torch.min(embeddings_all[:, 0]).item())
@@ -721,18 +725,13 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None,
                     initial_y_range_0 = (
                         rep_shrink * torch.min(embeddings_all[:, 1]).item(),
                         rep_shrink * torch.max(embeddings_all[:, 1]).item())
-                else:
-                    pass
+            else:
+                pass
 
             # Call local_aggregation_loss, weight_decay_loss, and range_loss functions
             loss_local_aggregation  = local_aggregation_loss(
                 embeddings_ceterPoint, close_neighbors, background_neighbors
             )
-                # weight_decay_rate=0.001,
-                # model=net, embeddings_all=embeddings_all,
-                # initial_x_range_0=initial_x_range_0, initial_y_range_0=initial_y_range_0
-
-            loss_weight_decay = weight_decay_loss(net, weight_decay_rate=0.001)  # Adjust weight decay rate as needed
 
             if rep_shrink is None:
                 loss_range = 0
@@ -744,7 +743,7 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None,
                 )
 
             # Combine losses
-            total_loss = loss_local_aggregation + loss_weight_decay + loss_range
+            total_loss = loss_local_aggregation + loss_range #+ loss_weight_decay
 
             # Backward pass
             total_loss.backward()
@@ -752,6 +751,8 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None,
             optimizer.step()
 
             epoch_loss += total_loss.item()
+            # update weight end
+
 
             # Record weights
             latent_points = net(torch.tensor(train_data, dtype=torch.float32)).detach().numpy()
@@ -762,13 +763,6 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None,
             weight_difference_history['input_layer'].append(input_layer_after - input_layer_before)
             weight_difference_history['hidden_layer1'].append(hidden_layer1_after - hidden_layer1_before)
             weight_difference_history['hidden_layer2'].append(hidden_layer2_after - hidden_layer2_before)
-
-            # # Record activations
-            # penultimate_activations = torch.relu(net.hidden_layer1(torch.relu(net.input_layer(batch.float()))))
-            # final_activations = net.hidden_layer2(penultimate_activations)
-            #
-            # activation_history['penultimate_layer_after'].append(penultimate_activations.detach().numpy())
-            # activation_history['final_layer_after'].append(final_activations.detach().numpy())
 
             # record activations
             activation_history['A layer ; after training ; center points'].append(net.penultimate_layer_activation[center_indices])
