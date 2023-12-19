@@ -1554,16 +1554,17 @@ def representational_level(total_epochs=50, batch_num_per_epoch=1000):
         co_activations_flatten__background.append(co_activations_flatten_[num_closePoints:])
         representationChange_flatten__background.append(representationChange_flatten_[num_closePoints:])
 
-    def separate_integration_differentiation(representationChange_flatten, title=""):
-        def plot_single_bar(value, error=None, label=None, title=None, x_label="", y_label="", fontsize=12,
+    def separate_integration_differentiation(representationChange_flatten_close,
+                                             representationChange_flatten_background, title=""):
+        def plot_double_bar(values, errors=None, labels=None, title=None, x_label="", y_label="", fontsize=12,
                             set_background_color=False, save_path=None, show_figure=True):
             """
-            Plot a single bar with optional error.
+            Plot two bars side by side with optional errors.
 
             Parameters:
-            - value: The value for the single bar.
-            - error: The error (optional).
-            - label: Label for the bar.
+            - values: List of two values for the bars.
+            - errors: List of two error values (optional).
+            - labels: List of labels for the bars.
             - title: Plot title.
             - x_label: Label for the x-axis.
             - y_label: Label for the y-axis.
@@ -1577,25 +1578,23 @@ def representational_level(total_epochs=50, batch_num_per_epoch=1000):
             """
             fig, ax = plt.subplots(figsize=(fontsize, fontsize / 2))
 
-            # If error is provided, plot with error bar
-            if error is not None:
-                ax.bar(0, value, yerr=[[error[0]], [error[1]]], align='center', alpha=0.5, ecolor='black', capsize=10)
+            # If errors are provided, plot with error bars
+            if errors is not None:
+                ax.bar([0, 1], values, yerr=[errors[0], errors[1]], align='center', alpha=0.5, ecolor='black',
+                       capsize=10)
             else:
-                ax.bar(0, value)
+                ax.bar([0, 1], values)
 
             if set_background_color:
                 ax.set_facecolor((242 / 256, 242 / 256, 242 / 256))
 
             ax.set_ylabel(y_label, fontsize=fontsize)
             ax.set_xlabel(x_label, fontsize=fontsize)
-            ax.set_xticks([0])
+            ax.set_xticks([0, 1])
+            ax.set_xticklabels(labels, fontsize=fontsize, ha='center')
             ax.set_facecolor((242 / 256, 242 / 256, 242 / 256))
 
             ax.tick_params(axis='y', labelsize=fontsize)
-
-            if label is not None:
-                ax.set_xticklabels([label], fontsize=fontsize, ha='center')
-
             ax.set_title(title, fontsize=fontsize)
             ax.yaxis.grid(True)
 
@@ -1636,14 +1635,29 @@ def representational_level(total_epochs=50, batch_num_per_epoch=1000):
                 return mean, percentile_5, percentile_95, iter_means
             else:
                 return mean, percentile_5, percentile_95
-        representationChange = np.asarray(representationChange_flatten).reshape(-1)
-        mean, percentile_5, percentile_95, iter_means = cal_resample(representationChange, times=5000, return_all=True)
-        plot_single_bar(mean, error=[mean - percentile_5, percentile_95 - mean], label=None, title=title, x_label="",
-                        y_label="Mean Representational Change", fontsize=12, set_background_color=False,
-                        save_path=None, show_figure=True)
 
-    separate_integration_differentiation(representationChange_flatten__close, title="Close Neighbors")
-    separate_integration_differentiation(representationChange_flatten__background, title="Background Neighbors")
+        representationChange_close = np.asarray(representationChange_flatten_close).reshape(-1)
+        representationChange_background = np.asarray(representationChange_flatten_background).reshape(-1)
+
+        mean_close, p5_close, p95_close = cal_resample(representationChange_close, times=5000)
+        mean_background, p5_background, p95_background = cal_resample(representationChange_background, times=5000)
+
+        plot_double_bar(
+            values=[mean_close, mean_background],
+            errors=[[mean_close - p5_close, p95_close - mean_close],
+                    [mean_background - p5_background, p95_background - mean_background]],
+            labels=["Close Neighbors", "Background Neighbors"],
+            title=title,
+            x_label="",
+            y_label="Mean Representational Change",
+            fontsize=12,
+            set_background_color=False,
+            save_path=None,
+            show_figure=True
+        )
+
+    separate_integration_differentiation(representationChange_flatten__close, representationChange_flatten__background,
+                                         title="Comparison")
 
     def run_NMPH(co_activations_flatten, rep_changes_flatten, rows=1, cols=1, plotFig=False):
         if plotFig:
