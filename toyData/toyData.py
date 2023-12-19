@@ -661,13 +661,6 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None,
             hidden_layer1_before = net.hidden_layer1.weight.data.clone().detach().numpy()
             hidden_layer2_before = net.hidden_layer2.weight.data.clone().detach().numpy()
 
-            # # Record activations
-            # penultimate_activations = torch.relu(net.hidden_layer1(torch.relu(net.input_layer(batch.float()))))
-            # final_activations = net.hidden_layer2(penultimate_activations)
-            #
-            # activation_history['penultimate_layer_before'].append(penultimate_activations.detach().numpy())
-            # activation_history['final_layer_before'].append(final_activations.detach().numpy())
-
             # Zero gradients
             optimizer.zero_grad()
             # Forward pass
@@ -679,7 +672,6 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None,
                 initial_v_labels.append(batch_labels)
 
             # Get close and background neighbors
-            # close_neighbors, background_neighbors = get_neighbors(embeddings_ceterPoint, c=c, b=b)
             close_neighbors, background_neighbors, close_indices, background_indices, center_indices = get_close_and_background_neighbors(
                 embeddings_ceterPoint,
                 embeddings_all,
