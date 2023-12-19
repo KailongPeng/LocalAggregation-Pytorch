@@ -621,8 +621,7 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None,
 
     # Record the weights, penultimate layer activations, and final layer activations
     weight_difference_history = {'input_layer': [], 'hidden_layer1': [], 'hidden_layer2': []}
-    # activation_history = {'A layer ; ': [], 'final_layer_before': [],
-    #                       'penultimate_layer_after': [], 'final_layer_after': []}
+
     activation_history = {
         'A layer ; before training ; center points': [],
         'A layer ; before training ; close neighbors': [],
@@ -880,14 +879,13 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None,
     np.save(f'{weight_difference_folder}/B_layer_after_training_background_neighbors.npy',
             np.asarray(activation_history['B layer ; after training ; background neighbors']))  # (# batch, num_background, 2)
 
-
+total_epochs = 10
 test_multiple_dotsNeighbotSingleBatch(
     threeD_input=False,
     remove_boundary_dots=False,
     integrationForceScale=1,
-    total_epochs=50
+    total_epochs=total_epochs
 )  # this works as long as the number of close neighbors is small  # both remove_boundary_dots True and False works.  # integrationForceScale=1.5 does not work.
-
 
 """
     representational level
@@ -1200,10 +1198,10 @@ def synaptic_level():
     # plot_scatter_and_cubic(x_partials_, y_partials_, mean_parameters_avg)
 
 
-synaptic_level()
+# synaptic_level()
 
 
-def representational_level():
+def representational_level(total_epochs=50, batch_num_per_epoch=1000):
     """
 
     design the input of NMPH_representational should be
@@ -1231,17 +1229,24 @@ def representational_level():
     from tqdm import tqdm
     from matplotlib.cm import get_cmap
 
-    testMode = False
-    testBatchNum = 50
-    repChange_distanceType = 'cosine'  # 'cosine', 'L1', 'L2', 'dot' 'correlation' 'jacard'(slow)
-    coactivation_distanceType = 'cosine'  # 'cosine', 'L1', 'L2', 'dot' 'correlation' 'jacard'(slow)
+    testMode = True
+    if testMode:
+        testBatchNum = 500
+    else:
+        testBatchNum = None
+    repChange_distanceType = 'L2'  # 'cosine', 'L1', 'L2', 'dot' 'correlation' 'jacard'(slow)
+    coactivation_distanceType = 'L2'  # 'cosine', 'L1', 'L2', 'dot' 'correlation' 'jacard'(slow)
     co_activationType = 'before'  # 'before', 'after'
+    num_centerPoints = 1
+    (num_closePoints, num_backgroundPoints) = (5, 5)
 
     # Define paths for data folders
     weight_difference_folder = "/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/toyData/weight_difference_folder/"
 
     directory_path = "/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/toyData/representational_level/"
     os.makedirs(directory_path, exist_ok=True)
+
+    assert num_centerPoints == 1
 
     def binarize_representations(representations, threshold=0.1):
         percentile = np.percentile(representations, threshold * 100)
@@ -1295,9 +1300,13 @@ def representational_level():
 
         B_layer_before_training_center_points = np.load(
             f'{weight_difference_folder}/B_layer_before_training_center_points.npy')
-        B_layer_before_training_center_points = B_layer_before_training_center_points.reshape((50000, 1, 1, 2))
-        B_layer_before_training_close_neighbors = np.load(
-            f'{weight_difference_folder}/B_layer_before_training_close_neighbors.npy')
+        B_layer_before_training_center_points = B_layer_before_training_center_points.reshape((total_epochs*batch_num_per_epoch, 1, 1, 2))
+
+        if num_closePoints != 0:
+            B_layer_before_training_close_neighbors = np.load(
+                f'{weight_difference_folder}/B_layer_before_training_close_neighbors.npy')
+        else:
+            B_layer_before_training_close_neighbors = np.zeros((total_epochs*batch_num_per_epoch, 1, 0, 2))
         B_layer_before_training_background_neighbors = np.load(
             f'{weight_difference_folder}/B_layer_before_training_background_neighbors.npy')
         layer_b_activations_before = np.concatenate([
@@ -1307,7 +1316,6 @@ def representational_level():
         ], axis=2)
 
         # Remove the axis with size 1
-        # layer_b_activations_before = layer_b_activations_before.reshape((50000, 11, 2))
         layer_b_activations_before = np.squeeze(layer_b_activations_before, axis=1)
 
         # A_layer_after_training_center_points = np.load(
@@ -1325,9 +1333,12 @@ def representational_level():
 
         B_layer_after_training_center_points = np.load(
             f'{weight_difference_folder}/B_layer_after_training_center_points.npy')
-        B_layer_after_training_center_points = B_layer_after_training_center_points.reshape((50000, 1, 1, 2))
-        B_layer_after_training_close_neighbors = np.load(
-            f'{weight_difference_folder}/B_layer_after_training_close_neighbors.npy')
+        B_layer_after_training_center_points = B_layer_after_training_center_points.reshape((total_epochs*batch_num_per_epoch, 1, 1, 2))
+        if num_closePoints != 0:
+            B_layer_after_training_close_neighbors = np.load(
+                f'{weight_difference_folder}/B_layer_after_training_close_neighbors.npy')
+        else:
+            B_layer_after_training_close_neighbors = np.zeros((total_epochs*batch_num_per_epoch, 1, 0, 2))
         B_layer_after_training_background_neighbors = np.load(
             f'{weight_difference_folder}/B_layer_after_training_background_neighbors.npy')
         layer_b_activations_after = np.concatenate([
@@ -1337,7 +1348,6 @@ def representational_level():
         ], axis=2)
 
         # Remove the axis with size 1
-        # layer_b_activations_after = layer_b_activations_after.reshape((50000, 11, 2))
         layer_b_activations_after = np.squeeze(layer_b_activations_after, axis=1)
 
         return layer_b_activations_before, layer_b_activations_after
@@ -1430,16 +1440,22 @@ def representational_level():
             Isolate the first axis of a matrix into three separate matrices.
 
             Parameters:
-            - matrix: Input matrix with shape (11, 2)
+            - matrix: Input matrix with shape (11, 2) or (num_centerPoints+num_closePoints+num_backgroundPoints, 2)
 
             Returns:
-            - center: Matrix with shape (1, 2)
-            - close: Matrix with shape (5, 2)
-            - background: Matrix with shape (5, 2)
+            - center: Matrix with shape (1, 2) or (num_centerPoints, 2)
+            - close: Matrix with shape (5, 2) or (num_closePoints, 2)
+            - background: Matrix with shape (5, 2) or (num_backgroundPoints, 2)
             """
-            center = matrix[:1, :]
-            close = matrix[1:6, :]
-            background = matrix[6:, :]
+            center = matrix[
+                     0:
+                     num_centerPoints, :]
+            close = matrix[
+                    num_centerPoints:
+                    num_centerPoints+num_closePoints, :]
+            background = matrix[
+                         num_centerPoints+num_closePoints:
+                         num_centerPoints+num_closePoints+num_backgroundPoints, :]
             neighbor = np.concatenate([close, background], axis=0)
 
             return center, close, background, neighbor
@@ -1450,8 +1466,13 @@ def representational_level():
         center_before, close_before, background_before, neighbor_before = isolate_axis(layer_activations_before)
         center_after, close_after, background_after, neighbor_after = isolate_axis(layer_activations_after)
 
-        pairImg_similarity_before_repChange = np.zeros((1, 10))
-        pairImg_similarity_before_coactivation = np.zeros((1, 10))
+        pairImg_similarity_before_repChange = np.zeros((
+            num_centerPoints,
+            num_closePoints+num_backgroundPoints))
+        pairImg_similarity_before_coactivation = np.zeros((
+            num_centerPoints,
+            num_closePoints+num_backgroundPoints))
+
         def similarity_between_center_and_neighbors(center, neighbor, distanceType):
             center = center.reshape((1, -1))  # (1, 2)
             neighbor = neighbor.reshape((1, -1))  # (1, 2)
@@ -1471,15 +1492,19 @@ def representational_level():
                 raise Exception("distanceType not found")
 
         # between the center and each neighbors, calculate the cosine similarity of the activations before weight change
-        for curr_image in range(10): # 10 = 5 close + 5 background
+        for curr_image in range(num_closePoints+num_backgroundPoints): # 10 = 5 close + 5 background
             pairImg_similarity_before_repChange[0, curr_image] = similarity_between_center_and_neighbors(
                 center_before, neighbor_before[curr_image, :], repChange_distanceType_)
             pairImg_similarity_before_coactivation[0, curr_image] = similarity_between_center_and_neighbors(
                 center_before, neighbor_before[curr_image, :], coactivation_distanceType_)
 
-        pairImg_similarity_after_repChange = np.zeros((1, 10))
-        pairImg_similarity_after_coactivation = np.zeros((1, 10))
-        for curr_image in range(10):
+        pairImg_similarity_after_repChange = np.zeros((
+            num_centerPoints,
+            num_closePoints+num_backgroundPoints))
+        pairImg_similarity_after_coactivation = np.zeros((
+            num_centerPoints,
+            num_closePoints+num_backgroundPoints))
+        for curr_image in range(num_closePoints+num_backgroundPoints):
             pairImg_similarity_after_repChange[0, curr_image] = similarity_between_center_and_neighbors(
                 center_after, neighbor_after[curr_image, :], repChange_distanceType_)
             pairImg_similarity_after_coactivation[0, curr_image] = similarity_between_center_and_neighbors(
@@ -1501,8 +1526,18 @@ def representational_level():
 
     co_activations_flatten__ = []  # shape = [pair#, batch#]
     representationChange_flatten__ = []  # shape = [pair#, batch#]
-    assert len(layer_b_activations_before) == 50000
-    for curr_batch in tqdm(range(len(layer_b_activations_before))):
+
+    co_activations_flatten__close = []  # shape = [pair#, batch#]
+    representationChange_flatten__close = []  # shape = [pair#, batch#]
+    co_activations_flatten__background = []  # shape = [pair#, batch#]
+    representationChange_flatten__background = []  # shape = [pair#, batch#]
+
+    assert len(layer_b_activations_before) == total_epochs*batch_num_per_epoch
+    if testMode:
+        BatchNum = testBatchNum
+    else:
+        BatchNum = len(layer_b_activations_before)
+    for curr_batch in tqdm(range(BatchNum)):
         co_activations_flatten_, representationChange_flatten_ = prepare_data_for_NMPH_only_between_centerPoint(
             curr_batch_=curr_batch,
             layer_activations_before=layer_b_activations_before,
@@ -1513,6 +1548,102 @@ def representational_level():
 
         co_activations_flatten__.append(co_activations_flatten_)
         representationChange_flatten__.append(representationChange_flatten_)
+
+        co_activations_flatten__close.append(co_activations_flatten_[:num_closePoints])
+        representationChange_flatten__close.append(representationChange_flatten_[:num_closePoints])
+        co_activations_flatten__background.append(co_activations_flatten_[num_closePoints:])
+        representationChange_flatten__background.append(representationChange_flatten_[num_closePoints:])
+
+    def separate_integration_differentiation(representationChange_flatten, title=""):
+        def plot_single_bar(value, error=None, label=None, title=None, x_label="", y_label="", fontsize=12,
+                            set_background_color=False, save_path=None, show_figure=True):
+            """
+            Plot a single bar with optional error.
+
+            Parameters:
+            - value: The value for the single bar.
+            - error: The error (optional).
+            - label: Label for the bar.
+            - title: Plot title.
+            - x_label: Label for the x-axis.
+            - y_label: Label for the y-axis.
+            - fontsize: Font size for labels and ticks.
+            - set_background_color: Set background color to light gray.
+            - save_path: File path for saving the plot (optional).
+            - show_figure: Whether to display the plot (default is True).
+
+            Returns:
+            None
+            """
+            fig, ax = plt.subplots(figsize=(fontsize, fontsize / 2))
+
+            # If error is provided, plot with error bar
+            if error is not None:
+                ax.bar(0, value, yerr=[[error[0]], [error[1]]], align='center', alpha=0.5, ecolor='black', capsize=10)
+            else:
+                ax.bar(0, value)
+
+            if set_background_color:
+                ax.set_facecolor((242 / 256, 242 / 256, 242 / 256))
+
+            ax.set_ylabel(y_label, fontsize=fontsize)
+            ax.set_xlabel(x_label, fontsize=fontsize)
+            ax.set_xticks([0])
+            ax.set_facecolor((242 / 256, 242 / 256, 242 / 256))
+
+            ax.tick_params(axis='y', labelsize=fontsize)
+
+            if label is not None:
+                ax.set_xticklabels([label], fontsize=fontsize, ha='center')
+
+            ax.set_title(title, fontsize=fontsize)
+            ax.yaxis.grid(True)
+
+            _ = plt.tight_layout()
+
+            if save_path is not None:
+                plt.savefig(save_path)
+
+            if show_figure:
+                _ = plt.show()
+            else:
+                _ = plt.close()
+
+        def cal_resample(data=None, times=5000, return_all=False):
+            """
+            Perform resampling on input data.
+
+            Parameters:
+            - data: Input data.
+            - times: Number of resampling iterations.
+            - return_all: Whether to return all resampled means.
+
+            Returns:
+            - mean: Mean of the resampled means.
+            - percentile_5: 5th percentile of the resampled means.
+            - percentile_95: 95th percentile of the resampled means.
+            - iter_means: List of all resampled means if return_all is True.
+            """
+            if data is None:
+                raise ValueError("Input data must be provided.")
+            if isinstance(data, list):
+                data = np.asarray(data)
+            iter_means = [np.nanmean(data[np.random.choice(len(data), len(data), replace=True)]) for _ in range(times)]
+            mean = np.mean(iter_means)
+            percentile_5 = np.percentile(iter_means, 5)
+            percentile_95 = np.percentile(iter_means, 95)
+            if return_all:
+                return mean, percentile_5, percentile_95, iter_means
+            else:
+                return mean, percentile_5, percentile_95
+        representationChange = np.asarray(representationChange_flatten).reshape(-1)
+        mean, percentile_5, percentile_95, iter_means = cal_resample(representationChange, times=5000, return_all=True)
+        plot_single_bar(mean, error=[mean - percentile_5, percentile_95 - mean], label=None, title=title, x_label="",
+                        y_label="Mean Representational Change", fontsize=12, set_background_color=False,
+                        save_path=None, show_figure=True)
+
+    separate_integration_differentiation(representationChange_flatten__close, title="Close Neighbors")
+    separate_integration_differentiation(representationChange_flatten__background, title="Background Neighbors")
 
     def run_NMPH(co_activations_flatten, rep_changes_flatten, rows=1, cols=1, plotFig=False):
         if plotFig:
@@ -1536,6 +1667,9 @@ def representational_level():
         # for i in tqdm(range(len(co_activations_flatten))):
         x__ = np.asarray(co_activations_flatten).reshape(-1)
         y__ = np.asarray(rep_changes_flatten).reshape(-1)
+        labels = np.zeros(np.asarray(co_activations_flatten).shape)
+        labels[:,:num_closePoints] = 0  # 0 means close neighbors
+        labels[:,num_closePoints:] = 1  # 1 means background neighbors
 
         mean_correlation_coefficient, mean_parameter, x_partial, y_partial = cubic_fit_correlation_with_params(
             x__, y__,
@@ -1558,7 +1692,8 @@ def representational_level():
             sequence = np.linspace(0, 1, len(x__))  # Create a sequence of values from 0 to 1
             colors = cmap(sequence)  # Map the sequence to colors using the chosen colormap
 
-            ax.scatter(x__, y__, s=10, c=colors)  # 's' controls the size of the points, 'c' sets the colors
+            # ax.scatter(x__, y__, s=10, c=colors)  # 's' controls the size of the points, 'c' sets the colors
+            ax.scatter(x__, y__, s=10, c=labels)  # 's' controls the size of the points, 'c' sets the colors
 
             # Create a ScalarMappable for the colorbar
             sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=1))
@@ -1589,7 +1724,7 @@ def representational_level():
 
     if testMode:
         mean_correlation_coefficients_, mean_parameters_, x_partials_, y_partials_ = run_NMPH(
-            co_activations_flatten__[:testBatchNum - 1], representationChange_flatten__[:testBatchNum - 1],
+            co_activations_flatten__[:BatchNum - 1], representationChange_flatten__[:BatchNum - 1],
             plotFig=True)
     else:
         mean_correlation_coefficients_, mean_parameters_, x_partials_, y_partials_ = run_NMPH(
@@ -1597,7 +1732,7 @@ def representational_level():
             plotFig=True)
 
 
-representational_level()
+representational_level(total_epochs=total_epochs, batch_num_per_epoch=1000)
 
 # if repChange_distanceType_ == 'cosine':
 #     pairImg_similarity_before_repChange[0, curr_image] = (np.dot(center_before, neighbor_before[curr_image, :]) / (np.linalg.norm(center_before) * np.linalg.norm(neighbor_before[curr_image, :])))
