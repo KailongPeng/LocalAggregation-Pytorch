@@ -646,7 +646,10 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None,
         'B layer ; after training ; center points': [],
         'B layer ; after training ; close neighbors': [],
         'B layer ; after training ; background neighbors': []}
-
+    initial_x_range_0 = None
+    initial_y_range_0 = None
+    ax = None
+    print(f"num_iterations_per_batch={num_iterations_per_batch}")
     for epoch in tqdm(range(total_epochs)):
         if epoch == int(total_epochs / 3):
             optimizer.param_groups[0]['lr'] = learning_rate / 2.0
@@ -656,157 +659,162 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None,
             print(f"learning rate changed to {learning_rate / 4.0}")
         epoch_loss = 0.0  # Variable to accumulate loss within each epoch
 
-        for curr_batch, (batch, batch_labels) in enumerate(dataloader):
+        for curr_batch, (batch, batch_labels) in tqdm(enumerate(dataloader)):
             # Record weights
             input_layer_before = net.input_layer.weight.data.clone().detach().numpy()
             hidden_layer1_before = net.hidden_layer1.weight.data.clone().detach().numpy()
             hidden_layer2_before = net.hidden_layer2.weight.data.clone().detach().numpy()
 
-            # Zero gradients
-            optimizer.zero_grad()
-            # Forward pass
-            embeddings_ceterPoint = net(batch.float())
-            embeddings_all = net(torch.tensor(train_data, dtype=torch.float32))
-            # record initial and final latent space points
-            if epoch == 0:
-                initial_v_points.append(embeddings_ceterPoint)
-                initial_v_labels.append(batch_labels)
+            for iteration in range(num_iterations_per_batch):  # Introduce a loop for multiple weight update iterations
+                # Zero gradients
+                optimizer.zero_grad()
+                # Forward pass
+                embeddings_ceterPoint = net(batch.float())
+                embeddings_all = net(torch.tensor(train_data, dtype=torch.float32))
+                # record initial and final latent space points
+                if epoch == 0:
+                    initial_v_points.append(embeddings_ceterPoint)
+                    initial_v_labels.append(batch_labels)
 
-            # Get close and background neighbors
-            close_neighbors, background_neighbors, close_indices, background_indices, center_indices = get_close_and_background_neighbors(
-                embeddings_ceterPoint,
-                embeddings_all,
-                num_close=num_close,
-                num_background=num_background)
+                # Get close and background neighbors
+                close_neighbors, background_neighbors, close_indices, background_indices, center_indices = get_close_and_background_neighbors(
+                    embeddings_ceterPoint,
+                    embeddings_all,
+                    num_close=num_close,
+                    num_background=num_background)
 
-            # record activations
-            activation_history['A layer ; before training ; center points'].append(net.penultimate_layer_activation[center_indices])
-            activation_history['A layer ; before training ; close neighbors'].append(net.penultimate_layer_activation[close_indices])
-            activation_history['A layer ; before training ; background neighbors'].append(net.penultimate_layer_activation[background_indices])
-            activation_history['B layer ; before training ; center points'].append(net.final_layer_activation[center_indices])
-            activation_history['B layer ; before training ; close neighbors'].append(net.final_layer_activation[close_indices])
-            activation_history['B layer ; before training ; background neighbors'].append(net.final_layer_activation[background_indices])
+                # record activations
+                activation_history['A layer ; before training ; center points'].append(net.penultimate_layer_activation[center_indices])
+                activation_history['A layer ; before training ; close neighbors'].append(net.penultimate_layer_activation[close_indices])
+                activation_history['A layer ; before training ; background neighbors'].append(net.penultimate_layer_activation[background_indices])
+                activation_history['B layer ; before training ; center points'].append(net.final_layer_activation[center_indices])
+                activation_history['B layer ; before training ; close neighbors'].append(net.final_layer_activation[close_indices])
+                activation_history['B layer ; before training ; background neighbors'].append(net.final_layer_activation[background_indices])
 
-            if plot_neighborhood:
-                assert batch_size == 1
-                # plot the current center point(red cross) and its close (blue dots) and background (black dots) neighbors in latent space
-                latent_points = embeddings_all.detach().numpy()
-                fig = plt.figure(figsize=(20, 20))
-                ax = fig.add_subplot(111)
+                if plot_neighborhood and iteration == 0:
+                    assert batch_size == 1
+                    # plot the current center point(red cross) and its close (blue dots) and background (black dots) neighbors in latent space
+                    latent_points = embeddings_all.detach().numpy()
+                    fig = plt.figure(figsize=(20, 20))
+                    ax = fig.add_subplot(111)
 
-                # other points
-                ax.scatter(latent_points[:, 0], latent_points[:, 1], c='gray', marker='o',
-                           label='Other Points', alpha=0.5)
-                # close neighbors
-                ax.scatter(latent_points[close_indices, 0], latent_points[close_indices, 1],
-                            c='blue', marker='o', label='Closest C Points', alpha=1)
-                # background neighbors
-                ax.scatter(latent_points[background_indices, 0], latent_points[background_indices, 1],
-                            c='black', marker='o', label='Closest B Points', alpha=1)
-                # current center point
-                ax.scatter(latent_points[center_indices, 0], latent_points[center_indices, 1], c='red', marker='*',
-                            s=200, label='Chosen vi', alpha=1)
-            else:
-                ax = None
+                    # other points
+                    ax.scatter(latent_points[:, 0], latent_points[:, 1], c='gray', marker='o',
+                               alpha=0.5)
+                    # close neighbors
+                    ax.scatter(latent_points[close_indices, 0], latent_points[close_indices, 1],
+                                c='blue', marker='o', label='Close before', alpha=1)
+                    # background neighbors
+                    ax.scatter(latent_points[background_indices, 0], latent_points[background_indices, 1],
+                                c='black', marker='o', label='Background before', alpha=1)
+                    # current center point
+                    ax.scatter(latent_points[center_indices, 0], latent_points[center_indices, 1], c='red', marker='*',
+                                s=200, label='Center before', alpha=1)
 
+                # update weight begin
+                if epoch == 0 and curr_batch == 0 and iteration == 0:
+                    if rep_shrink is not None:
+                        print(f"rep_shrink={rep_shrink}")
+                        # initial_x_range_0 = rep_shrink * (torch.max(embeddings_all[:, 0]).item() -
+                        #                                   torch.min(embeddings_all[:, 0]).item())
+                        # initial_y_range_0 = rep_shrink * (torch.min(embeddings_all[:, 1]).item() -
+                        #                                   torch.max(embeddings_all[:, 1]).item())
 
-            # update weight begin
-            if epoch == 0 and curr_batch == 0:
-                if rep_shrink is not None:
-                    print(f"rep_shrink={rep_shrink}")
-                    # initial_x_range_0 = rep_shrink * (torch.max(embeddings_all[:, 0]).item() -
-                    #                                   torch.min(embeddings_all[:, 0]).item())
-                    # initial_y_range_0 = rep_shrink * (torch.min(embeddings_all[:, 1]).item() -
-                    #                                   torch.max(embeddings_all[:, 1]).item())
+                        initial_x_range_0 = (
+                            rep_shrink * torch.min(embeddings_all[:, 0]).item(),
+                            rep_shrink * torch.max(embeddings_all[:, 0]).item()
+                        )
+                        initial_y_range_0 = (
+                            rep_shrink * torch.min(embeddings_all[:, 1]).item(),
+                            rep_shrink * torch.max(embeddings_all[:, 1]).item()
+                        )
+                else:
+                    pass
 
-                    initial_x_range_0 = (
-                        rep_shrink * torch.min(embeddings_all[:, 0]).item(),
-                        rep_shrink * torch.max(embeddings_all[:, 0]).item())
-                    initial_y_range_0 = (
-                        rep_shrink * torch.min(embeddings_all[:, 1]).item(),
-                        rep_shrink * torch.max(embeddings_all[:, 1]).item())
-            else:
-                pass
-
-            # Call local_aggregation_loss, weight_decay_loss, and range_loss functions
-            loss_local_aggregation  = local_aggregation_loss(
-                embeddings_ceterPoint, close_neighbors, background_neighbors
-            )
-
-            if rep_shrink is None:
-                loss_range = 0
-            else:
-                loss_range = range_loss(
-                    embeddings_all=embeddings_all,  # Provide actual embeddings_all
-                    initial_x_range_0=initial_x_range_0,  # Provide actual initial_x_range_0
-                    initial_y_range_0=initial_y_range_0  # Provide actual initial_y_range_0
+                # Call local_aggregation_loss, weight_decay_loss, and range_loss functions
+                loss_local_aggregation  = local_aggregation_loss(
+                    embeddings_ceterPoint, close_neighbors, background_neighbors
                 )
 
-            # Combine losses
-            total_loss = loss_local_aggregation + loss_range #+ loss_weight_decay
+                if rep_shrink is None:
+                    loss_range = 0
+                else:
+                    loss_range = range_loss(
+                        embeddings_all=embeddings_all,  # Provide actual embeddings_all
+                        initial_x_range_0=initial_x_range_0,  # Provide actual initial_x_range_0
+                        initial_y_range_0=initial_y_range_0  # Provide actual initial_y_range_0
+                    )
 
-            # Backward pass
-            total_loss.backward()
-            # Update parameters
-            optimizer.step()
+                # Combine losses
+                total_loss = loss_local_aggregation + loss_range #+ loss_weight_decay
 
-            epoch_loss += total_loss.item()
-            # update weight end
+                # Backward pass
+                total_loss.backward()
+                # Update parameters
+                optimizer.step()
+
+                epoch_loss += total_loss.item()
+                # loss_values.append(total_loss.item())
+                # update weight end
 
 
-            # Record weights
-            latent_points = net(torch.tensor(train_data, dtype=torch.float32)).detach().numpy()
-            input_layer_after = net.input_layer.weight.data.clone().detach().numpy()
-            hidden_layer1_after = net.hidden_layer1.weight.data.clone().detach().numpy()
-            hidden_layer2_after = net.hidden_layer2.weight.data.clone().detach().numpy()
+                # Record weights
+                latent_points = net(torch.tensor(train_data, dtype=torch.float32)).detach().numpy()
+                input_layer_after = net.input_layer.weight.data.clone().detach().numpy()
+                hidden_layer1_after = net.hidden_layer1.weight.data.clone().detach().numpy()
+                hidden_layer2_after = net.hidden_layer2.weight.data.clone().detach().numpy()
 
-            weight_difference_history['input_layer'].append(input_layer_after - input_layer_before)
-            weight_difference_history['hidden_layer1'].append(hidden_layer1_after - hidden_layer1_before)
-            weight_difference_history['hidden_layer2'].append(hidden_layer2_after - hidden_layer2_before)
+                weight_difference_history['input_layer'].append(input_layer_after - input_layer_before)
+                weight_difference_history['hidden_layer1'].append(hidden_layer1_after - hidden_layer1_before)
+                weight_difference_history['hidden_layer2'].append(hidden_layer2_after - hidden_layer2_before)
 
-            # record activations
-            activation_history['A layer ; after training ; center points'].append(net.penultimate_layer_activation[center_indices])
-            activation_history['A layer ; after training ; close neighbors'].append(net.penultimate_layer_activation[close_indices])
-            activation_history['A layer ; after training ; background neighbors'].append(net.penultimate_layer_activation[background_indices])
-            activation_history['B layer ; after training ; center points'].append(net.final_layer_activation[center_indices])
-            activation_history['B layer ; after training ; close neighbors'].append(net.final_layer_activation[close_indices])
-            activation_history['B layer ; after training ; background neighbors'].append(net.final_layer_activation[background_indices])
+                # record activations
+                activation_history['A layer ; after training ; center points'].append(net.penultimate_layer_activation[center_indices])
+                activation_history['A layer ; after training ; close neighbors'].append(net.penultimate_layer_activation[close_indices])
+                activation_history['A layer ; after training ; background neighbors'].append(net.penultimate_layer_activation[background_indices])
+                activation_history['B layer ; after training ; center points'].append(net.final_layer_activation[center_indices])
+                activation_history['B layer ; after training ; close neighbors'].append(net.final_layer_activation[close_indices])
+                activation_history['B layer ; after training ; background neighbors'].append(net.final_layer_activation[background_indices])
 
-            # record initial and final latent space points
-            if epoch == total_epochs - 1:
-                final_v_points.append(embeddings_ceterPoint)
-                final_v_labels.append(batch_labels)
+                # record initial and final latent space points
+                if epoch == total_epochs - 1:
+                    final_v_points.append(embeddings_ceterPoint)
+                    final_v_labels.append(batch_labels)
 
-            if plot_neighborhood:
-                # other points
-                ax.scatter(latent_points[:, 0], latent_points[:, 1], c='gray', marker='o',
-                           label='Other Points', alpha=0.1)
-                # close neighbors
-                ax.scatter(latent_points[close_indices, 0], latent_points[close_indices, 1],
-                            c='green', marker='o', label='Closest C Points', alpha=1)
-                # background neighbors
-                ax.scatter(latent_points[background_indices, 0], latent_points[background_indices, 1],
-                            c='purple', marker='o', label='Closest B Points', alpha=1)
-                # current center point
-                ax.scatter(latent_points[center_indices, 0], latent_points[center_indices, 1], c='red', marker='*',
-                            s=200, label='Chosen vi', alpha=0.5)
+                if plot_neighborhood and iteration == num_iterations_per_batch - 1:
+                    # other points
+                    ax.scatter(latent_points[:, 0], latent_points[:, 1], c='gray', marker='o',
+                               alpha=0.1)
+                    # close neighbors
+                    ax.scatter(latent_points[close_indices, 0], latent_points[close_indices, 1],
+                                # c='green',
+                               c=(0.5, 1.0, 0.5),  # light green
+                               marker='o', label='Close after', alpha=1)
+                    # background neighbors
+                    ax.scatter(latent_points[background_indices, 0], latent_points[background_indices, 1],
+                                # c='purple',
+                               c=(1.0, 1.0, 0.5),  # light yellow
+                               marker='o', label='Background after', alpha=1)
+                    # current center point
+                    ax.scatter(latent_points[center_indices, 0], latent_points[center_indices, 1], c='red', marker='*',
+                                s=200, label='Center after', alpha=0.5)
 
-                ax.set_xlabel('X Label')
-                ax.set_ylabel('Y Label')
-                ax.set_title(f'Epoch {epoch} after training loss=f{epoch_loss:.2f}')
-                ax.legend()
-                plt.show()
+                    ax.set_xlabel('X Label')
+                    ax.set_ylabel('Y Label')
+                    ax.set_title(f'Epoch {epoch} after training')  # loss={epoch_loss:.2f}
+                    ax.legend()
+                    plt.show()
 
         # Calculate average loss for the epoch
         average_epoch_loss = epoch_loss / len(dataloader)
         loss_values.append(average_epoch_loss)
 
-        if epoch % int(total_epochs / 3) == 0:
-            # Print and record the average loss for the epoch
-            print(f'Epoch [{epoch + 1}/{total_epochs}], Loss: {average_epoch_loss}')
+        # if epoch % np.ceil(total_epochs / 3) == 0:
+        #     # Print and record the average loss for the epoch
+        #     print(f'Epoch [{epoch + 1}/{total_epochs}], Loss: {average_epoch_loss}')
 
     # Plot the loss curve
-    plt.plot(range(1, total_epochs + 1), loss_values, marker='o')
+    plt.plot(range(1, len(loss_values) + 1), loss_values, marker='o')
     plt.title('Local Aggregation Loss Curve')
     plt.xlabel('Epochs')
     plt.ylabel('Average Loss')
@@ -883,13 +891,15 @@ def test_multiple_dotsNeighbotSingleBatch(threeD_input=None,
     np.save(f'{weight_difference_folder}/B_layer_after_training_background_neighbors.npy',
             np.asarray(activation_history['B layer ; after training ; background neighbors']))  # (# batch, num_background, 2)
 
-total_epochs = 10
-test_multiple_dotsNeighbotSingleBatch(
+total_epochs = 5
+num_iterations_per_batch = 1  # increase this from 1 to 10, the ratio of mean_background/mean_close increases from 1.64 to 3.09
+train_multiple_dotsNeighbotSingleBatch(
     threeD_input=False,
     remove_boundary_dots=False,
     integrationForceScale=1,
     total_epochs=total_epochs,
-    rep_shrink=0.9  # rep_shrink can be None, 1, 0.9, 0.85, 0.8
+    rep_shrink=1.0,  # rep_shrink can be None, 1, 0.9, 0.85, 0.8
+    num_iterations_per_batch=num_iterations_per_batch
 )  # this works as long as the number of close neighbors is small  # both remove_boundary_dots True and False works.  # integrationForceScale=1.5 does not work.
 
 """
@@ -906,305 +916,6 @@ test_multiple_dotsNeighbotSingleBatch(
         
         plot the weight difference against the co-activation as X and Y axes respectively. This should be the synaptic level NMPH curve.  
 """
-
-
-def synaptic_level():
-    """
-
-    design the input of NMPH_synaptic should be
-        A layer ; before training ; center points
-        A layer ; before training ; close neighbors
-        A layer ; before training ; background neighbors
-        B layer ; before training ; center points
-        B layer ; before training ; close neighbors
-        B layer ; before training ; background neighbors
-        weight change
-
-    """
-    import os
-    import random
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from scipy.stats import pearsonr
-    from scipy.optimize import curve_fit
-    from tqdm import tqdm
-
-    test_mode = True
-    directory_path = "/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/toyData/synaptic_level/"
-    os.makedirs(directory_path, exist_ok=True)
-
-    def prepare_data():
-        # Set seed
-        random.seed(131)
-
-        # Randomly select channel IDs for layers A and B
-        selected_channel_ids_layer_a = random.sample(range(0, 32), 32)
-        selected_channel_ids_layer_b = random.sample(range(0, 2), 2)
-
-        # Sort the selected channel IDs
-        selected_channel_ids_layer_a.sort()
-        selected_channel_ids_layer_b.sort()
-
-        # Define paths for data folders
-        weight_difference_folder = "/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/toyData/weight_difference_folder/"
-
-        # Load data
-        weight_difference_history_input_layer = np.load(
-            f'{weight_difference_folder}/weight_difference_history_input_layer.npy')
-        total_batch_num = weight_difference_history_input_layer.shape[0]
-        print(f"Total Batch Num: {total_batch_num}")  # 10000
-
-        # load
-        #         A layer ; before training ; center points
-        #         A layer ; before training ; close neighbors
-        #         A layer ; before training ; background neighbors
-        #         B layer ; before training ; center points
-        #         B layer ; before training ; close neighbors
-        #         B layer ; before training ; background neighbors
-        A_layer_before_training_center_points = np.load(
-            f'{weight_difference_folder}/A_layer_before_training_center_points.npy')  # shape = (50000, 32)
-        # Reshape A_layer_before_training_center_points to (50000, 1, 1, 32)
-        A_layer_before_training_center_points = A_layer_before_training_center_points.reshape((50000, 1, 1, 32))
-        A_layer_before_training_close_neighbors = np.load(
-                        f'{weight_difference_folder}/A_layer_before_training_close_neighbors.npy')  # shape = (50000, 1, 5, 32)
-        A_layer_before_training_background_neighbors = np.load(
-                        f'{weight_difference_folder}/A_layer_before_training_background_neighbors.npy')  # shape = (50000, 1, 5, 32)
-        layer_a_activations = np.concatenate([
-                A_layer_before_training_close_neighbors,
-                A_layer_before_training_background_neighbors,
-                A_layer_before_training_center_points
-            ], axis=2)  # shape = (50000, 1, 11, 32)
-        layer_a_activations = layer_a_activations.reshape((50000, 11, 32))  # shape = (50000, 11, 32)
-
-        B_layer_before_training_center_points = np.load(
-            f'{weight_difference_folder}/B_layer_before_training_center_points.npy')
-        B_layer_before_training_center_points = B_layer_before_training_center_points.reshape((50000, 1, 1, 2))
-        B_layer_before_training_close_neighbors =  np.load(
-                        f'{weight_difference_folder}/B_layer_before_training_close_neighbors.npy')
-        B_layer_before_training_background_neighbors = np.load(
-                        f'{weight_difference_folder}/B_layer_before_training_background_neighbors.npy')
-        layer_b_activations = np.concatenate([
-                B_layer_before_training_close_neighbors,
-                B_layer_before_training_background_neighbors,
-                B_layer_before_training_center_points
-            ], axis=2)
-        layer_b_activations = layer_b_activations.reshape((50000, 11, 2))
-
-        weight_changes = np.load(
-            f'{weight_difference_folder}/weight_difference_history_hidden_layer2.npy')  # (10000, 2, 32)
-
-        # Obtain co-activations and weight changes
-        co_activations_flatten = []
-        weight_changes_flatten = []
-        pair_ids = []
-
-        for curr_channel_a_feature in tqdm(range(len(selected_channel_ids_layer_a))):  # 32*2 = 64 pairs
-            for curr_channel_b_feature in range(len(selected_channel_ids_layer_b)):
-                # Extract activations and weight changes for the current channel pair
-                activation_layer_a = layer_a_activations[:, :, curr_channel_a_feature]  # (50000, 11, 1)
-                activation_layer_b = layer_b_activations[:, :, curr_channel_b_feature]  # (50000, 11, 1)
-                weight_change = weight_changes[:, curr_channel_b_feature, curr_channel_a_feature]  # (10000,)
-
-                weight_changes_flatten.append(weight_change)
-
-                # Calculate co-activation
-                co_activation = np.multiply(activation_layer_a, activation_layer_b)
-
-                # Average co-activation across the batch
-                co_activation = np.mean(co_activation, axis=1)  # (10000,)
-
-                co_activations_flatten.append(co_activation)
-                pair_ids.append([
-                    selected_channel_ids_layer_a[curr_channel_a_feature],
-                    selected_channel_ids_layer_b[curr_channel_b_feature]
-                ])
-
-        return co_activations_flatten, weight_changes_flatten, pair_ids
-
-    co_activations_flatten_, weight_changes_flatten_, pair_ids_ = prepare_data()  # co_activations_flatten_ (64, 50000) weight_changes_flatten_ (64, 50000) pair_ids_ (64, 2)
-
-    if not os.path.exists(f'{directory_path}/temp'):
-        os.mkdir(f'{directory_path}/temp')
-
-    if not test_mode:
-        np.save(f'{directory_path}/temp/co_activations_flatten_.npy',
-                co_activations_flatten_)  # shape = [pair#, batch#]
-        np.save(f'{directory_path}/temp/weight_changes_flatten_.npy',
-                weight_changes_flatten_)  # shape = [pair#, batch#]
-        np.save(f'{directory_path}/temp/pair_ids_.npy',
-                pair_ids_)  # shape = [pair#, [ID1, ID2]]
-
-    def cubic_fit_correlation_with_params(x, y, n_splits=10, random_state=42, return_subset=True):
-        def cubic_function(_x, a, b, c, d):
-            return a * _x ** 3 + b * _x ** 2 + c * _x + d
-
-        # Function to compute correlation coefficient
-        def compute_correlation(observed, predicted):
-            return pearsonr(observed, predicted)[0]
-
-        # Set random seed for reproducibility
-        np.random.seed(random_state)
-
-        # Shuffle indices for k-fold cross-validation
-        indices = np.arange(len(x))
-        np.random.shuffle(indices)
-
-        # Initialize arrays to store correlation coefficients and parameters
-        correlation_coefficients = []
-        fitted_params = []
-
-        for curr_split in range(n_splits):
-            # Split data into training and testing sets
-            split_size = len(x) // n_splits
-            test_indices = indices[curr_split * split_size: (curr_split + 1) * split_size]
-            train_indices = np.concatenate([indices[:curr_split * split_size], indices[(curr_split + 1) * split_size:]])
-
-            x_train, x_test = x[train_indices], x[test_indices]
-            y_train, y_test = y[train_indices], y[test_indices]
-
-            # Perform constrained cubic fit on the training data
-            params, _ = curve_fit(cubic_function, x_train, y_train)
-
-            # Predict y values on the test data
-            y_pred = cubic_function(x_test, *params)
-
-            # Compute correlation coefficient and store it
-            correlation_coefficient = compute_correlation(y_test, y_pred)
-            correlation_coefficients.append(correlation_coefficient)
-
-            # Store fitted parameters
-            fitted_params.append(params)
-
-        # Average correlation coefficients and parameters across folds
-        mean_correlation = np.mean(correlation_coefficients)
-        mean_params = np.mean(fitted_params, axis=0)
-
-        if return_subset:
-            # Randomly choose 9% of the data for future visualization
-            subset_size = 10  # int(0.09 * len(x))
-            subset_indices = random.sample(range(len(x)), subset_size)
-            return mean_correlation, mean_params, x[subset_indices], y[subset_indices]
-        else:
-            return mean_correlation, mean_params
-
-    def run_NMPH(co_activations_flatten, weight_changes_flatten, pair_ids, rows=None, cols=None, plot_fig=False):
-        if plot_fig:
-            if rows is None:
-                rows = int(np.ceil(np.sqrt(len(co_activations_flatten))))
-            if cols is None:
-                cols = int(np.sqrt(len(co_activations_flatten)))
-
-            fig, axs = plt.subplots(rows, cols, figsize=(15, 15))  # Create a subplot matrix
-            from matplotlib.cm import get_cmap
-            cmap = get_cmap('viridis')  # Choose a colormap (you can change 'viridis' to your preferred one)
-        else:
-            axs = None
-            cmap = None
-
-        mean_correlation_coefficients = []
-        mean_parameters = []
-        x_partials = []
-        y_partials = []
-        for i in tqdm(range(len(co_activations_flatten))):
-            if test_mode:
-                test_batch_num = 5000
-                x__ = co_activations_flatten[i][:test_batch_num]
-                y__ = weight_changes_flatten[i][:test_batch_num]
-                pair_id = pair_ids[i]
-            else:
-                x__ = co_activations_flatten[i]
-                y__ = weight_changes_flatten[i]
-                pair_id = pair_ids[i]
-            mean_correlation_coefficient, mean_parameter, x_partial, y_partial = cubic_fit_correlation_with_params(
-                x__, y__,
-                n_splits=10,
-                random_state=42,
-                return_subset=True
-            )
-            mean_correlation_coefficients.append(mean_correlation_coefficient)
-            mean_parameters.append(mean_parameter)
-            x_partials.append(x_partial)
-            y_partials.append(y_partial)
-
-            if plot_fig:
-                row = i // cols
-                col = i % cols
-
-                ax = axs[row, col]  # Select the appropriate subplot
-
-                # Color the dots based on a sequence
-                sequence = np.linspace(0, 1, len(x__))  # Create a sequence of values from 0 to 1
-                colors = cmap(sequence)  # Map the sequence to colors using the chosen colormap
-
-                ax.scatter(x__, y__, s=10, c=colors)  # 's' controls the size of the points, 'c' sets the colors
-
-                # Add labels and a title to each subplot
-                ax.set_title(f'pairID: {pair_id}')
-
-                # # Hide x and y-axis ticks and tick labels
-                # ax.set_xticks([])
-                # ax.set_yticks([])
-
-        if plot_fig:
-            plt.tight_layout()  # Adjust subplot layout for better visualization
-            plt.subplots_adjust(wspace=0, hspace=0)
-            plt.show()
-
-        mean_correlation_coefficients = np.array(mean_correlation_coefficients)
-        p_value = np.nanmean(mean_correlation_coefficients < 0)
-        print(f"p value = {p_value}")
-
-        # Return mean_correlation_coefficients along with recorded_data
-        return mean_correlation_coefficients, np.array(mean_parameters), np.array(x_partials), np.array(y_partials)
-
-    if test_mode:
-        mean_correlation_coefficients_, mean_parameters_, x_partials_, y_partials_ = run_NMPH(
-            co_activations_flatten_[:9], weight_changes_flatten_[:9], pair_ids_[:9], plot_fig=True)
-    else:
-        mean_correlation_coefficients_, mean_parameters_, x_partials_, y_partials_ = run_NMPH(
-            co_activations_flatten_, weight_changes_flatten_, pair_ids_)
-
-    if not test_mode:
-        np.save(f'{directory_path}/temp/mean_correlation_coefficients_.npy', mean_correlation_coefficients_)
-        np.save(f'{directory_path}/temp/mean_parameters_.npy', mean_parameters_)
-        np.save(f'{directory_path}/temp/x_partials_.npy', x_partials_)
-        np.save(f'{directory_path}/temp/y_partials_.npy', y_partials_)
-
-    x_partials_ = x_partials_.flatten()
-    y_partials_ = y_partials_.flatten()
-    mean_parameters_avg = np.mean(mean_parameters_, axis=0)
-
-    def plot_scatter_and_cubic(x_partials, y_partials, mean_parameters):
-        def cubic_function(_x, a, b, c, d):
-            print(f"a={a}, b={b}, c={c}, d={d}")
-            return a * _x ** 3 + b * _x ** 2 + c * _x + d
-
-        # Scatter plot
-        plt.scatter(x_partials, y_partials, label='Data Points', color='green', marker='o', s=30)
-
-        # Fit cubic curve using curve_fit
-        # popt, _ = curve_fit(cubic_function, x_partials_, y_partials_)
-
-        # Generate points for the fitted cubic curve
-        x_fit = np.linspace(min(x_partials), max(x_partials), 100)
-        y_fit = cubic_function(x_fit, *mean_parameters)
-
-        # Plot the fitted cubic curve
-        plt.plot(x_fit, y_fit, label='Fitted Cubic Curve', color='red')
-
-        # Add labels and a legend
-        plt.xlabel('X Partials')
-        plt.ylabel('Y Partials')
-        plt.legend()
-
-        # Show the plot
-        plt.show()
-
-    # plot_scatter_and_cubic(x_partials_, y_partials_, mean_parameters_avg)
-
-
-# synaptic_level()
-
 
 def representational_level(total_epochs=50, batch_num_per_epoch=1000):
     """
@@ -1652,7 +1363,7 @@ def representational_level(total_epochs=50, batch_num_per_epoch=1000):
             errors=[[mean_close - p5_close, p95_close - mean_close],
                     [mean_background - p5_background, p95_background - mean_background]],
             labels=["Close Neighbors", "Background Neighbors"],
-            title=title,
+            title=f"{title} mean_background/mean_close={mean_background/mean_close:.2f}",
             x_label="",
             y_label="Mean Representational Change",
             fontsize=12,
@@ -1754,7 +1465,307 @@ def representational_level(total_epochs=50, batch_num_per_epoch=1000):
             plotFig=True)
 
 
-representational_level(total_epochs=total_epochs, batch_num_per_epoch=1000)
+representational_level(total_epochs=total_epochs,
+                       batch_num_per_epoch=1000*num_iterations_per_batch  # batch_num_per_epoch * iter_per_batch = 1000*3
+                       )
+
+
+def synaptic_level():
+    """
+
+    design the input of NMPH_synaptic should be
+        A layer ; before training ; center points
+        A layer ; before training ; close neighbors
+        A layer ; before training ; background neighbors
+        B layer ; before training ; center points
+        B layer ; before training ; close neighbors
+        B layer ; before training ; background neighbors
+        weight change
+
+    """
+    import os
+    import random
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from scipy.stats import pearsonr
+    from scipy.optimize import curve_fit
+    from tqdm import tqdm
+
+    test_mode = True
+    directory_path = "/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/toyData/synaptic_level/"
+    os.makedirs(directory_path, exist_ok=True)
+
+    def prepare_data():
+        # Set seed
+        random.seed(131)
+
+        # Randomly select channel IDs for layers A and B
+        selected_channel_ids_layer_a = random.sample(range(0, 32), 32)
+        selected_channel_ids_layer_b = random.sample(range(0, 2), 2)
+
+        # Sort the selected channel IDs
+        selected_channel_ids_layer_a.sort()
+        selected_channel_ids_layer_b.sort()
+
+        # Define paths for data folders
+        weight_difference_folder = "/gpfs/milgram/scratch60/turk-browne/kp578/LocalAgg/toyData/weight_difference_folder/"
+
+        # Load data
+        weight_difference_history_input_layer = np.load(
+            f'{weight_difference_folder}/weight_difference_history_input_layer.npy')
+        total_batch_num = weight_difference_history_input_layer.shape[0]
+        print(f"Total Batch Num: {total_batch_num}")  # 10000
+
+        # load
+        #         A layer ; before training ; center points
+        #         A layer ; before training ; close neighbors
+        #         A layer ; before training ; background neighbors
+        #         B layer ; before training ; center points
+        #         B layer ; before training ; close neighbors
+        #         B layer ; before training ; background neighbors
+        A_layer_before_training_center_points = np.load(
+            f'{weight_difference_folder}/A_layer_before_training_center_points.npy')  # shape = (50000, 32)
+        # Reshape A_layer_before_training_center_points to (50000, 1, 1, 32)
+        A_layer_before_training_center_points = A_layer_before_training_center_points.reshape((50000, 1, 1, 32))
+        A_layer_before_training_close_neighbors = np.load(
+                        f'{weight_difference_folder}/A_layer_before_training_close_neighbors.npy')  # shape = (50000, 1, 5, 32)
+        A_layer_before_training_background_neighbors = np.load(
+                        f'{weight_difference_folder}/A_layer_before_training_background_neighbors.npy')  # shape = (50000, 1, 5, 32)
+        layer_a_activations = np.concatenate([
+                A_layer_before_training_close_neighbors,
+                A_layer_before_training_background_neighbors,
+                A_layer_before_training_center_points
+            ], axis=2)  # shape = (50000, 1, 11, 32)
+        layer_a_activations = layer_a_activations.reshape((50000, 11, 32))  # shape = (50000, 11, 32)
+
+        B_layer_before_training_center_points = np.load(
+            f'{weight_difference_folder}/B_layer_before_training_center_points.npy')
+        B_layer_before_training_center_points = B_layer_before_training_center_points.reshape((50000, 1, 1, 2))
+        B_layer_before_training_close_neighbors =  np.load(
+                        f'{weight_difference_folder}/B_layer_before_training_close_neighbors.npy')
+        B_layer_before_training_background_neighbors = np.load(
+                        f'{weight_difference_folder}/B_layer_before_training_background_neighbors.npy')
+        layer_b_activations = np.concatenate([
+                B_layer_before_training_close_neighbors,
+                B_layer_before_training_background_neighbors,
+                B_layer_before_training_center_points
+            ], axis=2)
+        layer_b_activations = layer_b_activations.reshape((50000, 11, 2))
+
+        weight_changes = np.load(
+            f'{weight_difference_folder}/weight_difference_history_hidden_layer2.npy')  # (10000, 2, 32)
+
+        # Obtain co-activations and weight changes
+        co_activations_flatten = []
+        weight_changes_flatten = []
+        pair_ids = []
+
+        for curr_channel_a_feature in tqdm(range(len(selected_channel_ids_layer_a))):  # 32*2 = 64 pairs
+            for curr_channel_b_feature in range(len(selected_channel_ids_layer_b)):
+                # Extract activations and weight changes for the current channel pair
+                activation_layer_a = layer_a_activations[:, :, curr_channel_a_feature]  # (50000, 11, 1)
+                activation_layer_b = layer_b_activations[:, :, curr_channel_b_feature]  # (50000, 11, 1)
+                weight_change = weight_changes[:, curr_channel_b_feature, curr_channel_a_feature]  # (10000,)
+
+                weight_changes_flatten.append(weight_change)
+
+                # Calculate co-activation
+                co_activation = np.multiply(activation_layer_a, activation_layer_b)
+
+                # Average co-activation across the batch
+                co_activation = np.mean(co_activation, axis=1)  # (10000,)
+
+                co_activations_flatten.append(co_activation)
+                pair_ids.append([
+                    selected_channel_ids_layer_a[curr_channel_a_feature],
+                    selected_channel_ids_layer_b[curr_channel_b_feature]
+                ])
+
+        return co_activations_flatten, weight_changes_flatten, pair_ids
+
+    co_activations_flatten_, weight_changes_flatten_, pair_ids_ = prepare_data()  # co_activations_flatten_ (64, 50000) weight_changes_flatten_ (64, 50000) pair_ids_ (64, 2)
+
+    if not os.path.exists(f'{directory_path}/temp'):
+        os.mkdir(f'{directory_path}/temp')
+
+    if not test_mode:
+        np.save(f'{directory_path}/temp/co_activations_flatten_.npy',
+                co_activations_flatten_)  # shape = [pair#, batch#]
+        np.save(f'{directory_path}/temp/weight_changes_flatten_.npy',
+                weight_changes_flatten_)  # shape = [pair#, batch#]
+        np.save(f'{directory_path}/temp/pair_ids_.npy',
+                pair_ids_)  # shape = [pair#, [ID1, ID2]]
+
+    def cubic_fit_correlation_with_params(x, y, n_splits=10, random_state=42, return_subset=True):
+        def cubic_function(_x, a, b, c, d):
+            return a * _x ** 3 + b * _x ** 2 + c * _x + d
+
+        # Function to compute correlation coefficient
+        def compute_correlation(observed, predicted):
+            return pearsonr(observed, predicted)[0]
+
+        # Set random seed for reproducibility
+        np.random.seed(random_state)
+
+        # Shuffle indices for k-fold cross-validation
+        indices = np.arange(len(x))
+        np.random.shuffle(indices)
+
+        # Initialize arrays to store correlation coefficients and parameters
+        correlation_coefficients = []
+        fitted_params = []
+
+        for curr_split in range(n_splits):
+            # Split data into training and testing sets
+            split_size = len(x) // n_splits
+            test_indices = indices[curr_split * split_size: (curr_split + 1) * split_size]
+            train_indices = np.concatenate([indices[:curr_split * split_size], indices[(curr_split + 1) * split_size:]])
+
+            x_train, x_test = x[train_indices], x[test_indices]
+            y_train, y_test = y[train_indices], y[test_indices]
+
+            # Perform constrained cubic fit on the training data
+            params, _ = curve_fit(cubic_function, x_train, y_train)
+
+            # Predict y values on the test data
+            y_pred = cubic_function(x_test, *params)
+
+            # Compute correlation coefficient and store it
+            correlation_coefficient = compute_correlation(y_test, y_pred)
+            correlation_coefficients.append(correlation_coefficient)
+
+            # Store fitted parameters
+            fitted_params.append(params)
+
+        # Average correlation coefficients and parameters across folds
+        mean_correlation = np.mean(correlation_coefficients)
+        mean_params = np.mean(fitted_params, axis=0)
+
+        if return_subset:
+            # Randomly choose 9% of the data for future visualization
+            subset_size = 10  # int(0.09 * len(x))
+            subset_indices = random.sample(range(len(x)), subset_size)
+            return mean_correlation, mean_params, x[subset_indices], y[subset_indices]
+        else:
+            return mean_correlation, mean_params
+
+    def run_NMPH(co_activations_flatten, weight_changes_flatten, pair_ids, rows=None, cols=None, plot_fig=False):
+        if plot_fig:
+            if rows is None:
+                rows = int(np.ceil(np.sqrt(len(co_activations_flatten))))
+            if cols is None:
+                cols = int(np.sqrt(len(co_activations_flatten)))
+
+            fig, axs = plt.subplots(rows, cols, figsize=(15, 15))  # Create a subplot matrix
+            from matplotlib.cm import get_cmap
+            cmap = get_cmap('viridis')  # Choose a colormap (you can change 'viridis' to your preferred one)
+        else:
+            axs = None
+            cmap = None
+
+        mean_correlation_coefficients = []
+        mean_parameters = []
+        x_partials = []
+        y_partials = []
+        for i in tqdm(range(len(co_activations_flatten))):
+            if test_mode:
+                test_batch_num = 5000
+                x__ = co_activations_flatten[i][:test_batch_num]
+                y__ = weight_changes_flatten[i][:test_batch_num]
+                pair_id = pair_ids[i]
+            else:
+                x__ = co_activations_flatten[i]
+                y__ = weight_changes_flatten[i]
+                pair_id = pair_ids[i]
+            mean_correlation_coefficient, mean_parameter, x_partial, y_partial = cubic_fit_correlation_with_params(
+                x__, y__,
+                n_splits=10,
+                random_state=42,
+                return_subset=True
+            )
+            mean_correlation_coefficients.append(mean_correlation_coefficient)
+            mean_parameters.append(mean_parameter)
+            x_partials.append(x_partial)
+            y_partials.append(y_partial)
+
+            if plot_fig:
+                row = i // cols
+                col = i % cols
+
+                ax = axs[row, col]  # Select the appropriate subplot
+
+                # Color the dots based on a sequence
+                sequence = np.linspace(0, 1, len(x__))  # Create a sequence of values from 0 to 1
+                colors = cmap(sequence)  # Map the sequence to colors using the chosen colormap
+
+                ax.scatter(x__, y__, s=10, c=colors)  # 's' controls the size of the points, 'c' sets the colors
+
+                # Add labels and a title to each subplot
+                ax.set_title(f'pairID: {pair_id}')
+
+                # # Hide x and y-axis ticks and tick labels
+                # ax.set_xticks([])
+                # ax.set_yticks([])
+
+        if plot_fig:
+            plt.tight_layout()  # Adjust subplot layout for better visualization
+            plt.subplots_adjust(wspace=0, hspace=0)
+            plt.show()
+
+        mean_correlation_coefficients = np.array(mean_correlation_coefficients)
+        p_value = np.nanmean(mean_correlation_coefficients < 0)
+        print(f"p value = {p_value}")
+
+        # Return mean_correlation_coefficients along with recorded_data
+        return mean_correlation_coefficients, np.array(mean_parameters), np.array(x_partials), np.array(y_partials)
+
+    if test_mode:
+        mean_correlation_coefficients_, mean_parameters_, x_partials_, y_partials_ = run_NMPH(
+            co_activations_flatten_[:9], weight_changes_flatten_[:9], pair_ids_[:9], plot_fig=True)
+    else:
+        mean_correlation_coefficients_, mean_parameters_, x_partials_, y_partials_ = run_NMPH(
+            co_activations_flatten_, weight_changes_flatten_, pair_ids_)
+
+    if not test_mode:
+        np.save(f'{directory_path}/temp/mean_correlation_coefficients_.npy', mean_correlation_coefficients_)
+        np.save(f'{directory_path}/temp/mean_parameters_.npy', mean_parameters_)
+        np.save(f'{directory_path}/temp/x_partials_.npy', x_partials_)
+        np.save(f'{directory_path}/temp/y_partials_.npy', y_partials_)
+
+    x_partials_ = x_partials_.flatten()
+    y_partials_ = y_partials_.flatten()
+    mean_parameters_avg = np.mean(mean_parameters_, axis=0)
+
+    def plot_scatter_and_cubic(x_partials, y_partials, mean_parameters):
+        def cubic_function(_x, a, b, c, d):
+            print(f"a={a}, b={b}, c={c}, d={d}")
+            return a * _x ** 3 + b * _x ** 2 + c * _x + d
+
+        # Scatter plot
+        plt.scatter(x_partials, y_partials, label='Data Points', color='green', marker='o', s=30)
+
+        # Fit cubic curve using curve_fit
+        # popt, _ = curve_fit(cubic_function, x_partials_, y_partials_)
+
+        # Generate points for the fitted cubic curve
+        x_fit = np.linspace(min(x_partials), max(x_partials), 100)
+        y_fit = cubic_function(x_fit, *mean_parameters)
+
+        # Plot the fitted cubic curve
+        plt.plot(x_fit, y_fit, label='Fitted Cubic Curve', color='red')
+
+        # Add labels and a legend
+        plt.xlabel('X Partials')
+        plt.ylabel('Y Partials')
+        plt.legend()
+
+        # Show the plot
+        plt.show()
+
+    # plot_scatter_and_cubic(x_partials_, y_partials_, mean_parameters_avg)
+
+
+# synaptic_level()
 
 # if repChange_distanceType_ == 'cosine':
 #     pairImg_similarity_before_repChange[0, curr_image] = (np.dot(center_before, neighbor_before[curr_image, :]) / (np.linalg.norm(center_before) * np.linalg.norm(neighbor_before[curr_image, :])))
