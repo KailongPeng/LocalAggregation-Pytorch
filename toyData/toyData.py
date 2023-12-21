@@ -837,18 +837,23 @@ def train_multiple_dotsNeighbotSingleBatch(
     fig, axes = plt.subplots(1, 2, figsize=(12, 6))
 
     # Set consistent xlim and ylim for both subplots
-    _min_val = (
-        min(initial_v_points[:, 0].min(), final_v_points[:, 0].min()),
-        min(initial_v_points[:, 1].min(), final_v_points[:, 1].min())
-    )
-    _max_val = (
-        max(initial_v_points[:, 0].max(), final_v_points[:, 0].max()),
-        max(initial_v_points[:, 1].max(), final_v_points[:, 1].max())
-    )
-    min_val = (_min_val[0] - (_max_val[0]-_min_val[0])/20,
-               _min_val[1] - (_max_val[1]-_min_val[1])/20)
-    max_val = (_max_val[0] + (_max_val[0]-_min_val[0])/20,
-               _max_val[1] + (_max_val[1]-_min_val[1])/20)
+    set_sameXY_plotting_range = False
+    if set_sameXY_plotting_range:
+        _min_val = (
+            min(initial_v_points[:, 0].min(), final_v_points[:, 0].min()),
+            min(initial_v_points[:, 1].min(), final_v_points[:, 1].min())
+        )
+        _max_val = (
+            max(initial_v_points[:, 0].max(), final_v_points[:, 0].max()),
+            max(initial_v_points[:, 1].max(), final_v_points[:, 1].max())
+        )
+        min_val = (_min_val[0] - (_max_val[0]-_min_val[0])/20,
+                   _min_val[1] - (_max_val[1]-_min_val[1])/20)
+        max_val = (_max_val[0] + (_max_val[0]-_min_val[0])/20,
+                   _max_val[1] + (_max_val[1]-_min_val[1])/20)
+    else:
+        min_val = None
+        max_val = None
 
     # Initial latent space points
     scatter_initial = axes[0].scatter(
@@ -858,8 +863,9 @@ def train_multiple_dotsNeighbotSingleBatch(
     axes[0].set_title('Initial Latent Space Points')
     axes[0].set_xlabel('Dimension 1')
     axes[0].set_ylabel('Dimension 2')
-    axes[0].set_xlim(min_val[0], max_val[0])
-    axes[0].set_ylim(min_val[1], max_val[1])
+    if set_sameXY_plotting_range:
+        axes[0].set_xlim(min_val[0], max_val[0])
+        axes[0].set_ylim(min_val[1], max_val[1])
     # fig.colorbar(scatter_initial, ax=axes[0], label='Point Index')
 
     # Final latent space points
@@ -870,8 +876,9 @@ def train_multiple_dotsNeighbotSingleBatch(
     axes[1].set_title('Final Latent Space Points')
     axes[1].set_xlabel('Dimension 1')
     axes[1].set_ylabel('Dimension 2')
-    axes[1].set_xlim(min_val[0], max_val[0])
-    axes[1].set_ylim(min_val[1], max_val[1])
+    if set_sameXY_plotting_range:
+        axes[1].set_xlim(min_val[0], max_val[0])
+        axes[1].set_ylim(min_val[1], max_val[1])
     # fig.colorbar(scatter_final, ax=axes[1], label='Point Index')
 
     plt.tight_layout()
@@ -1829,147 +1836,3 @@ synaptic_level(total_epochs=total_epochs,
                )
 
 print('done')
-
-# if repChange_distanceType_ == 'cosine':
-#     pairImg_similarity_before_repChange[0, curr_image] = (np.dot(center_before, neighbor_before[curr_image, :]) / (np.linalg.norm(center_before) * np.linalg.norm(neighbor_before[curr_image, :])))
-# elif repChange_distanceType_ == 'dot':
-#     # pairImg_similarity_before_repChange[i, j] = np.dot(layer_activations_before[i, :],
-#     #                                                    layer_activations_before[j, :])
-#     pairImg_similarity_before_repChange[0, curr_image] = np.dot(center_before, neighbor_before[curr_image, :])
-# elif repChange_distanceType_ == 'correlation':
-#     # pairImg_similarity_before_repChange[i, j] = \
-#     # pearsonr(layer_activations_before[i, :], layer_activations_before[j, :])[0]
-#     pairImg_similarity_before_repChange[0, curr_image] = pearsonr(center_before, neighbor_before[curr_image, :])[0]
-#
-# elif repChange_distanceType_ == 'L1':
-#     # pairImg_similarity_before_repChange[i, j] = - np.linalg.norm(
-#     #     layer_activations_before[i, :] - layer_activations_before[j, :],
-#     #     ord=1)
-#     pairImg_similarity_before_repChange[0, curr_image] = - np.linalg.norm(center_before - neighbor_before[curr_image, :], ord=1)
-#
-# elif repChange_distanceType_ == 'L2':  # euclidean
-#     # pairImg_similarity_before_repChange[i, j] = - np.linalg.norm(
-#     #     layer_activations_before[i, :] - layer_activations_before[j, :],
-#     #     ord=2)
-#     pairImg_similarity_before_repChange[0, curr_image] = - np.linalg.norm(center_before - neighbor_before[curr_image, :], ord=2)
-# elif repChange_distanceType_ == 'jacard':
-#     # pairImg_similarity_before_repChange[i, j] = calculate_jaccard_similarity(
-#     #     layer_activations_before[i, :], layer_activations_before[j, :])
-#     pairImg_similarity_before_repChange[0, curr_image] = calculate_jaccard_similarity(center_before, neighbor_before[curr_image, :])
-# else:
-#     raise Exception("distanceType not found")
-# batchSize = layer_activations_before.shape[0]
-#
-# # for each pair of images, calculate the cosine similarity of the activations before weight change
-# pairImg_similarity_before_repChange = np.zeros((batchSize, batchSize))
-# pairImg_similarity_before_coactivation = np.zeros((batchSize, batchSize))
-# for i in range(batchSize):
-#     for j in range(batchSize):
-#         if repChange_distanceType_ == 'cosine':
-#             pairImg_similarity_before_repChange[i, j] = np.dot(layer_activations_before[i, :],
-#                                                                layer_activations_before[j, :]) / (
-#                                                                 np.linalg.norm(layer_activations_before[i,
-#                                                                                :]) * np.linalg.norm(
-#                                                             layer_activations_before[j, :]))
-#         elif repChange_distanceType_ == 'dot':
-#             pairImg_similarity_before_repChange[i, j] = np.dot(layer_activations_before[i, :],
-#                                                                layer_activations_before[j, :])
-#         elif repChange_distanceType_ == 'correlation':
-#             pairImg_similarity_before_repChange[i, j] = \
-#             pearsonr(layer_activations_before[i, :], layer_activations_before[j, :])[0]
-#         elif repChange_distanceType_ == 'L1':
-#             pairImg_similarity_before_repChange[i, j] = - np.linalg.norm(
-#                 layer_activations_before[i, :] - layer_activations_before[j, :],
-#                 ord=1)
-#         elif repChange_distanceType_ == 'L2':  # euclidean
-#             pairImg_similarity_before_repChange[i, j] = - np.linalg.norm(
-#                 layer_activations_before[i, :] - layer_activations_before[j, :],
-#                 ord=2)
-#         elif repChange_distanceType_ == 'jacard':
-#             pairImg_similarity_before_repChange[i, j] = calculate_jaccard_similarity(
-#                 layer_activations_before[i, :], layer_activations_before[j, :])
-#         else:
-#             raise Exception("distanceType not found")
-#
-#         if coactivation_distanceType_ == 'cosine':
-#             pairImg_similarity_before_coactivation[i, j] = np.dot(layer_activations_before[i, :],
-#                                                                   layer_activations_before[j, :]) / (
-#                                                                    np.linalg.norm(layer_activations_before[i,
-#                                                                                   :]) * np.linalg.norm(
-#                                                                layer_activations_before[j, :]))
-#         elif coactivation_distanceType_ == 'dot':
-#             pairImg_similarity_before_coactivation[i, j] = np.dot(layer_activations_before[i, :],
-#                                                                   layer_activations_before[j, :])
-#         elif coactivation_distanceType_ == 'L1':
-#             pairImg_similarity_before_coactivation[i, j] = - np.linalg.norm(
-#                 layer_activations_before[i, :] - layer_activations_before[j, :],
-#                 ord=1)
-#         elif coactivation_distanceType_ == 'L2':  # euclidean
-#             pairImg_similarity_before_coactivation[i, j] = - np.linalg.norm(
-#                 layer_activations_before[i, :] - layer_activations_before[j, :],
-#                 ord=2)
-#         elif coactivation_distanceType_ == 'jacard':
-#             pairImg_similarity_before_coactivation[i, j] = calculate_jaccard_similarity(
-#                 layer_activations_before[i, :], layer_activations_before[j, :])
-#         elif coactivation_distanceType_ == 'correlation':
-#             pairImg_similarity_before_coactivation[i, j] = \
-#             pearsonr(layer_activations_before[i, :], layer_activations_before[j, :])[0]
-#         else:
-#             raise Exception("distanceType not found")
-#
-# # for each pair of images, calculate the cosine similarity of the activations after weight change
-# pairImg_similarity_after_repChange = np.zeros((batchSize, batchSize))
-# pairImg_similarity_after_coactivation = np.zeros((batchSize, batchSize))
-# for i in range(batchSize):
-#     for j in range(batchSize):
-#         if repChange_distanceType_ == 'cosine':
-#             pairImg_similarity_after_repChange[i, j] = np.dot(layer_activations_after[i, :],
-#                                                               layer_activations_after[j, :]) / (
-#                                                                np.linalg.norm(layer_activations_after[i,
-#                                                                               :]) * np.linalg.norm(
-#                                                            layer_activations_after[j, :]))
-#         elif repChange_distanceType_ == 'dot':
-#             pairImg_similarity_after_repChange[i, j] = np.dot(layer_activations_after[i, :],
-#                                                               layer_activations_after[j, :])
-#         elif repChange_distanceType_ == 'correlation':
-#             pairImg_similarity_after_repChange[i, j] = \
-#             pearsonr(layer_activations_after[i, :], layer_activations_after[j, :])[0]
-#         elif repChange_distanceType_ == 'L1':
-#             pairImg_similarity_after_repChange[i, j] = - np.linalg.norm(
-#                 layer_activations_after[i, :] - layer_activations_after[j, :],
-#                 ord=1)
-#         elif repChange_distanceType_ == 'L2':  # euclidean
-#             pairImg_similarity_after_repChange[i, j] = - np.linalg.norm(
-#                 layer_activations_after[i, :] - layer_activations_after[j, :],
-#                 ord=2)
-#         elif repChange_distanceType_ == 'jacard':
-#             pairImg_similarity_after_repChange[i, j] = calculate_jaccard_similarity(
-#                 layer_activations_after[i, :], layer_activations_after[j, :])
-#         else:
-#             raise Exception("distanceType not found")
-#
-#         if coactivation_distanceType_ == 'cosine':
-#             pairImg_similarity_after_coactivation[i, j] = np.dot(layer_activations_after[i, :],
-#                                                                  layer_activations_after[j, :]) / (
-#                                                                   np.linalg.norm(layer_activations_after[i,
-#                                                                                  :]) * np.linalg.norm(
-#                                                               layer_activations_after[j, :]))
-#         elif coactivation_distanceType_ == 'dot':
-#             pairImg_similarity_after_coactivation[i, j] = np.dot(layer_activations_after[i, :],
-#                                                                  layer_activations_after[j, :])
-#         elif coactivation_distanceType_ == 'L1':
-#             pairImg_similarity_after_coactivation[i, j] = - np.linalg.norm(
-#                 layer_activations_after[i, :] - layer_activations_after[j, :],
-#                 ord=1)
-#         elif coactivation_distanceType_ == 'L2':  # euclidean
-#             pairImg_similarity_after_coactivation[i, j] = - np.linalg.norm(
-#                 layer_activations_after[i, :] - layer_activations_after[j, :],
-#                 ord=2)
-#         elif coactivation_distanceType_ == 'jacard':
-#             pairImg_similarity_after_coactivation[i, j] = calculate_jaccard_similarity(
-#                 layer_activations_after[i, :], layer_activations_after[j, :])
-#         elif coactivation_distanceType_ == 'correlation':
-#             pairImg_similarity_after_coactivation[i, j] = \
-#             pearsonr(layer_activations_after[i, :], layer_activations_after[j, :])[0]
-#         else:
-#             raise Exception("distanceType not found")
