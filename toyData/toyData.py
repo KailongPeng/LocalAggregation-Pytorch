@@ -321,9 +321,9 @@ def trainWith_crossEntropyLoss(threeD_input=False, remove_boundary_dots=False):
 def train_multiple_dotsNeighbotSingleBatch(
         threeD_input=None,
         remove_boundary_dots=False,
-        integrationForceScale=None,
+        integrationForceScale=None, # the relative force scale between integration and differentiation.
         total_epochs=50,
-        rep_shrink=None,
+        range_loss_rep_shrink=None,
         num_iterations_per_batch=1,
         plot_neighborhood=False,  # whether to plot the neighborhood of each point in latent space or not):
         num_close=None,
@@ -472,11 +472,9 @@ def train_multiple_dotsNeighbotSingleBatch(
             return x
 
     # Define local aggregation loss function
-    def local_aggregation_loss(embeddings_center, close_neighbors, background_neighbors, integrationForceScale=None,
-                               # weight_decay_rate=None, model=None,
-                               # embeddings_all=None,
-                               # initial_x_range_0=None, initial_y_range_0=None
-                               ):
+    def local_aggregation_loss(
+            embeddings_center, close_neighbors, background_neighbors, integrationForceScale=None,
+    ):
         # Compute pairwise distances between embeddings and close neighbors  # embeddings(50,2) close_neighbors(50,10,2) -> (50,10)
         if close_neighbors.shape[1] == 0:
             close_distances = torch.tensor(1e-6)
@@ -485,12 +483,14 @@ def train_multiple_dotsNeighbotSingleBatch(
                 close_neighbors)  # Expand the embeddings to have the same dimensions as close_neighbors
             close_distances = torch.mean(torch.norm(expanded_embeddings - close_neighbors,
                                          dim=2))  # Calculate the Euclidean distance
-
-        # Compute pairwise distances between embeddings and background neighbors
-        expanded_embeddings = embeddings_center.unsqueeze(1).expand_as(
-            background_neighbors)  # Expand the embeddings to have the same dimensions as background_neighbors
-        background_distances = torch.mean(torch.norm(expanded_embeddings - background_neighbors,
-                                          dim=2))  # Calculate the Euclidean distance
+        if background_neighbors.shape[1] == 0:
+            background_distances = torch.tensor(1e-6)
+        else:
+            # Compute pairwise distances between embeddings and background neighbors
+            expanded_embeddings = embeddings_center.unsqueeze(1).expand_as(
+                background_neighbors)  # Expand the embeddings to have the same dimensions as background_neighbors
+            background_distances = torch.mean(torch.norm(expanded_embeddings - background_neighbors,
+                                              dim=2))  # Calculate the Euclidean distance
 
         # Compute loss based on distances
         loss = torch.mean(torch.log(1 + torch.exp(integrationForceScale * close_distances - background_distances)))
@@ -663,7 +663,8 @@ def train_multiple_dotsNeighbotSingleBatch(
             print(f"learning rate changed to {learning_rate / 4.0}")
         epoch_loss = 0.0  # Variable to accumulate loss within each epoch
 
-        for curr_batch, (batch, batch_labels) in tqdm(enumerate(dataloader)):
+        # for curr_batch, (batch, batch_labels) in tqdm(enumerate(dataloader)):
+        for curr_batch, (batch, batch_labels) in enumerate(dataloader):
             # Record weights
             input_layer_before = net.input_layer.weight.data.clone().detach().numpy()
             hidden_layer1_before = net.hidden_layer1.weight.data.clone().detach().numpy()
@@ -723,20 +724,20 @@ def train_multiple_dotsNeighbotSingleBatch(
 
                 # update weight begin
                 if epoch == 0 and curr_batch == 0 and iteration == 0:
-                    if rep_shrink is not None:
-                        print(f"rep_shrink={rep_shrink}")
+                    if range_loss_rep_shrink is not None:
+                        print(f"rep_shrink={range_loss_rep_shrink}")
                         # initial_x_range_0 = rep_shrink * (torch.max(embeddings_all[:, 0]).item() -
                         #                                   torch.min(embeddings_all[:, 0]).item())
                         # initial_y_range_0 = rep_shrink * (torch.min(embeddings_all[:, 1]).item() -
                         #                                   torch.max(embeddings_all[:, 1]).item())
 
                         initial_x_range_0 = (
-                            rep_shrink * torch.min(embeddings_all[:, 0]).item(),
-                            rep_shrink * torch.max(embeddings_all[:, 0]).item()
+                            range_loss_rep_shrink * torch.min(embeddings_all[:, 0]).item(),
+                            range_loss_rep_shrink * torch.max(embeddings_all[:, 0]).item()
                         )
                         initial_y_range_0 = (
-                            rep_shrink * torch.min(embeddings_all[:, 1]).item(),
-                            rep_shrink * torch.max(embeddings_all[:, 1]).item()
+                            range_loss_rep_shrink * torch.min(embeddings_all[:, 1]).item(),
+                            range_loss_rep_shrink * torch.max(embeddings_all[:, 1]).item()
                         )
                 else:
                     pass
@@ -747,7 +748,7 @@ def train_multiple_dotsNeighbotSingleBatch(
                     integrationForceScale=integrationForceScale
                 )
 
-                if rep_shrink is None:
+                if range_loss_rep_shrink is None:
                     loss_range = 0
                 else:
                     loss_range = range_loss(
@@ -764,10 +765,7 @@ def train_multiple_dotsNeighbotSingleBatch(
                 # Update parameters
                 optimizer.step()
 
-                epoch_loss += total_loss.item()
-                # loss_values.append(total_loss.item())
-                # update weight end
-
+                epoch_loss += loss_local_aggregation.item()
 
                 # Record weights
                 latent_points = net(torch.tensor(train_data, dtype=torch.float32)).detach().numpy()
@@ -839,9 +837,21 @@ def train_multiple_dotsNeighbotSingleBatch(
     # Plot initial and final latent space points with rainbow colormap
     fig, axes = plt.subplots(1, 2, figsize=(12, 6))
 
+    # Set consistent xlim and ylim for both subplots
+    _min_val = (
+        min(initial_v_points[:, 0].min(), final_v_points[:, 0].min()),
+        min(initial_v_points[:, 1].min(), final_v_points[:, 1].min())
+    )
+    _max_val = (
+        max(initial_v_points[:, 0].max(), final_v_points[:, 0].max()),
+        max(initial_v_points[:, 1].max(), final_v_points[:, 1].max())
+    )
+    min_val = (_min_val[0] - (_max_val[0]-_min_val[0])/20,
+               _min_val[1] - (_max_val[1]-_min_val[1])/20)
+    max_val = (_max_val[0] + (_max_val[0]-_min_val[0])/20,
+               _max_val[1] + (_max_val[1]-_min_val[1])/20)
+
     # Initial latent space points
-    # initial_v_points = torch.cat(initial_v_points, dim=0).detach().numpy()
-    # initial_v_labels = torch.cat(initial_v_labels, dim=0).numpy().flatten()
     scatter_initial = axes[0].scatter(
         initial_v_points[:, 0], initial_v_points[:, 1],
         c=initial_v_labels,
@@ -849,11 +859,11 @@ def train_multiple_dotsNeighbotSingleBatch(
     axes[0].set_title('Initial Latent Space Points')
     axes[0].set_xlabel('Dimension 1')
     axes[0].set_ylabel('Dimension 2')
-    fig.colorbar(scatter_initial, ax=axes[0], label='Point Index')
+    axes[0].set_xlim(min_val[0], max_val[0])
+    axes[0].set_ylim(min_val[1], max_val[1])
+    # fig.colorbar(scatter_initial, ax=axes[0], label='Point Index')
 
     # Final latent space points
-    # final_v_points = torch.cat(final_v_points, dim=0).detach().numpy()
-    # final_v_labels = torch.cat(final_v_labels, dim=0).numpy().flatten()
     scatter_final = axes[1].scatter(
         final_v_points[:, 0], final_v_points[:, 1],
         c=final_v_labels,
@@ -861,7 +871,9 @@ def train_multiple_dotsNeighbotSingleBatch(
     axes[1].set_title('Final Latent Space Points')
     axes[1].set_xlabel('Dimension 1')
     axes[1].set_ylabel('Dimension 2')
-    fig.colorbar(scatter_final, ax=axes[1], label='Point Index')
+    axes[1].set_xlim(min_val[0], max_val[0])
+    axes[1].set_ylim(min_val[1], max_val[1])
+    # fig.colorbar(scatter_final, ax=axes[1], label='Point Index')
 
     plt.tight_layout()
     plt.show()
@@ -910,13 +922,13 @@ def train_multiple_dotsNeighbotSingleBatch(
 
 total_epochs = 5
 num_iterations_per_batch = 1  # increase this from 1 to 10, the ratio of mean_background/mean_close increases from 1.64 to 3.09
-(num_close, num_background)=(30, 1)
+(num_close, num_background)=(5, 0)  # after changing the local_aggregation_loss function, the ratio of mean_background/mean_close becomes extremely stably and not easy to collapse.
 train_multiple_dotsNeighbotSingleBatch(
     threeD_input=False,
     remove_boundary_dots=False,
-    integrationForceScale=2,  # integrationForceScale 2 collapses the result
+    integrationForceScale=1,  # the relative force scale between integration and differentiation. Should be 1, 2 collapses the result
     total_epochs=total_epochs,
-    rep_shrink=1.0,  # rep_shrink can be None, 1, 0.9, 0.85, 0.8
+    range_loss_rep_shrink=None,  # rep_shrink can be None (remove range loss), 1, 0.9, 0.85, 0.8, whether range loss is implemented
     num_iterations_per_batch=num_iterations_per_batch,
     plot_neighborhood=False,
     num_close=num_close,
@@ -1053,7 +1065,7 @@ def representational_level(total_epochs=50, batch_num_per_epoch=1000, num_closeP
             B_layer_before_training_background_neighbors = np.zeros((total_epochs*batch_num_per_epoch, 1, 0, 2))
         # B_layer_before_training_background_neighbors = np.load(
         #     f'{weight_difference_folder}/B_layer_before_training_background_neighbors.npy')
-        # import pdb; pdb.set_trace()
+
         layer_b_activations_before = np.concatenate([
             B_layer_before_training_center_points,
             B_layer_before_training_close_neighbors,
@@ -1218,10 +1230,10 @@ def representational_level(total_epochs=50, batch_num_per_epoch=1000, num_closeP
 
         pairImg_similarity_before_repChange = np.zeros((
             num_centerPoints,
-            num_closePoints+num_backgroundPoints))
+            num_closePoints + num_backgroundPoints))
         pairImg_similarity_before_coactivation = np.zeros((
             num_centerPoints,
-            num_closePoints+num_backgroundPoints))
+            num_closePoints + num_backgroundPoints))
 
         def similarity_between_center_and_neighbors(center, neighbor, distanceType):
             center = center.reshape((1, -1))  # (1, 2)
@@ -1242,7 +1254,7 @@ def representational_level(total_epochs=50, batch_num_per_epoch=1000, num_closeP
                 raise Exception("distanceType not found")
 
         # between the center and each neighbors, calculate the cosine similarity of the activations before weight change
-        for curr_image in range(num_closePoints+num_backgroundPoints): # 10 = 5 close + 5 background
+        for curr_image in range(num_closePoints + num_backgroundPoints): # 10 = 5 close + 5 background
             pairImg_similarity_before_repChange[0, curr_image] = similarity_between_center_and_neighbors(
                 center_before, neighbor_before[curr_image, :], repChange_distanceType_)
             pairImg_similarity_before_coactivation[0, curr_image] = similarity_between_center_and_neighbors(
@@ -1250,11 +1262,11 @@ def representational_level(total_epochs=50, batch_num_per_epoch=1000, num_closeP
 
         pairImg_similarity_after_repChange = np.zeros((
             num_centerPoints,
-            num_closePoints+num_backgroundPoints))
+            num_closePoints + num_backgroundPoints))
         pairImg_similarity_after_coactivation = np.zeros((
             num_centerPoints,
-            num_closePoints+num_backgroundPoints))
-        for curr_image in range(num_closePoints+num_backgroundPoints):
+            num_closePoints + num_backgroundPoints))
+        for curr_image in range(num_closePoints + num_backgroundPoints):
             pairImg_similarity_after_repChange[0, curr_image] = similarity_between_center_and_neighbors(
                 center_after, neighbor_after[curr_image, :], repChange_distanceType_)
             pairImg_similarity_after_coactivation[0, curr_image] = similarity_between_center_and_neighbors(
