@@ -677,7 +677,6 @@ def train_multiple_dotsNeighbotSingleBatch(
                     _ = net(torch.tensor(train_data, dtype=torch.float32))
                     initial_v_points = net.final_layer_activation
                     initial_v_labels = train_labels
-                    # import pdb ; pdb.set_trace()
                     # initial_v_points.append(embeddings_ceterPoint)
                     # initial_v_labels.append(batch_labels)
 
