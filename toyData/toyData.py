@@ -1460,8 +1460,8 @@ def representational_level(total_epochs=50, batch_num_per_epoch=1000, num_closeP
 
         plot_double_bar(
             values=[mean_close, mean_background],
-            errors=[[mean_close - p5_close, p95_close - mean_close],
-                    [mean_background - p5_background, p95_background - mean_background]],
+            errors=[[mean_close - p5_close, mean_background - p5_background],     # lower
+                    [p95_close - mean_close, p95_background - mean_background]],  # higher
             labels=["Close Neighbors", "Background Neighbors"],
             title=f"{title} mean_background/mean_close={mean_background/mean_close:.2f}",
             x_label="",
