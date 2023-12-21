@@ -471,6 +471,80 @@ def train_multiple_dotsNeighbotSingleBatch(
             self.final_layer_activation = x.detach().numpy()
             return x
 
+    # class SimpleRNNWithActivations(nn.Module):
+    #     def __init__(self, input_size=2, hidden_size=5, output_size=2):
+    #         super(SimpleRNNWithActivations, self).__init__()
+    #
+    #         self.hidden_size = hidden_size
+    #
+    #         # Define the RNN layer
+    #         self.rnn = nn.RNN(input_size, hidden_size, batch_first=True)
+    #
+    #         # Define the output layer
+    #         self.fc = nn.Linear(hidden_size, output_size)
+    #
+    #     def forward(self, x):
+    #         # Reshape the data to have 5 time steps
+    #         num_time_steps = 5
+    #         x = x.reshape(2, -1, num_time_steps)
+    #
+    #         # Convert the NumPy array to a PyTorch tensor
+    #         x = torch.tensor(x, dtype=torch.float32)
+    #
+    #         # Initialize hidden state with zeros
+    #         h0 = torch.zeros(1, x.size(0), self.hidden_size).to(x.device)
+    #
+    #         # Forward pass through the RNN layer
+    #         out, _ = self.rnn(x, h0)
+    #
+    #         # Take the output from the last time step and pass it through the linear layer
+    #         self.penultimate_layer_activation = out[:, -1, :].detach().numpy()
+    #         final_layer_activation = self.fc(out[:, -1, :])
+    #         self.final_layer_activation = final_layer_activation.detach().numpy()
+    #
+    #         return final_layer_activation
+
+    class SimpleRNNWithActivations(nn.Module):
+        def __init__(self, input_size=2, hidden_size=5, output_size=2):
+            super(SimpleRNNWithActivations, self).__init__()
+
+            self.hidden_size = hidden_size
+
+            # Define the RNN layer
+            self.rnn = nn.RNN(input_size, hidden_size, batch_first=True)
+
+            # Define the output layer
+            self.fc = nn.Linear(hidden_size, output_size)
+
+            # code to mimic the feedforward network
+            self.input_layer = self.rnn
+            self.hidden_layer1 = self.rnn
+            self.hidden_layer2 = self.fc
+
+        def forward(self, x):
+            num_time_steps = 5
+            # x = x.view(2, -1, num_time_steps)
+            # Repeat x along the third dimension for 15 times
+            x = x.unsqueeze(2).repeat(1, 1, num_time_steps)
+
+            # Initialize hidden state with zeros
+            h0 = torch.zeros(1, x.size(0), self.hidden_size).to(x.device)
+
+            # Forward pass through the RNN layer
+            out, _ = self.rnn(x, h0)
+
+            # Take the output from the last time step and pass it through the linear layer
+            self.penultimate_layer_activation = out[:, -1, :].detach().numpy()
+            final_layer_activation = self.fc(out[:, -1, :])
+            self.final_layer_activation = final_layer_activation.detach().numpy()
+
+            # code to mimic the feedforward network
+            self.input_layer = self.rnn
+            self.hidden_layer1 = self.rnn
+            self.hidden_layer2 = self.fc
+
+            return final_layer_activation
+
     # Define local aggregation loss function
     def local_aggregation_loss(
             embeddings_center, close_neighbors, background_neighbors, integrationForceScale=None,
@@ -493,38 +567,10 @@ def train_multiple_dotsNeighbotSingleBatch(
                                               dim=2))  # Calculate the Euclidean distance
 
         # Compute loss based on distances
-        loss = torch.mean(torch.log(1 + torch.exp(integrationForceScale * close_distances - background_distances)))
-
-        # if weight_decay_rate is not None and model is not None:
-        #     # Weight decay
-        #     weight_decay_loss = 0
-        #     for param in model.parameters():
-        #         weight_decay_loss += torch.sum(param ** 2)
-        #
-        #     loss += weight_decay_rate * weight_decay_loss
-        #
-        # if initial_x_range_0 is not None and initial_y_range_0 is not None and embeddings_all is not None:
-        #     # Compute current range
-        #     current_x_range = (torch.min(embeddings_all[:, 0]), torch.max(embeddings_all[:, 0]))
-        #     current_y_range = (torch.min(embeddings_all[:, 1]), torch.max(embeddings_all[:, 1]))
-        #
-        #     # Assuming initial_x_range_0 and initial_y_range_0 are tensors
-        #     range_loss = torch.mean((current_x_range[0] - initial_x_range_0[0]) ** 2 +
-        #                             (current_x_range[1] - initial_x_range_0[1]) ** 2 +
-        #                             (current_y_range[0] - initial_y_range_0[0]) ** 2 +
-        #                             (current_y_range[1] - initial_y_range_0[1]) ** 2)
-        #
-        #     loss += range_loss
+        # loss = torch.mean(torch.log(1 + torch.exp(integrationForceScale * close_distances - background_distances)))
+        loss = integrationForceScale * close_distances - background_distances
 
         return loss
-
-    # Define weight decay loss function
-    def weight_decay_loss(model, weight_decay_rate=None):
-        # loss_weight_decay = weight_decay_loss(net, weight_decay_rate=0.001)  # Adjust weight decay rate as needed
-        loss = 0
-        for param in model.parameters():
-            loss += torch.sum(param ** 2)
-        return weight_decay_rate * loss
 
     # Define range loss function
     def range_loss(embeddings_all, initial_x_range_0, initial_y_range_0):
@@ -543,20 +589,6 @@ def train_multiple_dotsNeighbotSingleBatch(
                           (current_y_range[1] - initial_y_range_0[1]) ** 2)
 
         return loss
-
-    # Define close and background neighbors
-    def get_neighbors(embeddings, c=None, b=None):
-        # Compute pairwise distances between embeddings
-        distances = torch.cdist(embeddings, embeddings)
-        # Get indices of k closest neighbors for each example
-        _, indices = torch.topk(distances, c + b + 1, largest=False)
-        # Remove self from list of neighbors
-        indices = indices[:, 1:]
-        # Get embeddings of close neighbors
-        close_neighbors = embeddings[indices[:, :c]]
-        # Get embeddings of background neighbors
-        background_neighbors = embeddings[indices[:, c:]]
-        return close_neighbors, background_neighbors
 
     def get_close_and_background_neighbors(center_embeddings, all_embeddings, num_close=None, num_background=None):
         """
@@ -617,6 +649,8 @@ def train_multiple_dotsNeighbotSingleBatch(
     net = SimpleFeedforwardNN(threeD_input=threeD_input,
                               init_zero_weights=False,
                               use_batch_norm=False, use_layer_norm=False)  # It was found that layer norm is much better than batch norm.
+    # net = SimpleRNNWithActivations(input_size=2, hidden_size=5, output_size=2)
+
     learning_rate = 0.05
     optimizer = optim.SGD(net.parameters(), lr=learning_rate, weight_decay=0.001)
 
@@ -837,7 +871,7 @@ def train_multiple_dotsNeighbotSingleBatch(
     fig, axes = plt.subplots(1, 2, figsize=(12, 6))
 
     # Set consistent xlim and ylim for both subplots
-    set_sameXY_plotting_range = False
+    set_sameXY_plotting_range = True
     if set_sameXY_plotting_range:
         _min_val = (
             min(initial_v_points[:, 0].min(), final_v_points[:, 0].min()),
@@ -926,7 +960,7 @@ def train_multiple_dotsNeighbotSingleBatch(
     np.save(f'{weight_difference_folder}/B_layer_after_training_background_neighbors.npy',
             np.asarray(activation_history['B layer ; after training ; background neighbors']))  # (# batch, num_background, 2)
 
-total_epochs = 5
+total_epochs = 2
 num_iterations_per_batch = 1  # increase this from 1 to 10, the ratio of mean_background/mean_close increases from 1.64 to 3.09
 (num_close, num_background)=(5, 0)  # after changing the local_aggregation_loss function, the ratio of mean_background/mean_close becomes extremely stably and not easy to collapse.
 train_multiple_dotsNeighbotSingleBatch(
@@ -934,7 +968,7 @@ train_multiple_dotsNeighbotSingleBatch(
     remove_boundary_dots=False,
     integrationForceScale=1,  # the relative force scale between integration and differentiation. Should be 1, 2 collapses the result
     total_epochs=total_epochs,
-    range_loss_rep_shrink=None,  # rep_shrink can be None (remove range loss), 1, 0.9, 0.85, 0.8, whether range loss is implemented
+    range_loss_rep_shrink=None,  # rep_shrink can be None (not using range loss), 1, 0.9, 0.85, 0.8, whether range loss is implemented
     num_iterations_per_batch=num_iterations_per_batch,
     plot_neighborhood=False,
     num_close=num_close,
@@ -1409,6 +1443,20 @@ def representational_level(total_epochs=50, batch_num_per_epoch=1000, num_closeP
 
         mean_close, p5_close, p95_close = cal_resample(representationChange_close, times=5000)
         mean_background, p5_background, p95_background = cal_resample(representationChange_background, times=5000)
+        def convert_nan_to_0(temp):
+            if np.isnan(temp):
+                return 0
+            elif temp is None:
+                return 0
+            else:
+                return temp
+        mean_close = convert_nan_to_0(mean_close)
+        p5_close = convert_nan_to_0(p5_close)
+        p95_close = convert_nan_to_0(p95_close)
+
+        mean_background = convert_nan_to_0(mean_background)
+        p5_background = convert_nan_to_0(p5_background)
+        p95_background = convert_nan_to_0(p95_background)
 
         plot_double_bar(
             values=[mean_close, mean_background],
