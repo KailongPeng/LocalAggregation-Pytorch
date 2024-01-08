@@ -104,10 +104,17 @@ def create_label_matrix(_num_points, num_close_neighbors, num_background_neighbo
 def calculate_distance_change(points_before, points_after):
     return np.abs(np.linalg.norm(points_after[:, np.newaxis] - points_before, axis=2))
 
+# this random seed is preventing the model from training stably, thus this seed is removed.
+# set random seed
+np.random.seed(42)
+torch.manual_seed(42)
+torch.cuda.manual_seed(42)
+torch.cuda.manual_seed_all(42)
+torch.backends.cudnn.deterministic = True
 
 # Generate random 2D points
 num_points = 100
-np.random.seed(42)
+# np.random.seed(42)
 points = np.random.rand(num_points, 2)
 
 # Calculate the centroid (center) of all points
@@ -119,8 +126,8 @@ center_index = np.argmin(np.linalg.norm(points - centroid, axis=1))  # Specify a
 print("Index of the center point:", center_index)
 
 # Move neighbors using the function
-close_count=20
-background_count=40
+close_count=50  # 20
+background_count=50  # 40
 center, close_neighbors, background_neighbors, irrelevant_neighbors, close_neighbors_moved, background_neighbors_moved = move_neighbors(
     points, center_index, close_count=close_count, background_count=background_count, move_factor=0.3)
 
