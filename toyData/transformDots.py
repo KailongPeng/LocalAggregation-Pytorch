@@ -211,8 +211,20 @@ class FlexibleTransformNet(nn.Module):
         self.layers.append(nn.Linear(hidden_dim, output_dim))
 
     def forward(self, x):
-        for layer in self.layers:
+        residual = None
+        # Apply each layer
+        for currLayer, layer in enumerate(self.layers):
+            if currLayer == 1:
+                # Initial input for the residual connection
+                residual = x
+
             x = layer(x)
+
+            # Add residual connection after each ReLU
+            if isinstance(layer, nn.ReLU) and currLayer < len(self.layers) - 1 and currLayer > 1:
+                x = x + residual
+                residual = x
+
         return x
 
 input_dim = 2
@@ -290,8 +302,8 @@ for epoch in tqdm(range(num_epochs)):
     elif epoch == int(num_epochs * 2 / 3):
         optimizer.param_groups[0]['lr'] = initial_learning_rate/4.0
     outputs = model(set1_tensor)
-    # loss = criterion(outputs, set1_tensor)
-    loss = criterion(outputs, set2_tensor)
+    loss = criterion(outputs, set1_tensor)
+    # loss = criterion(outputs, set2_tensor)
 
     optimizer.zero_grad()
     loss.backward()
