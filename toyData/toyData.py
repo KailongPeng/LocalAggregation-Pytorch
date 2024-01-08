@@ -968,7 +968,7 @@ train_multiple_dotsNeighbotSingleBatch(
     remove_boundary_dots=False,
     integrationForceScale=1,  # the relative force scale between integration and differentiation. Should be 1, 2 collapses the result
     total_epochs=total_epochs,
-    range_loss_rep_shrink=None,  # rep_shrink can be None (not using range loss), 1, 0.9, 0.85, 0.8, whether range loss is implemented
+    range_loss_rep_shrink=1,  # rep_shrink can be None (not using range loss), 1, 0.9, 0.85, 0.8, whether range loss is implemented
     num_iterations_per_batch=num_iterations_per_batch,
     plot_neighborhood=False,
     num_close=num_close,
