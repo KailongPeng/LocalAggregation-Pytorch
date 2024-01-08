@@ -1,12 +1,3 @@
-"""
-
-For two sets of 100 points with 2 dimensions: set1 and set2 as given in the code, note that each dot of these two sets has a corresponding dot in the other set.
-Their transformation from set1 to set2 can be achieved with a simple feedforward network. Initiate and train this neural network so that it can truthfully accomplish this transformation.
-
-Display set2 and the transformed set1 with the un-trained and trained network with random rainbow colormap
-
-
-"""
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -14,6 +5,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from tqdm import tqdm
+import torch.nn.functional as F
 
 
 def move_neighbors(points, center_point_index, close_count=None, background_count=None, move_factor=None):
@@ -127,8 +119,10 @@ center_index = np.argmin(np.linalg.norm(points - centroid, axis=1))  # Specify a
 print("Index of the center point:", center_index)
 
 # Move neighbors using the function
+close_count=20
+background_count=40
 center, close_neighbors, background_neighbors, irrelevant_neighbors, close_neighbors_moved, background_neighbors_moved = move_neighbors(
-    points, center_index, close_count=20, background_count=40, move_factor=0.3)
+    points, center_index, close_count=close_count, background_count=background_count, move_factor=0.3)
 
 
 set1 = np.vstack((
@@ -144,8 +138,10 @@ set2 = np.vstack((
     irrelevant_neighbors
     ))
 
-def plot_points_with_colors(points, title):
-    colors = [plt.cm.rainbow(i / len(points)) for i in range(len(points))]
+def plot_points_with_colors(points, title, seed=123):
+    np.random.seed(seed)  # Set random seed for reproducibility
+    # colors = [plt.cm.rainbow(i / len(points)) for i in range(len(points))]
+    colors = np.random.rand(len(points), 3)  # Generate random RGB colors for each point
 
     plt.scatter(points[:, 0], points[:, 1], c=colors)
     plt.title(title)
@@ -165,17 +161,19 @@ class SimpleTransformNet(nn.Module):
     def __init__(self):
         super(SimpleTransformNet, self).__init__()
         self.fc1 = nn.Linear(2, 5)  # Input layer: 2 input features, 5 hidden units
-        self.relu = nn.ReLU() # ReLU activation function
+        self.activation_function = nn.Tanh()  # nn.ReLU() # ReLU activation function
         self.fc2 = nn.Linear(5, 5)  # Hidden layer: 5 hidden units, 1 output feature
         self.fc3 = nn.Linear(5, 2)  # Output layer: 5 hidden units, 2 output features
 
     def forward(self, x):
         x = self.fc1(x)
-        x = self.relu(x)
+        x = self.activation_function(x)
         x = self.fc2(x)
-        x = self.relu(x)
+        x = self.activation_function(x)
         x = self.fc3(x)
         return x
+
+# model = SimpleTransformNet()
 
 # Function to transform points using the neural network
 def transform_points(net, points):
@@ -184,51 +182,357 @@ def transform_points(net, points):
         output_tensor = net(input_tensor)
     return output_tensor.numpy()
 
-# Display points with random rainbow colors
-def plot_points_with_colors(points, title):
-    colors = [plt.cm.rainbow(i / len(points)) for i in range(len(points))]
-
-    plt.scatter(points[:, 0], points[:, 1], c=colors)
+# Function to plot the loss curve
+def plot_loss_curve(loss_values, title='Training Loss Curve'):
+    plt.plot(loss_values, label='Training Loss')
     plt.title(title)
-    plt.xlabel('X-axis')
-    plt.ylabel('Y-axis')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.legend()
     plt.show()
 
 # Generate a neural network
-model = SimpleTransformNet()
+# model = SimpleTransformNet()
+class FlexibleTransformNet(nn.Module):
+    def __init__(self, input_dim, hidden_dim, output_dim, num_layers=10):
+        super(FlexibleTransformNet, self).__init__()
+        self.layers = nn.ModuleList()
+
+        # Add input layer
+        self.layers.append(nn.Linear(input_dim, hidden_dim))
+        self.layers.append(nn.ReLU())
+
+        # Add hidden layers
+        for _ in range(num_layers - 2):
+            self.layers.append(nn.Linear(hidden_dim, hidden_dim))
+            self.layers.append(nn.ReLU())
+
+        # Add output layer
+        self.layers.append(nn.Linear(hidden_dim, output_dim))
+
+    def forward(self, x):
+        for layer in self.layers:
+            x = layer(x)
+        return x
+
+input_dim = 2
+hidden_dim = 20
+output_dim = 2
+num_layers = 10
+model = FlexibleTransformNet(input_dim, hidden_dim, output_dim, num_layers)
+
+class SharedWeightResidualBlock(nn.Module):
+    def __init__(self, input_dim, hidden_dim, shared_weights=None):
+        super(SharedWeightResidualBlock, self).__init__()
+
+        if shared_weights is None:
+            self.shared_weights = nn.Parameter(torch.randn(input_dim, hidden_dim))
+        else:
+            self.shared_weights = shared_weights
+
+        self.relu = nn.ReLU()
+
+    def forward(self, x):
+        residual = x
+        x = F.linear(x, self.shared_weights.t())  # Transpose for the first linear layer
+        x = self.relu(x)
+        x = F.linear(x, self.shared_weights)  # No need to transpose for the second linear layer
+        return x + residual
+
+class SharedWeightResidualTransformNet(nn.Module):
+    def __init__(self, input_dim, hidden_dim, output_dim, num_blocks=10):
+        super(SharedWeightResidualTransformNet, self).__init__()
+
+        self.shared_weights = nn.Parameter(torch.randn(input_dim, hidden_dim))
+
+        self.blocks = nn.ModuleList()
+
+        # Add input block
+        self.blocks.append(SharedWeightResidualBlock(input_dim, hidden_dim, self.shared_weights))
+
+        # Add residual blocks
+        for _ in range(num_blocks):
+            self.blocks.append(SharedWeightResidualBlock(hidden_dim, hidden_dim, self.shared_weights))
+
+        # Add output layer
+        self.blocks.append(nn.Linear(hidden_dim, output_dim))
+
+    def forward(self, x):
+        for block in self.blocks:
+            x = block(x)
+        return x
+
+# input_dim = 2
+# hidden_dim = 5
+# output_dim = 2
+# num_blocks = 10
+# model = SharedWeightResidualTransformNet(input_dim, hidden_dim, output_dim, num_blocks)
+
 criterion = nn.MSELoss()
-# criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=0.01)  # Adding weight decay
+initial_learning_rate = 0.05
+optimizer = optim.Adam(model.parameters(), lr=initial_learning_rate, weight_decay=0.001)  # Adding weight decay
 
 # Convert sets to PyTorch tensors
 set1_tensor = torch.FloatTensor(set1)
 set2_tensor = torch.FloatTensor(set2)
 
-# Training loop for untrained network
-num_epochs_untrained = 1000
-for epoch in tqdm(range(num_epochs_untrained)):
-    outputs = model(set1_tensor)
-    loss = criterion(outputs, set2_tensor)
-    optimizer.zero_grad()
-    loss.backward()
-    optimizer.step()
-
-# Display untrained transformed set1 with random rainbow colors
+# Display set1 to initial untrained
 untrained_transformed_set1 = transform_points(model, set1)
-plot_points_with_colors(untrained_transformed_set1, 'Untrained Transformed Set 1')
+plot_points_with_colors(untrained_transformed_set1, 'set1 to initial untrained')
 
-# Retrain the neural network for better results
-model = SimpleTransformNet()
-optimizer = optim.Adam(model.parameters(), lr=0.001)
-for epoch in range(num_epochs_untrained, num_epochs_untrained + 1000):
+# Training loop for untrained network
+num_epochs = 10000
+loss_values_untrained = []
+
+for epoch in tqdm(range(num_epochs)):
+    if epoch == int(num_epochs / 3):
+        optimizer.param_groups[0]['lr'] = initial_learning_rate/2.0
+    elif epoch == int(num_epochs * 2 / 3):
+        optimizer.param_groups[0]['lr'] = initial_learning_rate/4.0
+    outputs = model(set1_tensor)
+    # loss = criterion(outputs, set1_tensor)
+    loss = criterion(outputs, set2_tensor)
+
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+
+    loss_values_untrained.append(loss.item())
+
+# Display set1 to set1
+untrained_transformed_set1 = transform_points(model, set1)
+plot_points_with_colors(untrained_transformed_set1, 'set1 to set1')
+plot_loss_curve(loss_values_untrained, title='set1 to set1: Loss Curve')
+
+distance_between_center_close__set1 = calculate_distances(
+    np.vstack((untrained_transformed_set1[0],
+               untrained_transformed_set1[1:1+close_count]
+               )))[0]
+distance_between_center_background__set1 = calculate_distances(
+    np.vstack((untrained_transformed_set1[0],
+               untrained_transformed_set1[1+close_count:1+close_count+background_count]
+               )))[0]
+distance_between_center_irr__set1 = calculate_distances(
+    np.vstack((untrained_transformed_set1[0],
+                untrained_transformed_set1[1+close_count+background_count:]
+                )))[0]
+
+
+optimizer = optim.Adam(model.parameters(), lr=initial_learning_rate, weight_decay=0.001)  # Adding weight decay
+loss_values_trained = []
+for epoch in tqdm(range(num_epochs)):
+    if epoch == int(num_epochs / 3):
+        optimizer.param_groups[0]['lr'] = initial_learning_rate/2.0
+    elif epoch == int(num_epochs * 2 / 3):
+        optimizer.param_groups[0]['lr'] = initial_learning_rate/4.0
     outputs = model(set1_tensor)
     loss = criterion(outputs, set2_tensor)
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
 
-# Display trained transformed set1 with random rainbow colors
-trained_transformed_set1 = transform_points(model, set1)
-plot_points_with_colors(trained_transformed_set1, 'Trained Transformed Set 1')
+    loss_values_trained.append(loss.item())
 
-# change this code so that instead of feedforward network, it is a recurrent network
+# # Display set1 to set2
+trained_transformed_set1 = transform_points(model, set1)
+plot_points_with_colors(trained_transformed_set1, 'set1 to set2')
+plot_loss_curve(loss_values_trained, title='set1 to set2: Loss Curve')
+
+distance_between_center_close__set2 = calculate_distances(
+    np.vstack((trained_transformed_set1[0],
+                trained_transformed_set1[1:1+close_count]
+                )))[0]
+distance_between_center_background__set2 = calculate_distances(
+    np.vstack((trained_transformed_set1[0],
+                trained_transformed_set1[1+close_count:1+close_count+background_count]
+                )))[0]
+distance_between_center_irr__set2 = calculate_distances(
+    np.vstack((trained_transformed_set1[0],
+                trained_transformed_set1[1+close_count+background_count:]
+                )))[0]
+# plot bar plot for distance_between_center_close__set2 - distance_between_center_close__set1
+plt.figure()
+plt.hist(distance_between_center_close__set2 - distance_between_center_close__set1, bins=20)
+plt.title('distance_between_center_close__set2 - distance_between_center_close__set1')
+
+plt.figure()
+plt.hist(distance_between_center_background__set2 - distance_between_center_background__set1, bins=20)
+plt.title('distance_between_center_background__set2 - distance_between_center_background__set1')
+
+plt.figure()
+plt.hist(distance_between_center_irr__set2 - distance_between_center_irr__set1, bins=20)
+plt.title('distance_between_center_irr__set2 - distance_between_center_irr__set1')
+
+
+def RNN():
+    # Define a simple recurrent neural network
+    class RecurrentTransformNet(nn.Module):
+        def __init__(self):
+            super(RecurrentTransformNet, self).__init__()
+            self.rnn = nn.RNN(2, 5, batch_first=True)  # Input size: 2, Hidden size: 5
+            self.fc = nn.Linear(5, 2)  # Output layer: 5 hidden units, 2 output features
+
+        def forward(self, x):
+            out, _ = self.rnn(x.unsqueeze(0))
+            out = self.fc(out[:, -1, :])  # Take the last output from the sequence
+            return out
+
+    # Function to transform points using the recurrent neural network
+    def transform_points_rnn(net, points):
+        with torch.no_grad():
+            input_tensor = torch.FloatTensor(points).unsqueeze(0)  # Add batch dimension
+            output_tensor = net(input_tensor)
+        return output_tensor.squeeze().numpy()
+
+    # ... (previous code remains unchanged)
+
+    # Generate a recurrent neural network
+    model_rnn = RecurrentTransformNet()
+    optimizer_rnn = optim.Adam(model_rnn.parameters(), lr=0.001, weight_decay=0.01)  # Adding weight decay
+
+    # Training loop for untrained recurrent network
+    num_epochs_untrained_rnn = 1000
+    for epoch in tqdm(range(num_epochs_untrained_rnn)):
+        outputs_rnn = model_rnn(set1_tensor)
+        loss_rnn = criterion(outputs_rnn, set2_tensor)
+        optimizer_rnn.zero_grad()
+        loss_rnn.backward()
+        optimizer_rnn.step()
+
+    # Display untrained transformed set1 with random rainbow colors
+    untrained_transformed_set1_rnn = transform_points_rnn(model_rnn, set1)
+    plot_points_with_colors(untrained_transformed_set1_rnn, 'Untrained Transformed Set 1 (RNN)')
+
+    # Retrain the recurrent neural network for better results
+    model_rnn = RecurrentTransformNet()
+    optimizer_rnn = optim.Adam(model_rnn.parameters(), lr=0.001)
+    for epoch in range(num_epochs_untrained_rnn, num_epochs_untrained_rnn + 1000):
+        outputs_rnn = model_rnn(set1_tensor)
+        loss_rnn = criterion(outputs_rnn, set2_tensor)
+        optimizer_rnn.zero_grad()
+        loss_rnn.backward()
+        optimizer_rnn.step()
+
+    # Display trained transformed set1 with random rainbow colors
+    trained_transformed_set1_rnn = transform_points_rnn(model_rnn, set1)
+    plot_points_with_colors(trained_transformed_set1_rnn, 'Trained Transformed Set 1 (RNN)')
+
+
+def hopfield():
+    class HopfieldNetwork:
+        def __init__(self, size):
+            self.weights = np.zeros((size, size))
+
+        def train(self, patterns):
+            for pattern in patterns:
+                pattern = pattern.reshape(-1, 1)
+                self.weights += np.dot(pattern, pattern.T)
+                np.fill_diagonal(self.weights, 0)
+
+        def recall(self, input_pattern, max_iters=100):
+            for _ in range(max_iters):
+                activation = np.dot(self.weights, input_pattern)
+                input_pattern = np.sign(activation)
+            return input_pattern
+
+    # Function to transform points using the Hopfield network
+    def transform_points_hopfield(hopfield_net, points):
+        transformed_points = np.zeros_like(points)
+        for i in range(len(points)):
+            transformed_points[i] = hopfield_net.recall(points[i])
+        return transformed_points
+
+    # Display points with random rainbow colors
+    def plot_points_with_colors(points, title):
+        colors = [plt.cm.rainbow(i / len(points)) for i in range(len(points))]
+
+        plt.scatter(points[:, 0], points[:, 1], c=colors)
+        plt.title(title)
+        plt.xlabel('X-axis')
+        plt.ylabel('Y-axis')
+        plt.show()
+
+    # Generate a Hopfield network
+    hopfield_net = HopfieldNetwork(size=2)
+
+    # Convert sets to NumPy arrays
+    set1_np = np.array(set1)
+    set2_np = np.array(set2)
+
+    # Training loop for Hopfield network
+    hopfield_net.train(set1_np)
+
+    # Display transformed set1 using Hopfield network with random rainbow colors
+    transformed_set1_hopfield = transform_points_hopfield(hopfield_net, set1_np)
+    plot_points_with_colors(transformed_set1_hopfield, 'Transformed Set 1 (Hopfield Network)')
+
+
+def transformer():
+    class TransformerNet(nn.Module):
+        def __init__(self, input_dim, hidden_dim, output_dim, num_layers=1):
+            super(TransformerNet, self).__init__()
+            self.transformer_layer = nn.Transformer(d_model=input_dim, nhead=1, num_encoder_layers=num_layers)
+            self.fc = nn.Linear(input_dim, output_dim)
+
+        def forward(self, x):
+            x = self.transformer_layer(x)
+            x = self.fc(x)
+            return x
+
+    # Function to transform points using the neural network
+    def transform_points(net, points):
+        with torch.no_grad():
+            input_tensor = torch.FloatTensor(points).unsqueeze(0)  # Add batch dimension
+            output_tensor = net(input_tensor)
+        return output_tensor.squeeze(0).numpy()
+
+    # Generate a transformer network
+    input_dim = 2
+    hidden_dim = 5
+    output_dim = 2
+    num_transformer_layers = 1
+
+    model = TransformerNet(input_dim, hidden_dim, output_dim, num_layers=num_transformer_layers)
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=0.01)  # Adding weight decay
+
+    # Convert sets to PyTorch tensors
+    set1_tensor = torch.FloatTensor(set1)
+    set2_tensor = torch.FloatTensor(set2)
+
+    # Training loop for untrained network
+    num_epochs_untrained = 1000
+    for epoch in tqdm(range(num_epochs_untrained)):
+        outputs = model(set1_tensor)
+        loss = criterion(outputs, set2_tensor)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+    # Display untrained transformed set1 with random rainbow colors
+    untrained_transformed_set1 = transform_points(model, set1)
+    plot_points_with_colors(untrained_transformed_set1, 'Untrained Transformed Set 1')
+
+    # Retrain the neural network for better results
+    model = TransformerNet(input_dim, hidden_dim, output_dim, num_layers=num_transformer_layers)
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    for epoch in range(num_epochs_untrained, num_epochs_untrained + 1000):
+        outputs = model(set1_tensor)
+        loss = criterion(outputs, set2_tensor)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+    # Display trained transformed set1 with random rainbow colors
+    trained_transformed_set1 = transform_points(model, set1)
+    plot_points_with_colors(trained_transformed_set1, 'Trained Transformed Set 1')
+
+"""
+
+For two sets of 100 points with 2 dimensions: set1 and set2 as given in the code, note that each dot of these two sets has a corresponding dot in the other set.
+Their transformation from set1 to set2 can be achieved with a simple feedforward network. Initiate and train this neural network so that it can truthfully accomplish this transformation.
+
+Display set2 and the transformed set1 with the un-trained and trained network with random rainbow colormap
+
+
+"""
