@@ -620,6 +620,31 @@ def train_multiple_dotsNeighbotSingleBatch(
         loss = integrationForceScale * close_distances - background_distances
 
         return loss
+    def local_aggregation_vecterScale_loss(
+            embeddings_center, close_neighbors, background_neighbors, integrationForceScale=None,
+    ):
+        # Compute pairwise distances between embeddings and close neighbors  # embeddings(50,2) close_neighbors(50,10,2) -> (50,10)
+        if close_neighbors.shape[1] == 0:
+            close_distances = torch.tensor(1e-6)
+        else:
+            expanded_embeddings = embeddings_center.unsqueeze(1).expand_as(
+                close_neighbors)  # Expand the embeddings to have the same dimensions as close_neighbors
+            close_distances = torch.mean(torch.norm(expanded_embeddings - close_neighbors,
+                                         dim=2))  # Calculate the Euclidean distance
+        if background_neighbors.shape[1] == 0:
+            background_distances = torch.tensor(1e-6)
+        else:
+            # Compute pairwise distances between embeddings and background neighbors
+            expanded_embeddings = embeddings_center.unsqueeze(1).expand_as(
+                background_neighbors)  # Expand the embeddings to have the same dimensions as background_neighbors
+            background_distances = torch.mean(torch.norm(expanded_embeddings - background_neighbors,
+                                              dim=2))  # Calculate the Euclidean distance
+
+        # Compute loss based on distances
+        # loss = torch.mean(torch.log(1 + torch.exp(integrationForceScale * close_distances - background_distances)))
+        loss = integrationForceScale * close_distances - background_distances
+
+        return loss
 
     # Define range loss function
     def range_loss(embeddings_all, initial_x_range_0, initial_y_range_0):
@@ -639,12 +664,12 @@ def train_multiple_dotsNeighbotSingleBatch(
 
         return loss
 
-    def get_close_and_background_neighbors(center_embeddings, all_embeddings, num_close=None, num_background=None):
+    def get_close_and_background_neighbors(center_embedding, all_embeddings, num_close=None, num_background=None):
         """
         Get close and background neighbors for each point in center_embeddings based on distances to all_embeddings.
 
         Args:
-            center_embeddings (torch.Tensor): Embeddings of center points.
+            center_embedding (torch.Tensor): Embeddings of center points.
             all_embeddings (torch.Tensor): Embeddings of all points.
             num_close (int): Number of close neighbors to retrieve for each center point.
             num_background (int): Number of background neighbors to retrieve for each center point.
@@ -657,7 +682,7 @@ def train_multiple_dotsNeighbotSingleBatch(
             torch.Tensor: Indices of background neighbors.
         """
         # Compute pairwise distances between center_embeddings and all_embeddings
-        distances = torch.cdist(center_embeddings, all_embeddings)  # (1, 2) (1000, 2) -> (1, 1000)  # This step is taking longer time.
+        distances = torch.cdist(center_embedding, all_embeddings)  # (1, 2) (1000, 2) -> (1, 1000)  # This step is taking longer time.
 
         # Get indices of k closest neighbors for each example
         _, indices = torch.topk(distances, num_close + num_background + 1, largest=False)
@@ -773,12 +798,12 @@ def train_multiple_dotsNeighbotSingleBatch(
                 # Zero gradients
                 optimizer.zero_grad()
                 # Forward pass
-                embeddings_ceterPoint = net(batch.float())
-                embeddings_all = net(torch.tensor(train_data, dtype=torch.float32))
+                embedding_centerPoint = net(batch.float())  # embeddings of the current batch, note that batch_size=1, so this is a single point.
+                embeddings_all = net(torch.tensor(train_data, dtype=torch.float32))  # embeddings of all points
 
                 # Get close and background neighbors
                 close_neighbors, background_neighbors, close_indices, background_indices, center_indices = get_close_and_background_neighbors(
-                    embeddings_ceterPoint,
+                    embedding_centerPoint,
                     embeddings_all,
                     num_close=num_close,
                     num_background=num_background)
@@ -833,7 +858,7 @@ def train_multiple_dotsNeighbotSingleBatch(
 
                 # Call local_aggregation_loss, weight_decay_loss, and range_loss functions
                 loss_local_aggregation  = local_aggregation_loss(
-                    embeddings_ceterPoint, close_neighbors, background_neighbors,
+                    embedding_centerPoint, close_neighbors, background_neighbors,
                     integrationForceScale=integrationForceScale
                 )
 
