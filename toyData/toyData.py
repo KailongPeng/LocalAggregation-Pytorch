@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from tqdm import tqdm
 
-
+testMode = False
 # Function to generate 3D scatter plot and return data
 def generate_3d_scatter_plot(separator=1 / 3, display_plot=False):
     np.random.seed(42)
@@ -324,10 +324,12 @@ def train_multiple_dotsNeighbotSingleBatch(
         integrationForceScale=None, # the relative force scale between integration and differentiation.
         total_epochs=50,
         range_loss_rep_shrink=None,
-        num_iterations_per_batch=1,
+        num_iterations_per_batch=None,
         plot_neighborhood=False,  # whether to plot the neighborhood of each point in latent space or not):
         num_close=None,
-        num_background=None
+        num_background=None,
+        hidden_dim=None,
+        num_layers=None,
     ):
     """
     design the output of test_single_dotsNeighbotSingleBatch should be
@@ -469,6 +471,53 @@ def train_multiple_dotsNeighbotSingleBatch(
             self.penultimate_layer_activation = x.detach().numpy()
             x = self.hidden_layer2(x)  # x = (50,2) final layer activation
             self.final_layer_activation = x.detach().numpy()
+            return x
+
+    class FlexibleTransformNet(nn.Module):
+        def __init__(self, input_dim, hidden_dim, output_dim, num_layers=10):
+            super(FlexibleTransformNet, self).__init__()
+            self.layers = nn.ModuleList()
+
+            # Add input layer
+            self.input_layer = nn.Linear(input_dim, hidden_dim)
+            self.layers.append(self.input_layer)
+            self.layers.append(nn.ReLU())
+
+            # Add hidden layers
+            for _ in range(num_layers - 2):
+                if _ == num_layers - 3:
+                    # Add final layer
+                    self.hidden_layer1 = nn.Linear(hidden_dim, hidden_dim)
+                    self.layers.append(self.hidden_layer1)
+                else:
+                    self.layers.append(nn.Linear(hidden_dim, hidden_dim))
+                self.layers.append(nn.ReLU())
+
+            # Add output layer
+            self.hidden_layer2 = nn.Linear(hidden_dim, output_dim)
+            # self.layers.append(nn.Linear(hidden_dim, output_dim))
+            self.layers.append(self.hidden_layer2)
+
+        def forward(self, x):
+            residual = None
+            # Apply each layer
+            for currLayer, layer in enumerate(self.layers):
+                if currLayer == 1:
+                    # Initial input for the residual connection
+                    residual = x
+
+                x = layer(x)
+
+                # Add residual connection after each ReLU
+                if isinstance(layer, nn.ReLU) and currLayer < len(self.layers) - 1 and currLayer > 1:
+                    x = x + residual
+                    residual = x
+
+                if currLayer == len(self.layers) - 2:
+                    self.penultimate_layer_activation = x.detach().numpy()
+                if currLayer == len(self.layers) - 1:
+                    self.final_layer_activation = x.detach().numpy()
+
             return x
 
     # class SimpleRNNWithActivations(nn.Module):
@@ -646,10 +695,17 @@ def train_multiple_dotsNeighbotSingleBatch(
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
     # Define neural network and optimizer
-    net = SimpleFeedforwardNN(threeD_input=threeD_input,
-                              init_zero_weights=False,
-                              use_batch_norm=False, use_layer_norm=False)  # It was found that layer norm is much better than batch norm.
+    # net = SimpleFeedforwardNN(threeD_input=threeD_input,
+    #                           init_zero_weights=False,
+    #                           use_batch_norm=False, use_layer_norm=False)  # It was found that layer norm is much better than batch norm.
     # net = SimpleRNNWithActivations(input_size=2, hidden_size=5, output_size=2)
+
+    input_dim = 2
+    hidden_dim = hidden_dim  # 20
+    output_dim = 2
+    num_layers = num_layers  # 5
+    net = FlexibleTransformNet(input_dim, hidden_dim, output_dim, num_layers)
+
 
     learning_rate = 0.05
     optimizer = optim.SGD(net.parameters(), lr=learning_rate, weight_decay=0.001)
@@ -697,8 +753,8 @@ def train_multiple_dotsNeighbotSingleBatch(
             print(f"learning rate changed to {learning_rate / 4.0}")
         epoch_loss = 0.0  # Variable to accumulate loss within each epoch
 
-        # for curr_batch, (batch, batch_labels) in tqdm(enumerate(dataloader)):
-        for curr_batch, (batch, batch_labels) in enumerate(dataloader):
+        # for curr_batch, (batch, batch_labels) in enumerate(dataloader):
+        for curr_batch, (batch, batch_labels) in tqdm(enumerate(dataloader)):
             # Record weights
             input_layer_before = net.input_layer.weight.data.clone().detach().numpy()
             hidden_layer1_before = net.hidden_layer1.weight.data.clone().detach().numpy()
@@ -792,6 +848,9 @@ def train_multiple_dotsNeighbotSingleBatch(
 
                 # Combine losses
                 total_loss = loss_local_aggregation + loss_range #+ loss_weight_decay
+                if testMode:
+                    print(f"loss_local_aggregation={loss_local_aggregation}")
+                    print(f"loss_range={loss_range}")
 
                 # Backward pass
                 total_loss.backward()
@@ -960,9 +1019,11 @@ def train_multiple_dotsNeighbotSingleBatch(
     np.save(f'{weight_difference_folder}/B_layer_after_training_background_neighbors.npy',
             np.asarray(activation_history['B layer ; after training ; background neighbors']))  # (# batch, num_background, 2)
 
-total_epochs = 2
+total_epochs = 1
 num_iterations_per_batch = 1  # increase this from 1 to 10, the ratio of mean_background/mean_close increases from 1.64 to 3.09
-(num_close, num_background)=(5, 0)  # after changing the local_aggregation_loss function, the ratio of mean_background/mean_close becomes extremely stably and not easy to collapse.
+(num_close, num_background)=(20, 20)  # after changing the local_aggregation_loss function, the ratio of mean_background/mean_close becomes extremely stably and not easy to collapse.
+hidden_dim = 20
+num_layers = 5
 train_multiple_dotsNeighbotSingleBatch(
     threeD_input=False,
     remove_boundary_dots=False,
@@ -970,9 +1031,11 @@ train_multiple_dotsNeighbotSingleBatch(
     total_epochs=total_epochs,
     range_loss_rep_shrink=1,  # rep_shrink can be None (not using range loss), 1, 0.9, 0.85, 0.8, whether range loss is implemented
     num_iterations_per_batch=num_iterations_per_batch,
-    plot_neighborhood=False,
+    plot_neighborhood=True,
     num_close=num_close,
     num_background=num_background,
+    hidden_dim=hidden_dim,
+    num_layers=num_layers,
 )  # this works as long as the number of close neighbors is small  # both remove_boundary_dots True and False works.  # integrationForceScale=1.5 does not work.
 
 """
