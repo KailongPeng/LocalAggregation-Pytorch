@@ -113,8 +113,11 @@ torch.cuda.manual_seed_all(42)
 torch.backends.cudnn.deterministic = True
 
 # Generate random 2D points
-num_points = 100
-# np.random.seed(42)
+num_points = 21
+close_count = 10  # 20
+background_count = 10 # 40
+num_epochs = 60
+
 points = np.random.rand(num_points, 2)
 
 # Calculate the centroid (center) of all points
@@ -126,8 +129,6 @@ center_index = np.argmin(np.linalg.norm(points - centroid, axis=1))  # Specify a
 print("Index of the center point:", center_index)
 
 # Move neighbors using the function
-close_count=50  # 20
-background_count=50  # 40
 center, close_neighbors, background_neighbors, irrelevant_neighbors, close_neighbors_moved, background_neighbors_moved = move_neighbors(
     points, center_index, close_count=close_count, background_count=background_count, move_factor=0.3)
 
@@ -300,7 +301,6 @@ untrained_transformed_set1 = transform_points(model, set1)
 plot_points_with_colors(untrained_transformed_set1, 'set1 to initial untrained')
 
 # Training loop for untrained network
-num_epochs = 10000
 loss_values_untrained = []
 
 for epoch in tqdm(range(num_epochs)):
@@ -370,18 +370,90 @@ distance_between_center_irr__set2 = calculate_distances(
                 trained_transformed_set1[1+close_count+background_count:]
                 )))[0]
 # plot bar plot for distance_between_center_close__set2 - distance_between_center_close__set1
-plt.figure()
-plt.hist(distance_between_center_close__set2 - distance_between_center_close__set1, bins=20)
-plt.title('distance_between_center_close__set2 - distance_between_center_close__set1')
+# plt.figure()
+# plt.hist(distance_between_center_close__set2 - distance_between_center_close__set1, bins=20)
+# plt.title('distance_between_center_close__set2 - distance_between_center_close__set1')
+#
+# plt.figure()
+# plt.hist(distance_between_center_background__set2 - distance_between_center_background__set1, bins=20)
+# plt.title('distance_between_center_background__set2 - distance_between_center_background__set1')
+#
+# plt.figure()
+# plt.hist(distance_between_center_irr__set2 - distance_between_center_irr__set1, bins=20)
+# plt.title('distance_between_center_irr__set2 - distance_between_center_irr__set1')
 
-plt.figure()
-plt.hist(distance_between_center_background__set2 - distance_between_center_background__set1, bins=20)
-plt.title('distance_between_center_background__set2 - distance_between_center_background__set1')
+def bar(means=None, upper=None, lower=None, ROINames=None, title=None, xLabel="", yLabel="", fontsize=50,
+        setBackgroundColor=False,
+        savePath=None, showFigure=True):
+    import matplotlib.pyplot as plt
+    # plot barplot with percentage error bar
+    if type(means) == list:
+        means = np.asarray(means)
+    if type(upper) == list:
+        upper = np.asarray(upper)
+    if type(means) == list:
+        lower = np.asarray(lower)
 
-plt.figure()
-plt.hist(distance_between_center_irr__set2 - distance_between_center_irr__set1, bins=20)
-plt.title('distance_between_center_irr__set2 - distance_between_center_irr__set1')
+    # plt.figure(figsize=(fontsize, fontsize/2), dpi=70)
+    positions = list(np.arange(len(means)))
 
+    fig, ax = plt.subplots(figsize=(fontsize/2, fontsize/2))
+    ax.bar(positions, means, yerr=[means - lower, upper - means], align='center', alpha=0.5, ecolor='black',
+           capsize=10)
+    if setBackgroundColor:
+        ax.set_facecolor((242 / 256, 242 / 256, 242 / 256))
+    ax.set_ylabel(yLabel, fontsize=fontsize)
+    ax.set_xlabel(xLabel, fontsize=fontsize)
+    ax.set_xticks(positions)
+    ax.set_facecolor((242 / 256, 242 / 256, 242 / 256))
+    # Increase y-axis tick font size
+    ax.tick_params(axis='y', labelsize=fontsize)
+
+    if ROINames is not None:
+        xtick = ROINames
+        ax.set_xticklabels(xtick, fontsize=fontsize, rotation=45, ha='right')
+    ax.set_title(title, fontsize=fontsize)
+    ax.yaxis.grid(True)
+    _ = plt.tight_layout()
+    if savePath is not None:
+        plt.savefig(savePath)
+    if showFigure:
+        _ = plt.show()
+    else:
+        _ = plt.close()
+
+
+# Example usage
+array1 = distance_between_center_close__set2 - distance_between_center_close__set1
+array2 = distance_between_center_background__set2 - distance_between_center_background__set1
+
+def cal_resample(data=None, times=5000, return_all=False):
+    # 这个函数的目的是为了针对输入的数据，进行有重复的抽取5000次，然后记录每一次的均值，最后输出这5000次重采样的均值分布    的   均值和5%和95%的数值。
+    if data is None:
+        raise Exception
+    if type(data) == list:
+        data = np.asarray(data)
+    iter_mean = []
+    for _ in range(times):
+        iter_distri = data[np.random.choice(len(data), len(data), replace=True)]
+        iter_mean.append(np.nanmean(iter_distri))
+    _mean = np.mean(iter_mean)
+    _5 = np.percentile(iter_mean, 5)
+    _95 = np.percentile(iter_mean, 95)
+    if return_all:
+        return _mean, _5, _95, iter_mean
+    else:
+        return _mean, _5, _95
+mean1, _51, _951 = cal_resample(data=array1, times=500, return_all=False)
+mean2, _52, _952 = cal_resample(data=array2, times=500, return_all=False)
+means = [mean1, mean2]
+upper = [_951, _952]
+lower = [_51, _52]
+bar(
+    means=means,
+    upper=upper,
+    lower=lower,
+    )
 
 def RNN():
     # Define a simple recurrent neural network
