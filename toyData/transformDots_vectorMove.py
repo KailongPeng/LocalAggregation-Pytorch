@@ -113,10 +113,14 @@ torch.cuda.manual_seed_all(42)
 torch.backends.cudnn.deterministic = True
 
 # Generate random 2D points
-num_points = 21
+
 close_count = 10  # 20
 background_count = 10 # 40
+num_points = 1 + close_count + background_count  # now I removed irrelevent dots from the loss so that it is easier to learn for the network
 num_epochs = 60
+
+hidden_dim = 20
+num_layers = 10
 
 points = np.random.rand(num_points, 2)
 
@@ -236,9 +240,8 @@ class FlexibleTransformNet(nn.Module):
         return x
 
 input_dim = 2
-hidden_dim = 20
 output_dim = 2
-num_layers = 10
+
 model = FlexibleTransformNet(input_dim, hidden_dim, output_dim, num_layers)
 
 class SharedWeightResidualBlock(nn.Module):
@@ -427,6 +430,9 @@ def bar(means=None, upper=None, lower=None, ROINames=None, title=None, xLabel=""
 array1 = distance_between_center_close__set2 - distance_between_center_close__set1
 array2 = distance_between_center_background__set2 - distance_between_center_background__set1
 
+# change to integration score
+array1 = - array1
+array2 = - array2
 def cal_resample(data=None, times=5000, return_all=False):
     # 这个函数的目的是为了针对输入的数据，进行有重复的抽取5000次，然后记录每一次的均值，最后输出这5000次重采样的均值分布    的   均值和5%和95%的数值。
     if data is None:
@@ -444,15 +450,18 @@ def cal_resample(data=None, times=5000, return_all=False):
         return _mean, _5, _95, iter_mean
     else:
         return _mean, _5, _95
-mean1, _51, _951 = cal_resample(data=array1, times=500, return_all=False)
-mean2, _52, _952 = cal_resample(data=array2, times=500, return_all=False)
-means = [mean1, mean2]
-upper = [_951, _952]
-lower = [_51, _52]
+
+mean1, _5_1, _95_1 = cal_resample(data=array1, times=500, return_all=False)
+mean2, _5_2, _95_2 = cal_resample(data=array2, times=500, return_all=False)
+means = np.array([mean1, mean2])
+upper = np.array([_95_1, _95_2])
+lower = np.array([_5_1, _5_2])
 bar(
     means=means,
     upper=upper,
     lower=lower,
+    title="integration score",
+    ROINames=["close", "background"],
     )
 
 def RNN():
