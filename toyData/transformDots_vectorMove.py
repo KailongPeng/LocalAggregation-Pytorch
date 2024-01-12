@@ -206,7 +206,7 @@ def plot_loss_curve(loss_values, title='Training Loss Curve'):
 # Generate a neural network
 # model = SimpleTransformNet()
 class FlexibleTransformNet(nn.Module):
-    def __init__(self, input_dim, hidden_dim, output_dim, num_layers=10):
+    def __init__(self, input_dim, hidden_dim, output_dim, num_layers):
         super(FlexibleTransformNet, self).__init__()
         self.layers = nn.ModuleList()
 
