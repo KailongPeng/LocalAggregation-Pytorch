@@ -400,6 +400,7 @@ def train_multiple_dotsNeighbotSingleBatch(
         num_background=None,
         hidden_dim=None,
         num_layers=None,
+        loss_type=None,
     ):
     """
     design the output of test_single_dotsNeighbotSingleBatch should be
@@ -482,187 +483,61 @@ def train_multiple_dotsNeighbotSingleBatch(
         def __getitem__(self, idx):
             return self.data[idx], self.labels[idx]
 
+    def prepare_data_rnn(dataset, sequence_length=None):
+        """
+        Prepares the data for RNN input.
+
+        Parameters:
+        - dataset: numpy array with shape (N, 2) where N is the number of points and 2 is the number of coordinates.
+        - sequence_length: Desired sequence length for the RNN input.
+
+        Returns:
+        - rnn_input: numpy array with shape (N, sequence_length, 2).
+        """
+        num_points, num_coordinates = dataset.shape
+
+        # Repeat each point sequence_length times
+        rnn_input = np.tile(dataset[:, np.newaxis, :], (1, sequence_length, 1))
+
+        return torch.tensor(rnn_input, dtype=torch.float32)
+
     # Define neural network architecture
-    class Net(nn.Module):
-        def __init__(self):
-            super(Net, self).__init__()
-            self.embedding = nn.Linear(2, 2)
-
-        def forward(self, x):
-            x = self.embedding(x)
-            return x
-
-    class SimpleFeedforwardNN(nn.Module):
-        def __init__(self, threeD_input=False, use_batch_norm=False, use_layer_norm=False, init_zero_weights=False):
-            super(SimpleFeedforwardNN, self).__init__()
-            self.use_batch_norm = use_batch_norm
-            self.use_layer_norm = use_layer_norm
-
-            if threeD_input:
-                self.input_layer = nn.Linear(3, 64)
-            else:
-                self.input_layer = nn.Linear(2, 64)  # first layer weight
-            if init_zero_weights:
-                init.zeros_(self.input_layer.weight)  # Initialize input layer weights to zero
-                init.zeros_(self.input_layer.bias)  # Initialize input layer biases to zero
-
-            self.hidden_layer1 = nn.Linear(64, 32)  #  second layer weight
-            if init_zero_weights:
-                init.zeros_(self.hidden_layer1.weight)  # Initialize hidden layer weights to zero
-                init.zeros_(self.hidden_layer1.bias)  # Initialize hidden layer biases to zero
-            self.hidden_layer2 = nn.Linear(32, 2)  # final layer is 2D
-            if init_zero_weights:
-                init.zeros_(self.hidden_layer2.weight)  # Initialize hidden layer weights to zero
-                init.zeros_(self.hidden_layer2.bias)  # Initialize hidden layer biases to zero
-
-            if self.use_batch_norm:
-                self.batch_norm1 = nn.BatchNorm1d(64)
-                self.batch_norm2 = nn.BatchNorm1d(32)
-            elif self.use_layer_norm:
-                self.layer_norm1 = nn.LayerNorm(64)
-                self.layer_norm2 = nn.LayerNorm(32)
-
-        def forward(self, x):
-            # x = (50,2)  input
-            x = torch.relu(self.input_layer(x))  # x = (50,64)  first layer activation
-            if self.use_batch_norm:
-                x = self.batch_norm1(x)
-            elif self.use_layer_norm:
-                x = self.layer_norm1(x)
-
-            # self.penultimate_layer_activation = self.hidden_layer1(x).detach().numpy()
-            x = torch.relu(self.hidden_layer1(x))  # x = (50,32)  second layer activation (penultimate layer)
-
-            if self.use_batch_norm:
-                x = self.batch_norm2(x)
-            elif self.use_layer_norm:
-                x = self.layer_norm2(x)
-
-            self.penultimate_layer_activation = x.detach().numpy()
-            x = self.hidden_layer2(x)  # x = (50,2) final layer activation
-            self.final_layer_activation = x.detach().numpy()
-            return x
-
-    class FlexibleTransformNet(nn.Module):
-        def __init__(self, input_dim, hidden_dim, output_dim, num_layers=10):
-            super(FlexibleTransformNet, self).__init__()
-            self.layers = nn.ModuleList()
-
-            # Add input layer
-            self.input_layer = nn.Linear(input_dim, hidden_dim)
-            self.layers.append(self.input_layer)
-            self.layers.append(nn.ReLU())
-
-            # Add hidden layers
-            for _ in range(num_layers - 2):
-                if _ == num_layers - 3:
-                    # Add final layer
-                    self.hidden_layer1 = nn.Linear(hidden_dim, hidden_dim)
-                    self.layers.append(self.hidden_layer1)
-                else:
-                    self.layers.append(nn.Linear(hidden_dim, hidden_dim))
-                self.layers.append(nn.ReLU())
-
-            # Add output layer
-            self.hidden_layer2 = nn.Linear(hidden_dim, output_dim)
-            # self.layers.append(nn.Linear(hidden_dim, output_dim))
-            self.layers.append(self.hidden_layer2)
-
-        def forward(self, x):
-            residual = None
-            # Apply each layer
-            for currLayer, layer in enumerate(self.layers):
-                if currLayer == 1:
-                    # Initial input for the residual connection
-                    residual = x
-
-                x = layer(x)
-
-                # Add residual connection after each ReLU
-                if isinstance(layer, nn.ReLU) and currLayer < len(self.layers) - 1 and currLayer > 1:
-                    x = x + residual
-                    residual = x
-
-                if currLayer == len(self.layers) - 2:
-                    self.penultimate_layer_activation = x.detach().numpy()
-                if currLayer == len(self.layers) - 1:
-                    self.final_layer_activation = x.detach().numpy()
-
-            return x
-
-    # class SimpleRNNWithActivations(nn.Module):
-    #     def __init__(self, input_size=2, hidden_size=5, output_size=2):
-    #         super(SimpleRNNWithActivations, self).__init__()
-    #
-    #         self.hidden_size = hidden_size
-    #
-    #         # Define the RNN layer
-    #         self.rnn = nn.RNN(input_size, hidden_size, batch_first=True)
-    #
-    #         # Define the output layer
-    #         self.fc = nn.Linear(hidden_size, output_size)
-    #
-    #     def forward(self, x):
-    #         # Reshape the data to have 5 time steps
-    #         num_time_steps = 5
-    #         x = x.reshape(2, -1, num_time_steps)
-    #
-    #         # Convert the NumPy array to a PyTorch tensor
-    #         x = torch.tensor(x, dtype=torch.float32)
-    #
-    #         # Initialize hidden state with zeros
-    #         h0 = torch.zeros(1, x.size(0), self.hidden_size).to(x.device)
-    #
-    #         # Forward pass through the RNN layer
-    #         out, _ = self.rnn(x, h0)
-    #
-    #         # Take the output from the last time step and pass it through the linear layer
-    #         self.penultimate_layer_activation = out[:, -1, :].detach().numpy()
-    #         final_layer_activation = self.fc(out[:, -1, :])
-    #         self.final_layer_activation = final_layer_activation.detach().numpy()
-    #
-    #         return final_layer_activation
-
-    class SimpleRNNWithActivations(nn.Module):
-        def __init__(self, input_size=2, hidden_size=5, output_size=2):
-            super(SimpleRNNWithActivations, self).__init__()
+    # Define the Vanilla RNN model
+    class VanillaRNN(nn.Module):
+        def __init__(self, input_size, hidden_size, output_size):
+            super(VanillaRNN, self).__init__()
 
             self.hidden_size = hidden_size
 
-            # Define the RNN layer
+            # RNN layer
             self.rnn = nn.RNN(input_size, hidden_size, batch_first=True)
 
-            # Define the output layer
+            # Fully connected layer
             self.fc = nn.Linear(hidden_size, output_size)
 
-            # code to mimic the feedforward network
             self.input_layer = self.rnn
             self.hidden_layer1 = self.rnn
-            self.hidden_layer2 = self.fc
+            self.hidden_layer2 = self.fc  # self.hidden_layer2 is the thing that is used in synaptic NMPH analysis.
 
         def forward(self, x):
-            num_time_steps = 5
-            # x = x.view(2, -1, num_time_steps)
-            # Repeat x along the third dimension for 15 times
-            x = x.unsqueeze(2).repeat(1, 1, num_time_steps)
+            # preparing data for RNN input
+            num_timepoints = num_layers
+            x = prepare_data_rnn(
+                x,
+                sequence_length=num_timepoints)
 
-            # Initialize hidden state with zeros
-            h0 = torch.zeros(1, x.size(0), self.hidden_size).to(x.device)
+            # RNN forward pass
+            out, _ = self.rnn(x)
 
-            # Forward pass through the RNN layer
-            out, _ = self.rnn(x, h0)
+            # Take the output from the last time step
+            out = out[:, -1, :]
+            self.penultimate_layer_activation = out.detach().numpy()
 
-            # Take the output from the last time step and pass it through the linear layer
-            self.penultimate_layer_activation = out[:, -1, :].detach().numpy()
-            final_layer_activation = self.fc(out[:, -1, :])
-            self.final_layer_activation = final_layer_activation.detach().numpy()
+            # Fully connected layer
+            out = self.fc(out)
+            self.final_layer_activation = out.detach().numpy()
 
-            # code to mimic the feedforward network
-            self.input_layer = self.rnn
-            self.hidden_layer1 = self.rnn
-            self.hidden_layer2 = self.fc
-
-            return final_layer_activation
+            return out
 
     # Define local aggregation loss function
     def local_aggregation_loss(
@@ -777,8 +652,10 @@ def train_multiple_dotsNeighbotSingleBatch(
     else:
         points_data, labels_data = generate_2d_scatter_plot(display_plot=True, remove_boundary_dots=remove_boundary_dots)
 
+
     # Split the data into training and testing sets (1000 points each)
     train_data, test_data = points_data[:1000], points_data[1000:]
+
     train_labels, test_labels = labels_data[:1000], labels_data[1000:]
 
     dataset = ToyDataset(train_data, train_labels)
@@ -790,11 +667,17 @@ def train_multiple_dotsNeighbotSingleBatch(
     #                           use_batch_norm=False, use_layer_norm=False)  # It was found that layer norm is much better than batch norm.
     # net = SimpleRNNWithActivations(input_size=2, hidden_size=5, output_size=2)
 
-    input_dim = 2
-    hidden_dim = hidden_dim  # 20
-    output_dim = 2
-    num_layers = num_layers  # 5
-    net = FlexibleTransformNet(input_dim, hidden_dim, output_dim, num_layers)
+    # input_dim = 2
+    # hidden_dim = hidden_dim  # 20
+    # output_dim = 2
+    # num_layers = num_layers  # 5
+    # net = FlexibleTransformNet(input_dim, hidden_dim, output_dim, num_layers)
+
+    # Instantiate the model
+    input_size = 2  # Size of input features
+    hidden_size = hidden_dim  # Size of hidden state
+    output_size = 2  # Size of output
+    net = VanillaRNN(input_size, hidden_size, output_size)
 
 
     learning_rate = 0.05 * 4
@@ -846,9 +729,11 @@ def train_multiple_dotsNeighbotSingleBatch(
         # for curr_batch, (batch, batch_labels) in enumerate(dataloader):
         for curr_batch, (batch, batch_labels) in tqdm(enumerate(dataloader)):
             # Record weights
-            input_layer_before = net.input_layer.weight.data.clone().detach().numpy()
-            hidden_layer1_before = net.hidden_layer1.weight.data.clone().detach().numpy()
-            hidden_layer2_before = net.hidden_layer2.weight.data.clone().detach().numpy()
+            input_layer_before = net.input_layer.weight_ih_l0.data.clone().detach().numpy() # (20,2)  # rnn input to hidden
+            # net.input_layer.bias_ih_l0.data.clone().detach().numpy()  # (20,)
+            hidden_layer1_before = net.hidden_layer1.weight_hh_l0.data.clone().detach().numpy() # (20,20)  # rnn hidden to hidden
+            # net.hidden_layer1.bias_hh_l0.data.clone().detach().numpy()  # (20,)
+            hidden_layer2_before = net.hidden_layer2.weight.data.clone().detach().numpy()  # (2,20)  # rnn hidden to output
 
             close_neighbors_moved, background_neighbors_moved = None, None
             for iteration in range(num_iterations_per_batch):  # Introduce a loop for multiple weight update iterations
@@ -865,8 +750,13 @@ def train_multiple_dotsNeighbotSingleBatch(
                 optimizer.zero_grad()
 
                 # Forward pass
+                # embedding_centerPoint = net(batch.float())  # embeddings of the current batch, note that batch_size=1, so this is a single center point.
+                # embeddings_all = net(torch.tensor(train_data, dtype=torch.float32))  # embeddings of all points
+
                 embedding_centerPoint = net(batch.float())  # embeddings of the current batch, note that batch_size=1, so this is a single center point.
-                embeddings_all = net(torch.tensor(train_data, dtype=torch.float32))  # embeddings of all points
+                embeddings_all = net(train_data)  # embeddings of all points
+
+
 
                 # Get close and background neighbors
                 if iteration == 0:
@@ -946,18 +836,23 @@ def train_multiple_dotsNeighbotSingleBatch(
                 else:
                     pass
 
-                # Call local_aggregation_loss, weight_decay_loss, and range_loss functions
-                # loss_local_aggregation  = local_aggregation_loss(
-                #     embedding_centerPoint, close_neighbors, background_neighbors,
-                #     integrationForceScale=integrationForceScale
-                # )
-                loss_local_aggregation = local_aggregation_vecterScale_loss(
-                    embedding_centerPoint,
-                    close_neighbors, background_neighbors,
-                    # close_neighbors_moved, background_neighbors_moved
-                    torch.tensor(close_neighbors_moved), torch.tensor(background_neighbors_moved),
-                    # integrationForceScale=integrationForceScale
-                )
+                if loss_type == 'push_pull_loss':
+                    # Call local_aggregation_loss, weight_decay_loss, and range_loss functions
+                    loss_local_aggregation  = local_aggregation_loss(
+                        embedding_centerPoint,
+                        close_neighbors, background_neighbors,
+                        integrationForceScale=integrationForceScale
+                    )
+                elif loss_type == 'vector_scale_loss':
+                    loss_local_aggregation = local_aggregation_vecterScale_loss(
+                        embedding_centerPoint,
+                        close_neighbors, background_neighbors,
+                        # close_neighbors_moved, background_neighbors_moved
+                        torch.tensor(close_neighbors_moved), torch.tensor(background_neighbors_moved),
+                        # integrationForceScale=integrationForceScale
+                    )
+                else:
+                    raise ValueError(f"loss_type={loss_type} is not supported.")
 
                 if range_loss_rep_shrink is None:
                     loss_range = 0
@@ -983,9 +878,11 @@ def train_multiple_dotsNeighbotSingleBatch(
 
                 # Record weights
                 latent_points = net(torch.tensor(train_data, dtype=torch.float32)).detach().numpy()
-                input_layer_after = net.input_layer.weight.data.clone().detach().numpy()
-                hidden_layer1_after = net.hidden_layer1.weight.data.clone().detach().numpy()
-                hidden_layer2_after = net.hidden_layer2.weight.data.clone().detach().numpy()
+                input_layer_after = net.input_layer.weight_ih_l0.data.clone().detach().numpy()  # (20,2)  # rnn input to hidden
+                # net.input_layer.bias_ih_l0.data.clone().detach().numpy()  # (20,)
+                hidden_layer1_after = net.hidden_layer1.weight_hh_l0.data.clone().detach().numpy()  # (20,20)  # rnn hidden to hidden
+                # net.hidden_layer1.bias_hh_l0.data.clone().detach().numpy()  # (20,)
+                hidden_layer2_after = net.hidden_layer2.weight.data.clone().detach().numpy()  # (2,20)  # rnn hidden to output
 
                 weight_difference_history['input_layer'].append(input_layer_after - input_layer_before)
                 weight_difference_history['hidden_layer1'].append(hidden_layer1_after - hidden_layer1_before)
@@ -1146,18 +1043,20 @@ num_iterations_per_batch = 5  # increase this from 1 to 10, the ratio of mean_ba
 (num_close, num_background)=(10, 10)  # after changing the local_aggregation_loss function, the ratio of mean_background/mean_close becomes extremely stably and not easy to collapse.
 hidden_dim = 20
 num_layers = 5
+loss_type = 'vector_scale_loss'  # 'push_pull_loss' 'vector_scale_loss'
 train_multiple_dotsNeighbotSingleBatch(
     threeD_input=False,
     remove_boundary_dots=False,
     integrationForceScale=1,  # the relative force scale between integration and differentiation. Should be 1, 2 collapses the result
     total_epochs=total_epochs,
-    range_loss_rep_shrink=None,  # rep_shrink can be None (not using range loss), 1, 0.9, 0.85, 0.8, whether range loss is implemented
+    range_loss_rep_shrink=1,  # rep_shrink can be None (not using range loss), 1, 0.9, 0.85, 0.8, whether range loss is implemented
     num_iterations_per_batch=num_iterations_per_batch,
     plot_neighborhood=False,
     num_close=num_close,
     num_background=num_background,
     hidden_dim=hidden_dim,
     num_layers=num_layers,
+    loss_type=loss_type,
 )  # this works as long as the number of close neighbors is small  # both remove_boundary_dots True and False works.  # integrationForceScale=1.5 does not work.
 
 """
